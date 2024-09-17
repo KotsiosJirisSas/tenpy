@@ -62,7 +62,7 @@ sim_par = {
 M = mod.spin_chain_model(model_par)
 initial_state = np.array( [M.up, M.up])		#Ensures the ground state i get in FM region is gonna be up up.
 M = mod.spin_chain_model(model_par)
-psi = iMPS.product_imps(M.d, initial_state, dtype=float, conserve = M)
+psi = iMPS.product_imps(M.d, initial_state, dtype=float, conserve = M) # conserve.M means the conservation properties (how the charges will get set up) depend on the conserve attribure of the Model (MPO)
 psi.convert_to_form('C')#?
 Zs = []
 Xs = []
