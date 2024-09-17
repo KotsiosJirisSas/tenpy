@@ -1,0 +1,11 @@
+Hamiltonian:
+H = Jz (Sz . Sz) + Jx (Sx . Sx) + Jy (Sy . Sy) + muJ i/2 (Sp Sm - Sm Sp) 
+		+ hz (Sz) + hy (Sy) + hx (Sx)
+		+ D2 Sz^2 + D4 Sz^4
+		+ staggered_hz (-1)^(site) (Sz)
+		+ Heisenberg[0] (S.S) + Heisenberg[1] (S.S)^2 + ...
+		+ AKLTcoupling (whatever the AKLT looks like)
+
+For the TFI model, we have  H = -J \sum(Sz_i \cdot Sz_{i+1}) +g\sum S_x{i}
+We have an ordered phase for |g/J| < 1, which spontaneously breaks the Z_2 spin flip symmetry. GS is FM or AFM depending on sgn(J)
+We have a disordered phase for |g/J| > 1 where magnetization vanishes and the GS preserves Z_2 and is non-degenerate.
