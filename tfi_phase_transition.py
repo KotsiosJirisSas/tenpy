@@ -136,7 +136,7 @@ def run_infinite(gs):
         'start_env': 5,
         'max_E_err': 0.0001,
         'max_S_err': 0.0001,
-        'max_sweeps': 100,  # NOTE: this is not enough to fully converge at the critical point!
+        'max_sweeps': 150,  # NOTE: this is not enough to fully converge at the critical point!
         'mixer': False
     }
 
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     import pickle
     import os.path
     
-    gs = sorted(set(np.linspace(0.5, 1.5, 11)).union(set(np.linspace(0.95, 1.05, 11))))[::-1]
+    gs = sorted(set(np.linspace(0.5, 1.5, 11)).union(set(np.linspace(0.95, 1.05, 11))))#[::-1]
     print(gs)
     #gs=np.linspace(1.1,1.7,10)
     #gs=np.linspace(0.5,1.2,10)[::-1]
