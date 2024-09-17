@@ -62,3 +62,9 @@ def infinite_gs_energy(J, g):
 
     E0_exact = -g / (J * 2. * np.pi) * scipy.integrate.quad(f, -np.pi, np.pi, args=(J / g, ))[0]
     return E0_exact
+
+L=15
+J=1
+g=1
+E=finite_gs_energy(L, J, g)
+print(E)

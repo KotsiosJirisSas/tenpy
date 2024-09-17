@@ -30,6 +30,8 @@ W_bulk = [[Id, Sp, Sm, Sz, -hz * Sz], [None, None, None, None, 0.5 * J * Sm],
 W_first = [W_bulk[0]]  # first row
 W_last = [[row[-1]] for row in W_bulk]  # last column
 Ws = [W_first] + [W_bulk] * (N - 2) + [W_last]
+print(len(Ws))
 H = MPO.from_grids([spin] * N, Ws, bc='finite', IdL=0, IdR=-1)
+
 print("<psi|H|psi> =", H.expectation_value(psi))
 # <psi|H|psi> = -1.25

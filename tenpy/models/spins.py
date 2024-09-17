@@ -75,7 +75,6 @@ class SpinModel(CouplingMPOModel):
         D = model_params.get('D', 0., 'real_or_array')
         E = model_params.get('E', 0., 'real_or_array')
         muJ = model_params.get('muJ', 0., 'real_or_array')
-
         # (u is always 0 as we have only one site in the unit cell)
         for u in range(len(self.lat.unit_cell)):
             self.add_onsite(-hx, u, 'Sx')
