@@ -1,6 +1,9 @@
 '''
 H = (J/4) \sum Z_{i} Z_{i+1} + (h_x/2) \sum X_{i}
 H = -sum Z_{i} Z_{i+1} - g \sum X_{i}
+****
+Note that i am using the ZZ+X Hamiltonian insteda of the XX+Z
+****
 so for |g|<1: GS is Z_2 degenerate Ferromagnet, while for |g|>>1 it is a paramagnet along +x.
 The GS you get in the disordered regime depends on your initial state.
 The GS at the two limits are product states and so should have zero ES, while near the transition the state is highly entangled.
