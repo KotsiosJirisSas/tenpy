@@ -54,6 +54,44 @@ __all__ = [
 ]
 
 
+def set_var(pars, key, default, force_verbose=None):
+	"""	Look up a value in the dictionary (pars).
+			return it if it exists, return default otherwise.
+			If 'verbose' key is set, then print this out.
+
+		If pars['verbose'] is set, it'll decide whether to print the value
+			force_verbose overrides that option
+		
+		Examples:
+		>>>	from models.model import set_var
+		>>>	self.L = set_var(pars, 'L', 1)
+		>>>	self.JzCoupling = set_var(pars, 'Jz', 0)
+		"""
+	verbose = 0
+	if pars.has_key('verbose'): verbose = pars['verbose']
+	if isinstance(force_verbose, int): verbose = force_verbose
+	if pars.has_key(key):
+		if verbose > 0:
+			print ("\t", key, "=", pars[key])
+		return pars[key]
+	else:
+		if verbose > 1:
+			print ("\t", key, "=", default, "(default)")
+		return default
+
+def identical_translate_Q1_data(tQdat1, tQdat2, verbose=0):
+	"""Check if tQdat1 matches tQdat2.  Returns True/False.	"""
+	if tQdat1 is None and tQdat2 is None: return True
+	if tQdat1['cls'] != tQdat2['cls'] or tQdat1['module'] != tQdat2['module'] or tQdat1['tQ_func'] != tQdat2['tQ_func']:
+		if verbose > 0: print ('translate_Q1_data mismatch:\n\t{}\n\t{}\n'.format(tQdat1, tQdat2))
+		return False
+	if np.any(tQdat1['keywords']['Kvec'] != tQdat2['keywords']['Kvec']):
+		if verbose > 0: print ('translate_Q1_data mismatch:\n\t{}\n\t{}\n'.format(tQdat1['keywords']['Kvec'], tQdat2['keywords']['Kvec']))
+		return False
+	return True
+
+
+
 class Model(Hdf5Exportable):
     """Base class for all models.
 

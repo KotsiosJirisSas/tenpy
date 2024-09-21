@@ -1,0 +1,41 @@
+#!/bin/sh
+
+#SBATCH --job-name=yc8_fermion_c6000
+#SBATCH --nodes=1
+#SBTACH --ntasks=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --time-min=72:0:00
+#SBATCH --partition=lr3
+#SBATCH --mincpus=20
+#SBATCH --qos=lr_normal
+#SBATCH --error=/global/home/users/mzaletel/TenPy2/%j.err
+#SBATCH --output=/global/home/users/mzaletel/TenPy2/%j.out
+#SBATCH --export=ALL
+#SBATCH --account=ac_onsager
+#SBATCH --workdir=/global/home/users/mzaletel/TenPy2
+### To start the parallel processor on the nodes you were given by the scheduler
+cpus_per_proc=20
+
+module unload python/2.6.6
+module load python/2.7.8
+module unload intel/2013_sp1.4.211
+module load intel/2015.0.090
+module load openmpi/1.8.3-intel
+module load mpi4py/1.3.1
+module load mkl/2015.0.090
+
+export PYTHONPATH="/global/home/users/mzaletel/TenPy2:/global/home/users/mzaletel/.local/lib/python2.7:/global/home/users/mzaletel/lib/python2.7/site-packages"
+export PATH="/global/home/users/mzaletel/.local/bin:${PATH}"
+export CC="icc"
+echo "CPUS/Nodes:"$SLURM_JOB_CPUS_PER_NODE
+echo "Tasks/node "$SLURM_NTASKS_PER_NODE
+echo "Running on hosts: $SLURM_NODELIST"
+jobname=$SLURM_JOB_NAME
+num_procceses=$[SLURM_NPROCS + 1]
+echo | module list
+echo "Running "$num_procceses" procs with "$cpus_per_proc" cpus per proc"
+export OMP_NUM_THREADS=$cpus_per_proc	
+mpirun -V -v -np $num_procceses -bynode -x OMP_NUM_THREADS=$cpus_per_proc  --report-bindings python run_mpi.py bos2D $jobname
+
+
+

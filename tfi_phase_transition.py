@@ -35,7 +35,7 @@ def infinite_gs_energy(J, g):
 def run_finite(gs):
     
     print("running for gs = ", gs)
-    L = 19
+    L = 60
     model_params = dict(L=L, J=1., g=gs[0], bc_MPS='finite', conserve=None)
     chi = 100
     dmrg_params = {
@@ -74,12 +74,12 @@ def run_finite(gs):
         engine.init_env(model=M)  # (re)initialize DMRG environment with new model
         # this uses the result from the previous DMRG as first initial guess
         E0, psi = engine.run()
-        E.append(E0)
+        E.append(E0/L)
         # psi is modified by engine.run() and now represents the ground state for the current `g`.
         
         S.append(psi.entanglement_entropy()[L//2])
       
-        Sz.append(np.sum(psi.expectation_value('Sigmaz'))/L)
+        Sz.append(np.sum(psi.expectation_value('Sigmax'))/L)
         print("<Sigmaz>", Sz[-1])
       
         if old_psi is not None:
@@ -208,7 +208,7 @@ def plot(results, filename):
             max_j = SxSx.shape[1]
             for j in range(1, max_j):
                 label = "j= {j:d}".format(j=j) if j in [1, max_j - 1] else None
-                ax.plot(gs, SxSx[:, j], label=label, color=cm(j / max_j))
+                ax.plot(gs[x], SxSx[:, j][x], label=label, color=cm(j / max_j))
             ax.legend()
             
             pass
@@ -216,10 +216,12 @@ def plot(results, filename):
             A=[]
             for g in gs:
                 A.append(infinite_gs_energy(1, g))
-            ax.plot(gs,A)
-            ax.plot(gs,results[key],'ro-')
+            x=np.argsort(gs)
+            ax.plot(gs[x],np.array(A)[x])
+            
+            ax.plot(gs[x],results[key][x],'ro-')
         else:
-            ax.plot(gs, results[key], 'ro-')
+            ax.plot(gs[x], results[key][x], 'ro-')
         ax.set_xlabel('$g/J$')
         ax.set_ylabel(key)
         ax.set_xlim(min(gs), max(gs))
@@ -257,15 +259,20 @@ if __name__ == "__main__":
     import pickle
     import os.path
     
-    gs = sorted(set(np.linspace(0.5, 1.5, 11)).union(set(np.linspace(0.95, 1.05, 11))))#[::-1]
+    gs = sorted(set(np.linspace(1.1, 1.5, 5)).union(set(np.linspace(0.95, 1.05, 11))))[::-1]
+    gs=list(gs)
+    gs.extend([0.5,0.6,0.7,0.8,0.9])
+    gs=np.linspace(0.5,1.5,11)
     print(gs)
+    gs=np.sort(gs)
+    #gs=[2,3,5,4]
     #gs=np.linspace(1.1,1.7,10)
     #gs=np.linspace(0.5,1.2,10)[::-1]
     #gs = [0.8,0.9]
-    results = run_infinite(gs)
       
-    plot(results, filename + '.png')
-    #results =run_finite(gs)
-    #filename = 'finite_DMRG_tfi_phase_transition'
-    #plot_finite(results, filename + '.png')
+    #results = run_infinite(gs)
+    #plot(results, filename + '.png')
+    results =run_finite(gs)
+    filename = 'finite_DMRG_tfi_phase_transition'
+    plot_finite(results, filename + '.png')
     #run_bunch_fdmrg(gs)
