@@ -298,3 +298,33 @@ def toiterable(o):
 		return [o]
 	else:
 		return o
+
+def pad(a, w_l=0, v_l=0, w_r=0, v_r=0, axis = 0):
+	""" Pad an array along 'axis.' w_l is the width of the pad added before index 0, w_r after last index, with values v_l, v_r.
+
+	"""
+	shp = list(a.shape)
+	shp[axis]+=w_r+w_l
+	b = np.empty( shp, a.dtype)
+
+	#tuple of full slices
+	take = [ slice(None) for j in xrange(len(shp))]
+
+	#prepend
+	take[axis] = slice(w_l)
+	b[tuple(take)] = v_l
+	#copy a
+	take[axis] = slice(w_l, -w_r)
+	b[tuple(take)] = a
+	#append
+	take[axis] = slice(-w_r, None)
+	b[tuple(take)] = v_r
+	
+	return b
+
+def anynan(a):
+	if has_bottleneck:
+		return bn.anynan(np.ascontiguousarray(a)) #Conda bottleneck seems to have error if it is slice???
+	else:
+		return np.isnan(np.sum(a))
+		

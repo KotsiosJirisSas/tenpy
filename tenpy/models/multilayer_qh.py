@@ -72,8 +72,7 @@ from tenpy.linalg import np_conserved as npc
 from tenpy.linalg import truncation as LA_tools
 
 
-from tenpy.models.model import Model, set_var, identical_translate_Q1_data
-
+from tenpy.models.model_old_tenpy2 import model, set_var, identical_translate_Q1_data
 from tenpy.tools.string import joinstr
 from tenpy.tools.math import perm_sign, toiterable, pad
 from tenpy.algorithms import Markov
@@ -84,7 +83,7 @@ try:
 except:
 	pass
 
-class QH_model(model):
+class QH_model(model): #CHANGED model to Model
 	"""	A multilayered quantum hall system on a cylinder.
 		
 		Parameters when creating model:

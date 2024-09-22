@@ -4,9 +4,9 @@ import numpy as np
 from tenpy.linalg import np_conserved as npc
 from tenpy.models import multilayer_qh as mod
 from tenpy.models.multilayer_qh import interlace_zero
-from tenpy.algorithms import simulation
+#from tenpy.algorithms import simulation
 import itertools
-from tenpy.mps.mps import iMPS
+#from tenpy.mps.mps import iMPS
 np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
 
 NLL = 2; Veps = 1e-4
@@ -22,7 +22,7 @@ root_config = [0]*NLL
 
 model_par = {
 	'verbose': 2,
-	'layers': [ ('L', l) for l in xrange(NLL) ],
+	'layers': [ ('L', l) for l in range(NLL) ],
 	#'layers':[ ('L', 1)],
 	'Lx': 12.,
 	'Vs': V,
