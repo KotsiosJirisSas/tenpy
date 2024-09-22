@@ -130,3 +130,46 @@ def format_like_list(it) -> str:
 
     This means surrounding them with brackets and separating them by `', '`."""
     return f'[{", ".join(map(str, it))}]'
+	
+def joinstr(strlist, valign='c', delim=''):
+	# TODO, does not handle tabs properly
+	# TODO, vary the vertical justification
+	""" Join strings with multilines
+		no newline at the end of everything
+
+		with tabs, it tries its best to guess where it is (if any of the strings has more than one line)
+		"""
+	# below are all lists, an item for each one in strlist
+	numstr = len(strlist)
+	slist = []		# list of string in strlist[i]
+	numlines = []	# number of lines in strlist[i]
+	#strwidth = []		# max width of strlist[i]
+	empty_str = []		# a string with only spaces and tabs, with strwidth number of characters (use for padding)
+	for s in strlist:
+		if isinstance(s, str):
+			list_of_lines = s.split('\n')
+		else:
+			list_of_lines = str(s).split('\n')		# convert to string
+		slist.append(list_of_lines)
+		numlines.append(len(list_of_lines))
+		list_of_str_lengths = list(len(l) for l in list_of_lines)
+		the_longest_line = list_of_lines[np.argmax(list_of_str_lengths)]
+		empty_maxlen_liststr = [' '] * len(the_longest_line)
+		for i in xrange(len(the_longest_line)):
+			if the_longest_line[i] == '\t': empty_maxlen_liststr[i] = '\t'
+		empty_str.append( "".join(empty_maxlen_liststr) )
+	maxlines = max(numlines)
+	s = ""
+	for i in xrange(maxlines):
+		for t in xrange(numstr):
+			if i < int((maxlines - numlines[t]) / 2)  or  i >= int((maxlines - numlines[t]) / 2) + numlines[t]:
+				s += empty_str[t]
+			else:
+				print_str = slist[t][i - int((maxlines - numlines[t]) / 2)]
+				s += print_str + empty_str[t][len(print_str):]
+			if t < numstr - 1: s += delim
+		if i < maxlines - 1: s += '\n'
+	return s
+
+
+

@@ -287,3 +287,14 @@ def rq_li(A, cutoff=1.e-15):
     """
     q, r = qr_li(A.T[:, ::-1], cutoff)
     return r.T[::-1, ::-1], q.T[::-1, :]
+
+def toiterable(o):
+	"""Ensures 'o' is iterable. If o is a singleton or str, returns [o]"""
+	if type(o)==str:
+		return [o]
+	try:
+		iter(o)
+	except TypeError:
+		return [o]
+	else:
+		return o
