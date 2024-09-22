@@ -288,6 +288,9 @@ def rq_li(A, cutoff=1.e-15):
     q, r = qr_li(A.T[:, ::-1], cutoff)
     return r.T[::-1, ::-1], q.T[::-1, :]
 
+
+
+#ADDED TO MATHC OLD TENPY
 def toiterable(o):
 	"""Ensures 'o' is iterable. If o is a singleton or str, returns [o]"""
 	if type(o)==str:
@@ -308,7 +311,7 @@ def pad(a, w_l=0, v_l=0, w_r=0, v_r=0, axis = 0):
 	b = np.empty( shp, a.dtype)
 
 	#tuple of full slices
-	take = [ slice(None) for j in xrange(len(shp))]
+	take = [ slice(None) for j in range(len(shp))]
 
 	#prepend
 	take[axis] = slice(w_l)
@@ -328,3 +331,20 @@ def anynan(a):
 	else:
 		return np.isnan(np.sum(a))
 		
+
+
+def tonparray(o, array_size=None):
+	"""	Convert to an np.ndarray
+		If array_size is set, then tile the array to the correct size.
+		"""
+	try:
+		iter(o)
+	except TypeError:
+		a = np.array([o])
+	else:
+		a = np.array(o)
+	if array_size is not None:
+		if array_size % len(a) != 0: raise ValueError
+		a = np.tile(a, array_size // len(a))
+	return a
+

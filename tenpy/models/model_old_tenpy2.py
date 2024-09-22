@@ -3,7 +3,7 @@ import itertools
 import functools
 import sys		# for the module command
 
-from tenpy.algorithms.linalg import np_conserved as npc
+from tenpy.linalg import np_conserved as npc
 from tenpy.tools.string import joinstr
 from scipy import linalg
 """Index conventions:
@@ -29,9 +29,11 @@ def set_var(pars, key, default, force_verbose=None):
 		>>>	self.JzCoupling = set_var(pars, 'Jz', 0)
 		"""
 	verbose = 0
-	if pars.has_key('verbose'): verbose = pars['verbose']
-	if isinstance(force_verbose, int): verbose = force_verbose
-	if pars.has_key(key):
+	if 'verbose' in pars.keys(): 
+		verbose = pars['verbose']
+	if isinstance(force_verbose, int): 
+		verbose = force_verbose
+	if key in pars.keys():
 		if verbose > 0:
 			print ("\t", key, "=", pars[key])
 		return pars[key]
@@ -69,7 +71,7 @@ def any_nonzero(model, key_list, verbose_msg = ""):
 		elif isinstance(key, tuple):
 		##	All of them have to be the same
 			if len(key) == 0: raise ValueError("empty tuple")
-			for i in xrange(len(key)):
+			for i in range(len(key)):
 				if isinstance(key[i], str):
 					try:
 						val = getattr(model, key[i])
@@ -84,7 +86,7 @@ def any_nonzero(model, key_list, verbose_msg = ""):
 				prev_val = val
 
 		else:
-			raise ValueError, "No idea what %s is." % key
+			raise ValueError( "No idea what %s is." % key)
 
 	##	Exhaust all the keys
 	return False
@@ -112,7 +114,9 @@ def create_translate_Q1(tQ_dat):
 		"""
 	if tQ_dat is None:
 		return None
-	if tQ_dat['module'][:7] != 'models.': raise ValueError
+	print(tQ_dat)
+	if tQ_dat['module'][:6+7] != 'tenpy.models.': #CHANGED FROM models to tenpy.models
+		raise ValueError
 	__import__(tQ_dat['module'])
 	tQ_mod = sys.modules[tQ_dat['module']]
 	tQ_cls = getattr(tQ_mod, tQ_dat['cls'])
@@ -188,7 +192,7 @@ class model(object):
 			for h in self.H_mpo:
 				h.check_sanity()
 				
-			for i in xrange(self.L):
+			for i in range(self.L):
 				npc.tensordot_compat(self.getH_mpo(i), self.getH_mpo(i + 1), [[1], [0]] )
 				
 		if self.H is not None:
@@ -307,7 +311,7 @@ class model(object):
 		#MPZ: default behavior is to ignore the remainder.
 		rep = new_L / self.L
 		if rep == 0:
-			raise ValueError, "I'm shrriiiinkking. not allowed. =("
+			raise ValueError( "I'm shrriiiinkking. not allowed. =(")
 		if rep*self.L < new_L:
 			print ("Warning, new_L was not multiple of L, the remainder will be ignored giving new_L = ", rep*self.L)
 		
@@ -316,21 +320,21 @@ class model(object):
 		self.d = np.tile(self.d, rep)
 		
 		if self.H_mpo is not None:
-			self.H_mpo = [ self.H_mpo[i%L].copy() for i in xrange(self.L) ]
+			self.H_mpo = [ self.H_mpo[i%L].copy() for i in range(self.L) ]
 			self.chi = np.tile(self.chi, rep)
 			self.vL = np.tile(self.vL, rep)
 			self.vR = np.tile(self.vR, rep)
 			
 		if self.H is not None:
-			self.H = [ self.H[i%L].copy() for i in xrange(self.L) ]
+			self.H = [ self.H[i%L].copy() for i in range(self.L) ]
 			self.calc_wv()
 		
-		self.Qp_flat = [ self.Qp_flat[i%L].copy() for i in xrange(self.L) ]
-		self.Qp_ind = [ self.Qp_ind[i%L].copy() for i in xrange(self.L) ]
+		self.Qp_flat = [ self.Qp_flat[i%L].copy() for i in range(self.L) ]
+		self.Qp_ind = [ self.Qp_ind[i%L].copy() for i in range(self.L) ]
 		
 		if self.translate_Q is not None:
 			func = self.translate_Q
-			for i in xrange(L, self.L):
+			for i in range(L, self.L):
 				if self.H_mpo is not None:
 					self.H_mpo[i].imap_Q(func, i - i%L)
 				if self.H is not None:
@@ -462,7 +466,7 @@ class model(object):
 		Id = np.eye(d, dtype = int)
 	##	Check inputs (not an exhaustive check)
 		if len(self.H) != L: raise ValueError
-		for b in xrange(L):
+		for b in range(L):
 			if self.H[b].shape != (d,d,d,d): raise ValueError("self.H[%s] has an awful shape %s != (%s, %s, %s, %s)" % (b, self.H[b].shape, d, d, d, d))
 
 	##	Do svd decomposition on the two cell H, into X,Y,Z's
@@ -471,8 +475,8 @@ class model(object):
 		chi = [None] * L		# labelled by bonds
 	##	To minimize the MPO chi, we first take out any component of the form Id * A_R on A_L * Id
 	##		The A_L / A_R's are the one_site_op's
-		one_site_op = [ np.zeros((d,d), self.dtype) for i in xrange(L) ]
-		for b in xrange(L):
+		one_site_op = [ np.zeros((d,d), self.dtype) for i in range(L) ]
+		for b in range(L):
 		##	Convert to npc array
 			# print 'entry H', self.H[b]
 
@@ -531,11 +535,11 @@ class model(object):
 
 	##	Now that we know all the chi's and X,Y,Z's, we construct the MPO in flat form
 	##		H_mpo labelled by sites
-		H_mpo = [ np.zeros((chi[(s-1)%L], chi[s], d, d), self.dtype) for s in xrange(L) ]
-		self.Qmpo_flat = [ np.zeros((chi[b],self.num_q), int) for b in xrange(L) ]
+		H_mpo = [ np.zeros((chi[(s-1)%L], chi[s], d, d), self.dtype) for s in range(L) ]
+		self.Qmpo_flat = [ np.zeros((chi[b],self.num_q), int) for b in range(L) ]
 		self.vL = [0] * L
-		self.vR = [ chi[s] - 1 for s in xrange(L) ]
-		for b in xrange(L):
+		self.vR = [ chi[s] - 1 for s in range(L) ]
+		for b in range(L):
 			sL = b
 			sR = (b + 1) % L
 		##	Plop the one site ops
@@ -546,11 +550,11 @@ class model(object):
 		##	Two sites ops
 			X, Y, Z = XYZ_list[b]
 			num_qs = len(X.q_ind[1])			# number of charge sectors
-			for qi in xrange(num_qs):
+			for qi in range(num_qs):
 				# np.where returns a tuple of arrays
 				Xr = np.where(X.q_dat[:, 1] == qi)[0][0]
 				Zr = np.where(Z.q_dat[:, 0] == qi)[0][0]
-				for i in xrange(X.q_ind[1][qi,1] - X.q_ind[1][qi,0]):
+				for i in range(X.q_ind[1][qi,1] - X.q_ind[1][qi,0]):
 					k = X.q_ind[1][qi,0] + i
 					#print qi, X.q_ind[1][qi,0] + i, Xr, Zr
 					#print X.dat[Xr][:, i], X.q_dat[Xr,:], Z.q_dat[Zr,:]
@@ -639,15 +643,15 @@ class model(object):
 		if self.bc == 'segment':
 			raise NotImplemented
 		
-		H1 = [ self.calculate_nsite_h((j, j+1)) for j in xrange(self.L)]
+		H1 = [ self.calculate_nsite_h((j, j+1)) for j in range(self.L)]
 
-		H2 = [ self.calculate_nsite_h((j, j+2)) for j in xrange(self.L - (self.bc=='finite')) ]
+		H2 = [ self.calculate_nsite_h((j, j+2)) for j in range(self.L - (self.bc=='finite')) ]
 
 			
-		for j in xrange(self.L - 2*(self.bc=='finite')):
+		for j in range(self.L - 2*(self.bc=='finite')):
 			H2[j] = H2[j] - npc.tensordot( self.Id[j], H1[j+1], axes = [[], []]).itranspose((0, 2, 1, 3))/2.
 
-		for j in xrange(self.bc=='finite', self.L - (self.bc=='finite')):
+		for j in range(self.bc=='finite', self.L - (self.bc=='finite')):
 			H2[j] = H2[j] - npc.tensordot( H1[j], self.Id[j+1], axes = [[], []]).itranspose((0, 2, 1, 3))/2.
 			
 		if self.bc=='finite':
@@ -670,7 +674,7 @@ class model(object):
 		self.w_bond = []
 		self.v_bond = []
 		self.bond_pipe = []
-		self.diagonal = [True for ii in xrange(len(self.H))]
+		self.diagonal = [True for ii in range(len(self.H))]
 		nhflag = 0
 		ii =-1
 		
@@ -711,8 +715,8 @@ class model(object):
 		dim = len(self.w_bond[0])		
 		offsetlist = np.zeros((self.L,dim))
 		if len(E_offset) != 0:
-			for i_bond in xrange(self.L):
-				offsetlist[i_bond,:] = [E_offset[i_bond] for iii in xrange(dim)]
+			for i_bond in range(self.L):
+				offsetlist[i_bond,:] = [E_offset[i_bond] for iii in range(dim)]
 
 
 
@@ -731,7 +735,7 @@ class model(object):
 		# check if there is any 2-site H that could not be diagonalised
 		diagonal_flag = True
 
-		for i_bond in xrange(self.L):
+		for i_bond in range(self.L):
 			if self.diagonal[i_bond] == False:
 				diagonal_flag = False
 				print ('2-site H at bond ', i_bond ,' could not be diagonalised')
@@ -747,16 +751,16 @@ class model(object):
 					kk = 0
 					expAk = npc.eye_like(Anpc)
 					expA = expAk
-					for kk in xrange(1,maxiter):
+					for kk in range(1,maxiter):
 						expAk = npc.tensordot( Anpc,Anpc, axes = [[1],[1]] )
 						for ki in range (kk-1):
-							print kk,ki
+							print (kk,ki)
 							expAk = npc.tensordot( expAk,Anpc, axes = [[1],[1]] )
 						expAk *= 1./(np.math.factorial(kk))						
 						expAknp = expAk.to_ndarray()
-						print np.allclose(Usp,expAknp)
-						print 'Usp = \n', Usp
-						print 'Hnpc = \n', expAknp
+						print (np.allclose(Usp,expAknp))
+						print ('Usp = \n', Usp)
+						print ('Hnpc = \n', expAknp)
 					# and then reattach the pipes ?	
 				
 
@@ -764,7 +768,7 @@ class model(object):
 
 			if (TrotterOrder == 1):
 				self.U = [[None]*self.L]
-				for i_bond in xrange(self.L):
+				for i_bond in range(self.L):
 					dt = delta_t
 				
 					if self.diagonal[i_bond] == True:
@@ -781,7 +785,7 @@ class model(object):
 
 			elif (TrotterOrder == 2):
 				self.U = [[None]*self.L, [None]*self.L]
-				for i_bond in xrange(self.L):
+				for i_bond in range(self.L):
 					dt = delta_t/2.
 					if (type == 'IMAGINARY_TIME'): 
 						s = np.exp(-dt*self.w_bond[i_bond])
@@ -814,7 +818,7 @@ class model(object):
 			
 				self.U = [	[None]*self.L	, [None]*self.L, [None]*self.L, [None]*self.L ]
 
-				for i_bond in xrange(self.L):
+				for i_bond in range(self.L):
 					dt1 = 1. / (4. - 4.**(1/3) ) * delta_t /2.
 					dt3 = delta_t - 4* (dt1*2)
 				
@@ -864,7 +868,7 @@ class model(object):
 		else:
 			if (TrotterOrder == 1):
 				self.U = [[None]*self.L]
-				for i_bond in xrange(self.L):
+				for i_bond in range(self.L):
 					h = self.H[i_bond]
 					Ubond = Ubond_np_expm(h,delta_t)
 					self.U[0][i_bond] = Ubond.split_legs([0, 1], leg_pipes = [self.bond_pipe[i_bond]]*2 ) #Reshape U
@@ -872,7 +876,7 @@ class model(object):
 			elif (TrotterOrder == 2):
 				self.U = [[None]*self.L, [None]*self.L]
 
-				for i_bond in xrange(self.L):
+				for i_bond in range(self.L):
 					h = self.H[i_bond]										
 					
 					dt = delta_t/2.
@@ -912,7 +916,7 @@ class model(object):
 	def empty_MPOgraph(self, L=None):
 		"""	Return an empty MPOgraph with L sites. """
 		if L is None: L = self.L
-		return [ { 'R':{ 'R':[('Id',1.)] }, 'F':{ 'F':[('Id',1.)] } } for s in xrange(L) ]
+		return [ { 'R':{ 'R':[('Id',1.)] }, 'F':{ 'F':[('Id',1.)] } } for s in range(L) ]
 
 
 
@@ -921,18 +925,18 @@ class model(object):
 		N = len(MPOgraph)
 		dest_delim = ',\n\t\t' if multiline else ',  '
 		
-		print "==================== MPO graph ===================="
-		for s in xrange(N):
+		print( "==================== MPO graph ====================")
+		for s in range(N):
 			for k,v in sorted(MPOgraph[s].items(), key=lambda x:x[0]):
 				print ("  %s!%s  -->  " % (s, k)) + dest_delim.join([ '%s!%s: ' % ((s+1)%N,target) \
 					+ ' + '.join([ '%s*%s' % (tg[1],tg[0]) for tg in v[target] ]) for target in v ])
-		if multiline: print "==================================================="
+		if multiline: print( "===================================================")
 
 
 
 	def build_H_mpo_from_MPOgraph(self, G, verbose = 0):
 		"""	Builds W-matrices from an abstracted representation 'G' of the MPO.  """
-		if verbose >= 1: print "Building H_mpo (W) from MPO graph..."
+		if verbose >= 1: print( "Building H_mpo (W) from MPO graph...")
 		L = self.L
 		try:
 			iter(self.d)
@@ -944,7 +948,7 @@ class model(object):
 		except:
 			site_names = []
 		if self.dtype == np.int64:
-			raise ValueError, self.dtype
+			raise ValueError(self.dtype)
 
 		for n in site_names:
 			op = getattr(self, n)			
@@ -952,32 +956,32 @@ class model(object):
 				op = [op]
 			setattr(self, n, op)
 
-		self.chi = chi = np.array([len(G[(i+1)%L]) for i in xrange(L)], dtype = np.int)
-		self.W = W = [ np.zeros( (chi[i-1], chi[i], d[i%len(d)], d[i%len(d)] ), dtype = self.dtype) for i in xrange(L)]
+		self.chi = chi = np.array([len(G[(i+1)%L]) for i in range(L)], dtype = np.int64)
+		self.W = W = [ np.zeros( (chi[i-1], chi[i], d[i%len(d)], d[i%len(d)] ), dtype = self.dtype) for i in range(L)]
 		
 	##	MPO_indices is a dictionary for each bond; ind[key] = index position
 	##	MPO_labels is a list for each bond; ind[pos] = key name
 	##	(The two objects are reversed lookups of each other)
-		#indices = self.MPO_indices = [ dict(itertools.izip(G[(i+1)%L].keys(), range(chi[i]))) for i in xrange(L) ]
-		MPO_labelsR = [ set(G[(s+1)%L].keys()) for s in xrange(L) ] #formed from rows
-		MPO_labelsC = [ set( [ k for r in G[s%L].values() for k in r.keys()]  )   for s in xrange(L) ] #formed from columns
+		#indices = self.MPO_indices = [ dict(itertools.izip(G[(i+1)%L].keys(), range(chi[i]))) for i in range(L) ]
+		MPO_labelsR = [ set(G[(s+1)%L].keys()) for s in range(L) ] #formed from rows
+		MPO_labelsC = [ set( [ k for r in G[s%L].values() for k in r.keys()]  )   for s in range(L) ] #formed from columns
 		
-		self.MPO_labels = [ list(MPO_labelsR[s] & MPO_labelsC[s]) for s in xrange(L)]
+		self.MPO_labels = [ list(MPO_labelsR[s] & MPO_labelsC[s]) for s in range(L)]
 		
-		indices = self.MPO_indices = [ dict([ (key,i) for i,key in enumerate(self.MPO_labels[s]) ]) for s in xrange(L) ]
+		indices = self.MPO_indices = [ dict([ (key,i) for i,key in enumerate(self.MPO_labels[s]) ]) for s in range(L) ]
 
 		
 		self.vL = np.array([ ind['R'] for ind in indices])
 		self.vR = np.array([ ind['F'] for ind in indices])
-		for i in xrange(L):
+		for i in range(L):
 			g = G[i%len(G)]
 			w = W[i]
 			ind = indices[(i-1)%L]
-			for r, v in g.iteritems(): #row and list of edges
+			for r, v in g.items(): #row and list of edges
 				if r not in ind: #CHECK ME - due to union of MPO labels sometimes we call pruned node
 					continue
 				ir = ind[r] #where in hilbert space
-				for c, U in v.iteritems():
+				for c, U in v.items():
 					for u in U:
 						op = getattr(self, u[0])
 						op = op[i%len(op)]
@@ -998,7 +1002,7 @@ class model(object):
 		"""	Automatically constructs:
 					Qmpo_flat, chi
 		
-			given (for i in xrange(L)):
+			given (for i in range(L)):
 				Qp_flat[] - list of Qp_flat (per usual)
 				H_mpo[] - list of np.array style W-matrices
 				vL[] - list of MPO start positions on left
@@ -1006,7 +1010,7 @@ class model(object):
 			If trim=True, it will automatically trim "dead" branches (unused MPO nodes). If self.bc=='finite', this criteria assumes only self.L W-matrices, optimizing for finite  DMRG.	
 				
 		"""
-		if verbose >= 1: print "Detecting MPO charges..."
+		if verbose >= 1: print( "Detecting MPO charges...")
 		L = self.L
 		if self.bc=='finite':
 			maxL = L
@@ -1015,7 +1019,7 @@ class model(object):
 			
 		Qp_flat = self.Qp_flat
 		W = self.H_mpo
-		chi = np.array([ w.shape[1] for w in W], dtype=np.int)
+		chi = np.array([ w.shape[1] for w in W], dtype=np.int64)
 		
 		if hasattr(self, 'translate_Q1') and self.translate_Q1 is not None:
 				do_translate = True
@@ -1027,11 +1031,11 @@ class model(object):
 		#Find non-zero edges
 		Con = [ np.sum(np.sum(np.abs(w), axis=2), axis=2) for w in self.H_mpo ]
 		
-		self.Qmpo_flat = Qmpo_flat =  [ np.zeros((chi[i], self.num_q), dtype = np.int) for i in xrange(L) ]
+		self.Qmpo_flat = Qmpo_flat =  [ np.zeros((chi[i], self.num_q), dtype = np.int64) for i in range(L) ]
 		
 		#Which indices have been visited
-		doneL2R = [ np.zeros(chi[i], dtype=np.bool) for i in xrange(L) ]
-		doneR2L = [ np.zeros(chi[i], dtype=np.bool) for i in xrange(L) ]
+		doneL2R = [ np.zeros(chi[i], dtype=np.bool) for i in range(L) ]
+		doneR2L = [ np.zeros(chi[i], dtype=np.bool) for i in range(L) ]
 		
 		def travel_fromL2R(i1, r):
 			"""i1 denotes location of current EDGE (W-matrix)
@@ -1049,7 +1053,7 @@ class model(object):
 				if not doneL2R[i][c]:
 					doneL2R[i][c]=True
 					op = W[i][r, c]					
-					chargeOp = npc.array.detect_ndarray_charge_flat(op, [Qp1, Qp1], q_conj = [1, -1], mod_q = self.mod_q)
+					chargeOp = npc.Array.detect_ndarray_charge_flat(op, [Qp1, Qp1], q_conj = [1, -1], mod_q = self.mod_q)
 					Qmpo_flat[i][c, :] = npc.mod_onetoinf(chargeOp+chargeL, self.mod_q)
 					travel_fromL2R(i1+1, c)
 					"""TODO - debugging
@@ -1082,7 +1086,7 @@ class model(object):
 		travel_fromR2L(L-1, self.vR[L-1])
 
 		if self.bc=='periodic':
-			for s in xrange(L):
+			for s in range(L):
 				doneL2R[s][self.vL[s]] = True
 				doneR2L[s][self.vL[s]] = True
 				doneL2R[s][self.vR[s]] = True
@@ -1094,13 +1098,13 @@ class model(object):
 			doneL2R[-1][:] = False
 			doneR2L[-1][:] = False
 			
-			for s in xrange(L):
+			for s in range(L):
 				doneL2R[s][self.vL[s]] = True
 				doneR2L[s][self.vL[s]] = True
 				doneL2R[s][self.vR[s]] = True
 				doneR2L[s][self.vR[s]] = True
 						
-		for i in xrange(L):
+		for i in range(L):
 			dead = np.nonzero(np.logical_not(np.logical_and(doneL2R[i], doneR2L[i])))[0]
 			keep = np.nonzero(np.logical_and(doneL2R[i], doneR2L[i]))[0]
 
@@ -1110,7 +1114,7 @@ class model(object):
 				#	print "Names of the Dead"
 				#	print [self.MPO_labels[i][d] for d in dead]
 				if trim:
-					if verbose >= 1: print "\tTrimming MPO chi[%s]: %s -> %s" % (i, chi[i], len(keep))
+					if verbose >= 1: print ("\tTrimming MPO chi[%s]: %s -> %s" % (i, chi[i], len(keep)))
 
 					W[i] = W[i][:, keep, :, :]
 					W[(i+1)%L] = W[(i+1)%L][keep, :, :, :]
@@ -1134,20 +1138,20 @@ class model(object):
 
 	def print_MPO_charges(self):
 		L = self.L
-		for site in xrange(-1, L):
+		for site in range(-1, L):
 			if site >= -1:
-				print '\tSite %s Charges:' % site
+				print('\tSite %s Charges:' % site)
 				tQ = site - (site % L)
-				if tQ: print tQ
+				if tQ: print( tQ)
 				for Op in self.site_ops:
-					print '\t\t%s: %s' % (Op, self.translate_Q(getattr(self, Op)[site % L].charge, tQ))
+					print( '\t\t%s: %s' % (Op, self.translate_Q(getattr(self, Op)[site % L].charge, tQ)))
 
 			bond = site
 			tQ = bond - (bond % L)
-			print '\tBond %s Charges:' % bond
-			for i in xrange(len(self.Qmpo_flat[bond % L])):
-				print '\t\t%s: %s' % (self.MPO_labels[bond % L][i], self.translate_Q(self.Qmpo_flat[bond % L][i], tQ))
-		print
+			print ('\tBond %s Charges:' % bond)
+			for i in range(len(self.Qmpo_flat[bond % L])):
+				print( '\t\t%s: %s' % (self.MPO_labels[bond % L][i], self.translate_Q(self.Qmpo_flat[bond % L][i], tQ)))
+		
 		
 
 
@@ -1206,9 +1210,9 @@ class model(object):
 			num_q = self.num_q = 0
 						
 		if self.num_q == 0: #Provide trivial data for  conservation
-			self.mod_q = np.empty( (0,), np.int)
-			self.Qmpo_flat = [ np.empty((self.H_mpo[i].shape[1], 0), np.int) for i in xrange(L) ]
-			self.Qp_flat = [ np.empty((self.H_mpo[i].shape[2], 0), np.int) for i in xrange(L) ]
+			self.mod_q = np.empty( (0,), np.int64)
+			self.Qmpo_flat = [ np.empty((self.H_mpo[i].shape[1], 0), np.int64) for i in range(L) ]
+			self.Qp_flat = [ np.empty((self.H_mpo[i].shape[2], 0), np.int64) for i in range(L) ]
 			do_translate = False
 			self.translate_Q = None
 			self.translate_Q1 = None
@@ -1220,7 +1224,7 @@ class model(object):
 				do_translate = False
 				self.translate_Q = None
 				self.translate_Q1 = None
-			for i in xrange(L):
+			for i in range(L):
 				self.Qp_flat[i] = npc.mod_onetoinf(self.Qp_flat[i], mod_q)
 		
 		try:
@@ -1229,14 +1233,14 @@ class model(object):
 			fracture_mpo = self.fracture_mpo = False
 
 		if self.verbose > 0:
-			print "Init model with num_q =", num_q
+			print( "Init model with num_q =", num_q)
 		
 		Qmpo_flatT = [None]*L # *Temporary* list of the new q_flat form after permutation
 		Qp_flatT = [None]*L   # (these will be assigned to self.Qmpo_flat / self.Qp_flat at very end)
 		self.Qp_ind = [None]*L #Resulting q_ind for site (just for convenience)
 		self.p_perm = [None]*L #permutations used on the physical sites (taking original to new)
 		
-		for i2 in xrange(L): #First deal with MPOs and 2-site H ops
+		for i2 in range(L): #First deal with MPOs and 2-site H ops
 			i1 = (i2 - 1)%L
 			i3 = (i2 + 1)%L
 			np_mpo = self.H_mpo[i2]
@@ -1300,18 +1304,19 @@ class model(object):
 			diff = (self.H_mpo[i2].to_ndarray() - np_mpo)
 			diff_norm = np.linalg.norm(diff.reshape(-1))
 			if abs(diff_norm) > 2e-14:
-				print "Warning! some elements from the mpo[" + str(i2) + "] were dropped (norm = " + str(diff_norm) + ")"
-				if self.verbose >= 15: print joinstr(diff)
+				print ("Warning! some elements from the mpo[" + str(i2) + "] were dropped (norm = " + str(diff_norm) + ")")
+				if self.verbose >= 15: 
+					print (joinstr(diff))
 				if self.verbose >= 1:
 					npnpc_diff = np.array(np.nonzero(diff)).transpose()
 					if hasattr(self, 'MPO_labels'):
-						print '\tDifferences:'
+						print ('\tDifferences:')
 						labels_L = self.MPO_labels[(i2-1)%L]
 						labels_R = self.MPO_labels[i2]
 						for rc in npnpc_diff:
-							print '\t\t%s!%s [%s] -> %s!%s [%s] : %f' % (i2, labels_L[perm[0][rc[0]]], rc[0], (i2+1)%L, labels_R[perm[1][rc[1]]], rc[1], np.linalg.norm(np_mpo[rc[0], rc[1]]) )
+							print ('\t\t%s!%s [%s] -> %s!%s [%s] : %f' % (i2, labels_L[perm[0][rc[0]]], rc[0], (i2+1)%L, labels_R[perm[1][rc[1]]], rc[1], np.linalg.norm(np_mpo[rc[0], rc[1]]) ))
 					else:
-						print joinstr(['\tDifferences at ', ', '.join(map(str, npnpc_diff))])
+						print (joinstr(['\tDifferences at ', ', '.join(map(str, npnpc_diff))]))
 			
 		### Generate states, site_ops and bond_ops
 		
@@ -1322,11 +1327,11 @@ class model(object):
 		try:
 			if type(self.states[0])!=list:
 				# self.states= [self.states]
-				self.states = [self.states for i in xrange(L)]
+				self.states = [self.states for i in range(L)]
 				states_uniform = True
 		except: # no states defined
 			#Default state naming - 'p0, p1, . . . '
-			self.states = [ [ 'p'+str(i) for i in xrange(len(p)) ] for p in self.p_perm ]
+			self.states = [ [ 'p'+str(i) for i in range(len(p)) ] for p in self.p_perm ]
 		states = self.states
 
 		try:
@@ -1356,7 +1361,7 @@ class model(object):
 		npc_site_ops = [ [None]*L for n in site_names]
 		npc_bond_ops = [ [None]*L for n in bond_names]
 
-		for i1 in xrange(L):
+		for i1 in range(L):
 			i2 = (i1+1)%L
 		
 			#States
@@ -1377,7 +1382,7 @@ class model(object):
 			
 			#Site operators
 			# TODO: put the try statement inside the loop
-			for n in xrange(len(site_names)): #for each op type
+			for n in range(len(site_names)): #for each op type
 				op = site_ops[n][i1%len(site_ops[n])]
 				if num_q > 0:
 					charge = npc.array.detect_ndarray_charge_flat(op, [Qp1, Qp1], q_conj = [1, -1], mod_q = self.mod_q)
@@ -1393,7 +1398,7 @@ class model(object):
 			#Bond operators	
 			# TODO: put the try statement inside the loop
 			# TODO: check that permutation (charge assignments) is uniform across sites
-			for n in xrange(len(bond_names)): #for each op type
+			for n in range(len(bond_names)): #for each op type
 				op = bond_ops[n][i1%len(bond_ops[n])]
 				if num_q > 0:
 					charge = npc.array.detect_ndarray_charge_flat(op, [Qp1, Qp2, Qp1, Qp2 ], q_conj = [1, 1, -1, -1], mod_q = self.mod_q)
@@ -1404,15 +1409,15 @@ class model(object):
 				npc_bond_ops[n][i1] = op
 
 			#TODO verify leg
-			npc_states[i1] = dict([ (state[j],j) for j in xrange(len(state)) ])
+			npc_states[i1] = dict([ (state[j],j) for j in range(len(state)) ])
 			if states_uniform:
-				for k, v in npc_states[0].iteritems():
+				for k, v in npc_states[0].items():
 					setattr(self, k, v)
 		
 		self.states = npc_states
-		for n in xrange(len(site_ops)):
+		for n in range(len(site_ops)):
 			setattr(self, site_names[n], npc_site_ops[n])
-		for n in xrange(len(bond_ops)):
+		for n in range(len(bond_ops)):
 			setattr(self, bond_names[n], npc_bond_ops[n])
 
 		self.Qp_flat = Qp_flatT
@@ -1439,9 +1444,9 @@ class model(object):
 		H_mpo = [None]*self.L
 		vL = [None]*self.L
 		vR = [None]*self.L
-		for i in xrange(self.L):
+		for i in range(self.L):
 			h = self.H_mpo[i*r]
-			for j in xrange(r-1):
+			for j in range(r-1):
 				i2 = r*i + j + 1
 				h = npc.tensordot(h, self.H_mpo[i2], axes = [[1], [0]])
 				h = h.itranspose([0, 3, 1, 4, 2, 5])
@@ -1466,11 +1471,11 @@ class model(object):
 			See DMRG_core for explanation of storage form.
 		"""		
 		Za = [None, None]
-		self.p_mpo = [Za[:] for i in xrange(self.L)] #[ [ (q_dat1, dat1),  (q_dat2, dat2) ...]]
+		self.p_mpo = [Za[:] for i in range(self.L)] #[ [ (q_dat1, dat1),  (q_dat2, dat2) ...]]
 		self.l_mpo = [None]*self.L #Store gutted, tranposed mpos
 		self.r_mpo = [None]*self.L
 		
-		for i in xrange(self.L):			
+		for i in range(self.L):			
 			#For each bond
 			mpo0l = self.H_mpo[i]
 			mpo0r = self.H_mpo[(i+1)%self.L]
@@ -1490,7 +1495,7 @@ class model(object):
 				s = sizes.pop()
 				q = qs.pop()
 				fit = False
-				for k in xrange(len(bin)): #check if it fits in current bins
+				for k in range(len(bin)): #check if it fits in current bins
 					if bin_s[k] + s <= max_size:
 						bin[k].append(q)
 						bin_s[k] = bin_s[k] + s
@@ -1502,21 +1507,21 @@ class model(object):
 					bin_s.append(s)	
 			
 			num_bin = len(bin)				
-			print "Num bins:", len(bin), "Max size:", max_size, "Avg size:", np.mean(bin_s)
-			print bin_s		
+			print ("Num bins:", len(bin), "Max size:", max_size, "Avg size:", np.mean(bin_s))
+			print (bin_s		)
 			lpmpo = []
 			rpmpo = []
 
 			for b in bin: #Now I for the q_dat and dat for each bin
 				do_take = []
 				for q in b:
-					do_take.extend( [ r for r in xrange(mpol.q_dat.shape[0]) if mpol.q_dat[r, 0] == q])
+					do_take.extend( [ r for r in range(mpol.q_dat.shape[0]) if mpol.q_dat[r, 0] == q])
 				if len(do_take)>0:	
 					lpmpo.append([mpol.q_dat[do_take, :], [mpol.dat[r] for r in do_take] ])
 					
 				do_take = []
 				for q in b:
-					do_take.extend( [ r for r in xrange(mpor.q_dat.shape[0]) if mpor.q_dat[r, 0] == q] )
+					do_take.extend( [ r for r in range(mpor.q_dat.shape[0]) if mpor.q_dat[r, 0] == q] )
 				if len(do_take)>0:
 					rpmpo.append([mpor.q_dat[do_take, :], [mpor.dat[r] for r in do_take] ])
 			
@@ -1543,19 +1548,19 @@ class MPOgraph(object):
 	"""A bare-bones MPOgraph to facilitate  adding elements boilerplate"""
 	def __init__(self, L):
 
-		self.G = [ { 'R':{ 'R':[('Id',1.)] }, 'F':{ 'F':[('Id',1.)] } } for s in xrange(L) ]
+		self.G = [ { 'R':{ 'R':[('Id',1.)] }, 'F':{ 'F':[('Id',1.)] } } for s in range(L) ]
 
 	def print_MPOgraph(self, multiline=False):
 		MPOgraph = self.G
 		N = len(MPOgraph)
 		dest_delim = ',\n\t\t' if multiline else ',  '
 		
-		print "==================== MPO graph ===================="
-		for s in xrange(N):
+		print( "==================== MPO graph ====================")
+		for s in range(N):
 			for k,v in sorted(MPOgraph[s].items(), key=lambda x:x[0]):
 				print ("  %s!%s  -->  " % (s, k)) + dest_delim.join([ '%s!%s: ' % ((s+1)%N,target) \
 					+ ' + '.join([ '%s*%s' % (tg[1],tg[0]) for tg in v[target] ]) for target in v ])
-		if multiline: print "==================================================="
+		if multiline: print ("===================================================")
 
 
 	def add(self, i, r, c, op, val, force = False):

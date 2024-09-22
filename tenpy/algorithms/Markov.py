@@ -3,7 +3,7 @@ import scipy as sp
 from time import time
 from tenpy.tools.string import joinstr
 from tenpy.tools.math import anynan
-
+import control
 try:
 	import control
 	import slycot
@@ -82,7 +82,7 @@ class Markov_seq(object):
 		v = self.entry
 		exits = self.exits
 		seqs = np.zeros([len(exits), l], dtype=exits.dtype)
-		for i in xrange(l):
+		for i in range(l):
 			seqs[:, i] = np.dot(exits, v)
 			if i < l - 1: v = np.dot(M, v)
 		return seqs
@@ -140,7 +140,7 @@ class Markov_seq(object):
 		cp, cp_err = find_conj_pairs(nodes)		# [cp[i]] gives the cc for [i]
 		UU = np.eye(len(nodes), dtype=complex)
 		sqhf = np.sqrt(0.5)
-		for i in xrange(len(nodes)):
+		for i in range(len(nodes)):
 			if cp[i] <= i: continue		# only process cp[i] > i cases.
 			UU[    i,     i] = sqhf
 			UU[    i, cp[i]] = sqhf
@@ -246,7 +246,7 @@ def BM_Hankel_approx_nodes(seq, max_nodes, svd_cut):
 	##	Construct the Hankel matrix
 	N = l // 2 + 1
 	Hk = np.zeros([N, N], dtype = seq.dtype)
-	for r in xrange(l - N + 1):
+	for r in range(l - N + 1):
 		Hk[r] = seq[r:r+N]
 	if l + 1 < 2*N: Hk[N-1, :N-1] = seq[N-1:]		# l even = 2N-2
 	##	SVD it and find the characteristic polynomial
@@ -313,7 +313,7 @@ def atleast_2d_pad(a, pad_item=0):
 			return [a]
 	##	Pad if necessary
 	maxlen = max([ len(s) for s in a2 ])
-	for r in xrange(len(a2)):
+	for r in range(len(a2)):
 		s = a2[r]
 		a2[r] = np.hstack([s, [pad_item] * (maxlen-len(s))])
 	return np.array(a2)
@@ -330,7 +330,7 @@ def fit_exp_coef(seqs, nodes):
 	if num_seq == 0 or l == 0 or len(nodes) == 0: return np.zeros([num_seq, len(nodes)]), 0.
 	A = np.empty([l, len(nodes)], dtype=nodes.dtype)	# columns are powers
 	A[0] = 1
-	for r in xrange(1, l):
+	for r in range(1, l):
 		A[r] = A[r-1] * nodes
 	fit = np.linalg.lstsq(A, seqs.transpose())	# approx Ax = b
 	return fit[0].transpose(), np.sqrt(fit[1])
@@ -397,7 +397,7 @@ class MPO_system(object):
 		Din = self.Din
 		Dout = self.Dout
 		io = self.io
-		for i,D in Din.iteritems():
+		for i,D in Din.items():
 			key = D['index']
 			if len(key) != 2: raise RuntimeError(len(key))
 			if key[0] < 0 or key[0] >= len(io): raise RuntimeError(key)
@@ -408,7 +408,7 @@ class MPO_system(object):
 				ic = D['conj']
 				if ic not in Din: raise RuntimeError((i, ic))
 				if Din[ic]['conj'] != i: raise RuntimeError
-		for o,D in Dout.iteritems():
+		for o,D in Dout.items():
 			key = D['index']
 			if key[0] >= len(io): raise RuntimeError(key)
 			ioblock = io[key[0]]
@@ -561,12 +561,12 @@ class MPO_system(object):
 		Din = self.Din
 		Dout = self.Dout
 		io = self.io
-		for i,D in Din.iteritems():
+		for i,D in Din.items():
 			if 'conj' not in D: continue
 			ic = D['conj']
 			bindex = D['index'][0]
 			io[bindex]['conj'] = [ Din[ic]['index'][0], None, None ]
-		for o,D in Dout.iteritems():
+		for o,D in Dout.items():
 			if 'conj' not in D: continue
 			oc = D['conj']
 			bindex = D['index'][0]
@@ -666,7 +666,7 @@ class MPO_system(object):
 				io items have optional keys: 'StrOp', 'name'
 			Also need self.node_header
 			"""
-		for blockid in xrange(len(self.io)):
+		for blockid in range(len(self.io)):
 			self.create_block_MPO_nodes(MPOgraph, blockid)
 			
 
@@ -708,20 +708,20 @@ class MPO_system(object):
 		if NMk == 0: return
 	##	Make the nodes in the loop
 		MOp = block.get('StrOp', 'Id')		# operators to connect between Markov-loop nodes
-		for n in xrange(NMk):
-			for l in xrange(L - 1):
+		for n in range(NMk):
+			for l in range(L - 1):
 				if head + (n,) in MPOgraph[l]: print ('MPO_system Warning!  %s already exists in MPOgraph[%d]' % (head + (n,), l))
 				MPOgraph[l][head + (n,)] = { head + (n,): [(MOp, 1.)] }
 			if head + (n,) in MPOgraph[L - 1]: print ('MPO_system Warning!  %s already exists in MPOgraph[%d]' % (head + (n,), L - 1))
 			XNode = MPOgraph[L - 1][head + (n,)] = {}
-			for m in xrange(NMk):
+			for m in range(NMk):
 				if A[m,n] != 0: XNode[head + (m,)] = [(MOp, A[m, n])]		# n -> m at unit cell boundary
 	##	Make entries
 		AB = np.dot(A, B)
 		for b,i in enumerate(block['in']):
 			D = Din[i]
 			Gorb = MPOgraph[D['orb']]
-			for n in xrange(NMk):
+			for n in range(NMk):
 				if D['orb'] == L - 1:
 					if AB[n, b] != 0: Gorb[D['src']][head + (n,)] = [(D['Op'], AB[n, b])]
 				else:
@@ -730,7 +730,7 @@ class MPO_system(object):
 		for a,o in enumerate(block['out']):
 			D = Dout[o]
 			Gorb = MPOgraph[D['orb']]
-			for n in xrange(NMk):
+			for n in range(NMk):
 				if C[a, n] != 0: Gorb[head + (n,)][D['dest']] = [(D['Op'], C[a ,n])]
 				
 
@@ -754,16 +754,16 @@ class MPO_system(object):
 		
 		StartNode = MPOgraph[orb0][iD['src']]
 		Amp = np.zeros(N, dtype=self.dtype)
-		for n in xrange(N):	
+		for n in range(N):	
 			XDest = StartNode[head + (n,)]
 			if len(XDest) > 1 or XDest[0][0] != iD['Op']: print("MPO_system Warning!  Entry node has improper form: %s, %s" % (n, XDest))
 			Amp[n] = XDest[0][1]
 		
-		for orb in xrange(orb0 + 1, block['seq'].shape[2] * L):
+		for orb in range(orb0 + 1, block['seq'].shape[2] * L):
 			NewAmp = np.zeros(N, dtype=self.dtype)
-			for n in xrange(N):
+			for n in range(N):
 				XNode = MPOgraph[orb % L][head + (n,)]
-				for Dest,XDest in XNode.iteritems():
+				for Dest,XDest in XNode.items():
 					if isinstance(Dest, tuple) and Dest[:-1] == head:
 						if len(XDest) > 1 or XDest[0][0] != MOp: print("MPO_system Warning!  Entry node has improper form: [%s]%s, %s" % (orb, n, XDest))
 						m = Dest[-1]
@@ -829,18 +829,18 @@ def SS_fromV(V, shiftby_1 = True, ignore_r0 = None, cutoff = 1e-16):
 		raise NotImplemented
 		V = [[ vvv for vvv in r ] for r in V ]
 		ignore_r0 = np.array(ignore_r0)
-		for r in xrange(num_r):
-			for c in xrange(num_c):
+		for r in range(num_r):
+			for c in range(num_c):
 				if V[r][c] is not None and ignore_r0[r][c]:
 					if len(V[r][c])==1:
 						V[r][c]=None
 					else:
 						V[r][c][0]=V[r][c][1]
 
-	l = np.zeros((num_r, num_c), dtype = np.int)
-	v = np.empty((num_r, num_c), dtype = np.object)
-	for r in xrange(num_r):
-		for c in xrange(num_c):
+	l = np.zeros((num_r, num_c), dtype = np.int64)
+	v = np.empty((num_r, num_c), dtype = object)
+	for r in range(num_r):
+		for c in range(num_c):
 			if V[r][c] is None:
 				V[r][c] = np.array([0.])
 			else:
@@ -849,7 +849,7 @@ def SS_fromV(V, shiftby_1 = True, ignore_r0 = None, cutoff = 1e-16):
 				v[r][c] = np.pad(v[r][c], (1, 0), mode='constant')
 			keep = np.nonzero(np.abs(v[r][c]) > cutoff)[0]
 			if len(keep) == 0:
-				keep = np.array([0], dtype = np.int)
+				keep = np.array([0], dtype = np.int64)
 			v[r][c] = v[r][c][:keep[-1]+1]
 			l[r,c] = len(v[r][c])
 
@@ -861,22 +861,22 @@ def SS_fromV(V, shiftby_1 = True, ignore_r0 = None, cutoff = 1e-16):
 	C = np.zeros((num_r, N))
 	D = np.zeros((num_r, num_c))
 	at = 0
-	for r in xrange(num_r):
+	for r in range(num_r):
 		C[r, at] = 1.
-		for c in xrange(num_c):
+		for c in range(num_c):
 			D[r, c] = v[r][c][0]
 			if len(V[r][c]) > 1:
 				B[at:at+len(v[r][c]) - 1, c] = v[r][c][1:]
 	
-		for j in xrange(l[r] - 1):
+		for j in range(l[r] - 1):
 			A[at+j, at+j+1] = 1.
 		at = at + l[r]
 
 	sys = control.ss(A, B, C, D, 1)
 	
 	output = SS_output(sys, np.max(l)+1)
-	for r in xrange(len(V)):
-		for c in xrange(len(V[r])):
+	for r in range(len(V)):
+		for c in range(len(V[r])):
 			assert np.linalg.norm(V[r][c] - output[r, c, :len(V[r][c])]) < 1e-15
 	return control.ss(A, B, C, D, 1)
 
@@ -921,8 +921,8 @@ def SS_fromV_tff2ss(V, shiftby_1 = True, ignore_r0 = None):
 		#	print "Sorry Roger - not proceeding omptimally. Should do shifting strategy in this case"
 		V = [[ vvv for vvv in r ] for r in V ]
 		ignore_r0 = np.array(ignore_r0)
-		for r in xrange(num_r):
-			for c in xrange(num_c):
+		for r in range(num_r):
+			for c in range(num_c):
 				if V[r][c] is not None and ignore_r0[r][c]:
 					if len(V[r][c])==1:
 						V[r][c]=None
@@ -955,7 +955,7 @@ def ABC_output(r_max, A, B, C, D=None, dtype=float):
 	V = np.zeros((C.shape[0],B.shape[1],r_max), dtype=dtype)
 	if D is not None: V[:, :, 0] = D
 	X = B
-	for r in xrange(r_max):
+	for r in range(r_max):
 		V[:, :, r] = np.dot(C, X)
 		X = np.dot(A, X)
 	return V
@@ -966,7 +966,7 @@ def SS_output(sys, r_max):
 #	V = np.zeros(sys.D.shape + (r_max,))
 #	V[:, :, 0] = sys.D
 #	b = sys.B
-#	for r in xrange(r_max):
+#	for r in range(r_max):
 #		V[:, :, r] = np.dot(sys.C, b)
 #		b = np.dot(sys.A, b)
 #	return V
@@ -977,8 +977,8 @@ def SS_plot(sys, r_max):
 	from matplotlib import pyplot as plt
 	leg = []
 	V = SS_output(sys, r_max)
-	for i in xrange(sys.D.shape[0]):
-		for j in xrange(sys.D.shape[1]):
+	for i in range(sys.D.shape[0]):
+		for j in range(sys.D.shape[1]):
 			plt.plot(V[i, j, :], '.-')
 			leg.append( (i, j))
 	plt.ylim([np.min(V), np.max(V)])

@@ -66,7 +66,7 @@ import tenpy.cluster.omp as omp
 
 from tenpy.linalg import np_conserved as npc
 
-#from tenpy.additional_import.Zalatel_import import packVmk
+from tenpy.additional_import.Zalatel_import import packVmk
 
 #INSTEAD OF LA_TOOLS, TO USE SVD_THETA
 from tenpy.linalg import truncation as LA_tools
@@ -139,7 +139,7 @@ class QH_model(model): #CHANGED model to Model
 	#if its a list of integers, use the usual LL subclass corresponding to GaAs, 
 	#if a list of lists, use the general_LL subclass, written to handle  graphene & bilayer graphene
 		self.bands={}	
-		for mu, b in bands.iteritems():
+		for mu, b in bands.items():
 			if hasattr(b[0],'__iter__'):
 				if b[0][0]=="tilt":
 					self.bands[mu]=tilted_Dirac_cone(b[0][1])
@@ -149,7 +149,7 @@ class QH_model(model): #CHANGED model to Model
 				self.bands[mu]=LL(b)
 			
 	##  Anisotropy = {mu1: anisotropy1, mu2: anisotropy2, ... } sets anisotropy of form factors
-		for mu, anisotropy in set_var(pars, 'anisotropy', {}).iteritems():
+		for mu, anisotropy in set_var(pars, 'anisotropy', {}).items():
 			self.bands[mu].anisotropy = anisotropy
 					
 		self.layers = layers
@@ -175,7 +175,7 @@ class QH_model(model): #CHANGED model to Model
 		self.p_type = p_type = set_var(pars, 'particle_type', 'F')
 		if self.p_type == 'B': self.N_bosons = set_var(pars, 'Nbosons', 1) #maximum number of bosons per site
 		self.LL_mixing = False
-		for mu,b in bands.iteritems():
+		for mu,b in bands.items():
 			if self.bands[mu].n >1: self.LL_mixing = True
 		
 		#if self.p_type=='F' and self.N_bosons > 1: raise ValueError,"asking for multiple fermions on the same site, not allowed!"
@@ -185,18 +185,18 @@ class QH_model(model): #CHANGED model to Model
 		# Q-mat is a [num_cons_C, N] matrix - each row gives the charges of the layers under the conserved quantity
 		if cons_Q ==True or cons_Q == 1:
 			if N != 1: raise ValueError("=== Mike, update your code.  This is unacceptable. ===")
-			if N == 1: Qmat = np.ones([1, 1], dtype=np.int)	# Fine, Mike, you get a pass here.
+			if N == 1: Qmat = np.ones([1, 1], dtype=np.int64)	# Fine, Mike, you get a pass here.
 		elif cons_Q =='total' or cons_Q == 't':
-			Qmat = np.ones([1, N], dtype=np.int)
+			Qmat = np.ones([1, N], dtype=np.int64)
 		elif cons_Q == 'each' or cons_Q == 'e':
-			Qmat = np.eye(N, dtype=np.int)
+			Qmat = np.eye(N, dtype=np.int64)
 		elif cons_Q == 'species' or cons_Q == 's':
-			Qmat = np.zeros([len(self.species), N], dtype=np.int)
-			for spi,sp in enumerate(self.species.iteritems()):
+			Qmat = np.zeros([len(self.species), N], dtype=np.int64)
+			for spi,sp in enumerate(self.species.items()):
 				for layeri in sp[1]:
 					Qmat[spi,layeri] = 1
 		elif cons_Q == False or cons_Q == 0:
-			Qmat = np.empty([0, N], dtype=np.int)
+			Qmat = np.empty([0, N], dtype=np.int64)
 		elif isinstance(cons_Q, np.ndarray) or isinstance(cons_Q, list):
 			Qmat = np.atleast_2d(cons_Q)
 		else:
@@ -307,7 +307,7 @@ class QH_model(model): #CHANGED model to Model
 		Sp_list = []
 		Sp_dict = {}
 		Q_Sp = np.zeros((len(self.species), self.num_cons_Q), dtype=int)
-		for spi,sp in enumerate(self.species.iteritems()):
+		for spi,sp in enumerate(self.species.items()):
 			Sp_list.append(sp[0])
 			Sp_dict[sp[0]] = spi
 			Q = self.Qmat[:, np.array(sp[1])]		# columns are the charges
@@ -319,7 +319,7 @@ class QH_model(model): #CHANGED model to Model
 	def momentum_polarization(self, psi, verbose=0):
 		if not self.compatible_translate_Q1_data(psi.translate_Q1_data, verbose=1): raise ValueError
 		OrbSpin = np.zeros(self.Nlayer, dtype=float)
-		for Sp,band_index in self.species.iteritems():
+		for Sp,band_index in self.species.items():
 			for i,ly in enumerate(band_index):
 				OrbSpin[ly] = self.bands[Sp].orbital_spin(i)
 		q = self.root_config.size		# This should be the qDenom
@@ -470,7 +470,7 @@ class QH_model(model): #CHANGED model to Model
 			
 			if output_form == 'dict':
 				Qweights = {}
-				for Q,ws in Qspec.iteritems():
+				for Q,ws in Qspec.items():
 					Qweights[Q] = weight_func(np.hstack(ws))
 			elif output_form == 'list':
 				Qweights = []
@@ -814,13 +814,13 @@ class QH_model(model): #CHANGED model to Model
 				return Trm[mu][nu]
 		
 		if 'pins' in Ts:
-			for mu, t in Ts['pins'].iteritems():
+			for mu, t in Ts['pins'].items():
 				if verbose >= 2: print( "\t\tMaking pins: mu = %s, t = %s" % (mu, t))
 				trm = get_trm(mu, mu)
 				trm += self.t_pins(t, maxM, bands[mu])
 		
 		if 'Tq' in Ts:
-			for mu, t in Ts['Tq'].iteritems():
+			for mu, t in Ts['Tq'].items():
 				if verbose >= 2: print( "\t\tMaking egg carton: mu = %s, t = %s" % (mu, t))
 				trm = get_trm(mu, mu)
 				self.t_q(t, trm, bands[mu])	
@@ -831,7 +831,7 @@ class QH_model(model): #CHANGED model to Model
 				
 				Note  + h.c. is included! Even when mu = nu
 			"""
-			for (mu, nu), t in Ts['tunneling'].iteritems():
+			for (mu, nu), t in Ts['tunneling'].items():
 				if mu==nu:
 					print( "Warning: mu = nu tunneling")
 				if verbose >= 2: print( "\t\tMaking tunneling terms: (mu,nu) = (%s,%s), t = %s" % (mu, nu, t))
@@ -848,7 +848,7 @@ class QH_model(model): #CHANGED model to Model
 				Note  + h.c. is included! Even when mu = nu
 				
 			"""
-			for mu, t in Ts['background_x'].iteritems():
+			for mu, t in Ts['background_x'].items():
 				if verbose >= 2: print( "\t\tMaking background terms: (mu,) = (%s,), t = %s" % (mu, t))
 				trm = get_trm(mu, mu)
 				self.background_x(t, trm, mu)
@@ -862,7 +862,7 @@ class QH_model(model): #CHANGED model to Model
 				Note  + h.c. is included! Even when mu = nu
 				
 			"""
-			for (mu, nu), t in Ts['Tx'].iteritems():
+			for (mu, nu), t in Ts['Tx'].items():
 				if verbose >= 2: print( "\t\tMaking Tx terms: (mu,nu) = (%s,%s), t = %s" % (mu, nu, t))
 				
 				trm = get_trm(mu, nu)
@@ -878,7 +878,7 @@ class QH_model(model): #CHANGED model to Model
 				Note  + h.c. is included! Even when mu = nu
 				
 			"""
-			for (mu, nu), t in Ts['Ty'].iteritems():
+			for (mu, nu), t in Ts['Ty'].items():
 				if verbose >= 2: print( "\t\tMaking tunneling terms: (mu,nu) = (%s,%s), t = %s" % (mu, nu, t))
 				trm = get_trm(mu, nu)
 				self.t_y(t, trm, bands[mu], bands[nu])
@@ -1025,7 +1025,7 @@ class QH_model(model): #CHANGED model to Model
 			raise NotImplementedError
 		if  bands[0]!=0:
 			print( "WARNING: pins use LLL form factors")
-		Tq = np.zeros((self.L // self.Nlayer, maxM+1), dtype = np.complex)
+		Tq = np.zeros((self.L // self.Nlayer, maxM+1), dtype = np.complex128)
 		
 		M, R = np.meshgrid(np.arange(maxM+1,dtype = float), np.arange(self.L // self.Nlayer, dtype = float))
 		R*=self.kappa
@@ -1150,7 +1150,7 @@ class QH_model(model): #CHANGED model to Model
 		###TODO!!! Fix the sizes, the code 'load' is actually incompatible with the following code.			
 		## Look for Potentials in Vs, and generate the Vmk for each.
 		if 'TK' in Vs:
-			for (mu, nu), t in Vs['TK'].iteritems():
+			for (mu, nu), t in Vs['TK'].items():
 				if verbose >= 2: print( "\t\tMaking TK potentials: (mu,nu) = (%s,%s), t = %s" % (mu, nu, t))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
@@ -1160,7 +1160,7 @@ class QH_model(model): #CHANGED model to Model
 		
 		if 'haldane' in Vs:
 			#Haldane Pseudo-pot - array is strength of mth term
-			for (mu, nu), v in Vs['haldane'].iteritems():
+			for (mu, nu), v in Vs['haldane'].items():
 				if verbose >= 2: print( "\t\tMaking Haldane pseudopotentials: (mu,nu) = (%s,%s), V_l = %s" % (mu, nu, v))
 				vmk = get_vmk(mu, nu)
 				if np.prod(vmk.shape[:4]) > 1:
@@ -1178,7 +1178,7 @@ class QH_model(model): #CHANGED model to Model
 				tol, d, coarse are completely optional and specify accuracy of Fourier transform; default values should be fine.
 				See vq_from_rV() documentation for additional details.
 			"""
-			for (mu, nu), v in Vs['rV(r)'].iteritems():
+			for (mu, nu), v in Vs['rV(r)'].items():
 				if verbose >= 2: print( "\t\tMaking rV(r) potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError								
@@ -1198,7 +1198,7 @@ class QH_model(model): #CHANGED model to Model
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
 			
 		if 'coulomb' in Vs:
-			for (mu, nu), v in Vs['coulomb'].iteritems():
+			for (mu, nu), v in Vs['coulomb'].items():
 				if verbose >= 2: print( "\t\tMaking Coulomb potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
@@ -1209,7 +1209,7 @@ class QH_model(model): #CHANGED model to Model
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
 
 		if 'coulomb_blgated' in Vs:
-			for (mu, nu), v in Vs['coulomb_blgated'].iteritems():
+			for (mu, nu), v in Vs['coulomb_blgated'].items():
 				if verbose >= 2: print( "\t\tMaking Gated Coulomb potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
@@ -1221,7 +1221,7 @@ class QH_model(model): #CHANGED model to Model
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
                     
 		if 'coulomb_bilayer' in Vs:
-			for (mu, nu), v in Vs['coulomb_bilayer'].iteritems():
+			for (mu, nu), v in Vs['coulomb_bilayer'].items():
 				if verbose >= 2: print( "\t\tMaking Gated Coulomb potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
@@ -1232,7 +1232,7 @@ class QH_model(model): #CHANGED model to Model
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
 				
 		if 'coulomb_anisotropic' in Vs:
-			for (mu, nu), v in Vs['coulomb_anisotropic'].iteritems():
+			for (mu, nu), v in Vs['coulomb_anisotropic'].items():
 				if verbose >= 2: print( "\t\tMaking ad-hoc anisotropic Coulomb potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
@@ -1246,7 +1246,7 @@ class QH_model(model): #CHANGED model to Model
 			"""
 					(mu, nu) : { 'v', 'xi', 'order' }
 				"""
-			for (mu, nu), v in Vs['GaussianCoulomb'].iteritems():
+			for (mu, nu), v in Vs['GaussianCoulomb'].items():
 				if verbose >= 2: print( "\t\tMaking (Gaussian) Coulomb potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
@@ -1264,7 +1264,7 @@ class QH_model(model): #CHANGED model to Model
 			
 		#These are redundant; use TK they are faster. Just to check method
 		if 'TK_vq' in Vs:
-			for (mu, nu), t in Vs['TK_vq'].iteritems():
+			for (mu, nu), t in Vs['TK_vq'].items():
 				if verbose >= 2: print( "\t\tMaking TK_vq potentials: (mu,nu) = (%s,%s), t = %s" % (mu, nu, t))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
@@ -1274,7 +1274,7 @@ class QH_model(model): #CHANGED model to Model
 		
 		#These are redundant; use haldane they are faster. Just to check method
 		if 'haldane_vq' in Vs:
-			for (mu, nu), t in Vs['haldane_vq'].iteritems():
+			for (mu, nu), t in Vs['haldane_vq'].items():
 				if verbose >= 2: print( "\t\tMaking haldane_vq potentials: (mu,nu) = (%s,%s), t = %s" % (mu, nu, t))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
@@ -1512,7 +1512,7 @@ class QH_model(model): #CHANGED model to Model
 		
 		#Only evaluate function out to keep, then pad with 0s
 		vr = np.zeros(len(qy), dtype=float)
-		vz = np.zeros(len(qy), dtype=np.complex)
+		vz = np.zeros(len(qy), dtype=np.complex128)
 		keep = int(q_max/dqy) #No need to evaluate function beyond here.
 		qy = qy[:keep]
 
@@ -1785,11 +1785,12 @@ class QH_model(model): #CHANGED model to Model
 			zb = np.poly1d([-np.sqrt(2.), m])*conj
 			if a > b:
 				l = sp.special.genlaguerre(b, a-b)*1.
-				l = float(np.sqrt(1.*sp.misc.factorial(b, exact=True)/sp.misc.factorial(a, exact=True))*np.sqrt(2)**(b-a))*z**(a-b)*l(0.5*zb*z)
+				
+				l = float(np.sqrt(1.*sp.special.factorial(b, exact=True)/sp.special.factorial(a, exact=True))*np.sqrt(2)**(b-a))*z**(a-b)*l(0.5*zb*z)
 				return P(l.coeffs[::-1])
 			else:
 				l = sp.special.genlaguerre(a, b-a)*1.
-				pre = np.sqrt(1.*sp.misc.factorial(a, exact=True)/sp.misc.factorial(b, exact=True))*np.sqrt(2)**(a-b)
+				pre = np.sqrt(1.*sp.special.factorial(a, exact=True)/sp.special.factorial(b, exact=True))*np.sqrt(2)**(a-b)
 				l =  float(pre)*((-zb)**(b-a)*l(0.5*zb*z))
 				return P(l.coeffs[::-1])
 			
@@ -1900,7 +1901,7 @@ class QH_model(model): #CHANGED model to Model
 		assert L % N == 0
 		if self.p_type == 'F':
 		##	Hilbert space & Operators
-			self.d = 2 * np.ones(L, dtype=np.int)
+			self.d = 2 * np.ones(L, dtype=np.int64)
 
 			self.Id = [ np.eye(2) for s in range(N) ]
 			self.StrOp = [ np.diag([1., -1]) for s in range(N) ]
@@ -1915,12 +1916,12 @@ class QH_model(model): #CHANGED model to Model
 			self.AOp_r = np.outer(self.Id[0], self.AOp[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3])
 			self.bond_ops = ['AOp_l', 'AOp_r']
 			
-			self.Qp_flat = np.zeros([L, 2, self.num_q], np.int)
+			self.Qp_flat = np.zeros([L, 2, self.num_q], np.int64)
 
 		elif self.p_type == 'B':
 		##	Hilbert space & Operators
 			d = self.N_bosons + 1		# assume all the d's are the same
-			self.d = d * np.ones(L, dtype=np.int)
+			self.d = d * np.ones(L, dtype=np.int64)
 			self.Id = [np.eye(d) for s in range(N)]
 			self.StrOp = self.Id
 			self.nOp = [np.diag(range(d)) for s in range(N)]
@@ -1936,7 +1937,7 @@ class QH_model(model): #CHANGED model to Model
 			self.AAaaOp = [ nOp**2-nOp for nOp in self.nOp ]
 			self.site_ops = ['Id', 'StrOp', 'nOp', 'AOp', 'aOp', 'AAOp', 'aaOp', 'AAaaOp']
 			#make AA, aa, NN, other more complicated versions for multiple levels/lack of momentum conservation
-			self.Qp_flat = np.zeros([L, d, self.num_q], dtype=np.int)
+			self.Qp_flat = np.zeros([L, d, self.num_q], dtype=np.int64)
 				
 	##	Fill in charges
 	##	Get total filling (p/q) in unit cell from root_config
@@ -2062,6 +2063,10 @@ class QH_model(model): #CHANGED model to Model
 					maxK = (vmk.shape[-1]-1)//2
 					
 					#t0 = time.time()
+
+					#CONVERT vmk into float32 because packVmk requires this in cython, and its easier to change it here
+					#potentially change in cython
+					vmk = np.asarray(vmk, dtype=np.float32)
 					packVmk(Vmk_list, vmk, mask, maxM, maxK, species[mu[0]],species[mu[1]], species[nu[0]],species[nu[1]], tol = 1e-12)
 					
 				####	Below is what packVmk does.
@@ -2251,7 +2256,7 @@ class QH_model(model): #CHANGED model to Model
 			for s in range(len(MPOgraph1)):
 				G = MPOgraph1[s]
 				nextG = MPOgraph1[(s + 1) % N]
-				for src,dest_dict in G.iteritems():
+				for src,dest_dict in G.items():
 					for dest in dest_dict.keys():
 						if dest not in nextG: del dest_dict[dest]
 		
@@ -2308,19 +2313,19 @@ class QH_model(model): #CHANGED model to Model
 	##	2) Compute the total norms
 		total_norms = []
 		dropped_norms = []
-		for Op01key,Op01Dict in splitV_dict.iteritems():
-			for Op23key,Op23Dict in Op01Dict.iteritems():
-				if not np.any([ v['keep'] for k,v in Op01Dict.iteritems() ]):
+		for Op01key,Op01Dict in splitV_dict.items():
+			for Op23key,Op23Dict in Op01Dict.items():
+				if not np.any([ v['keep'] for k,v in Op01Dict.items() ]):
 					dropped_norms.append(np.linalg.norm( Op23Dict['Vr'] ))
 				total_norms.append(np.linalg.norm( Op23Dict['Vr'] ))
 		total_norm = np.linalg.norm(total_norms)
 		if verbose >= 1: print( '\tTotal norm:', total_norm)
 
 	##	3) Do the exponential approximation and store the result
-		for Op01key,Op01Dict in splitV_dict.iteritems():
+		for Op01key,Op01Dict in splitV_dict.items():
 			Op0,ly0,m1,Op1,ly1 = Op01key
 			Op23keys = Op01Dict.keys()	# define order
-			if not np.any([ v['keep'] for k,v in Op01Dict.iteritems() ]): continue		# nothing worth keeping, move along
+			if not np.any([ v['keep'] for k,v in Op01Dict.items() ]): continue		# nothing worth keeping, move along
 		##	First gather the sequences of the numbers
 			seqs = []
 			for Op23key in Op23keys:
@@ -2334,18 +2339,18 @@ class QH_model(model): #CHANGED model to Model
 		
 		
 	##	4) Now build the MPOgraph, scan every (Op0,ly0,m1,Op1,ly1) quintuple.
-		for Op01key,Op01Dict in splitV_dict.iteritems():
+		for Op01key,Op01Dict in splitV_dict.items():
 			Op0,ly0,m1,Op1,ly1 = Op01key
 			if 'keys' not in Op01Dict:
 				if verbose >= 4:
 					print( '\t%s\t#nodes = 0/__,      (dropped),       ' % ( Op01key, ))
-					print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.iteritems() if isinstance(Ok, tuple) ]))
+					print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.items() if isinstance(Ok, tuple) ]))
 				continue		# nothing worth keeping, move along
 			Op23keys = Op01Dict['keys']
 			M,entry,exits,MInfo = Op01Dict['Markov'].MeeInfo()
 			if verbose >= 3:
 				print( '\t%s\t#nodes = %s/%s, norm err = %.7f, ' % ( Op01key, len(M), MInfo['l'],  MInfo['norm_err'] ))
-				print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.iteritems() if isinstance(Ok, tuple) ]))
+				print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.items() if isinstance(Ok, tuple) ]))
 		
 		##	Prepare the nodes leading up to the loop
 			if m1 > 0:		# String coming out of Op0
@@ -2407,7 +2412,7 @@ class QH_model(model): #CHANGED model to Model
 
 		if verbose >= 1:
 			print( '\ttarget fractional error:', self.V_eps)
-			norm_errs = np.array([ OD['Markov'].info['norm_err'] for Ok,OD in splitV_dict.iteritems() if 'Markov' in OD ])
+			norm_errs = np.array([ OD['Markov'].info['norm_err'] for Ok,OD in splitV_dict.items() if 'Markov' in OD ])
 			print( '\tMarkov approx error, dropped / total norm: %s, %s / %s' % (np.linalg.norm(norm_errs), np.linalg.norm(dropped_norms), total_norm))
 			str_nodes = np.zeros(N, dtype=int)
 			M_nodes = np.zeros(N, dtype=int)
@@ -2545,7 +2550,7 @@ class QH_model(model): #CHANGED model to Model
 	##	4) Add MPO_graph information to MPO_system, and also make the string nodes.
 	##	Sources
 		create_nodes_in_list = []
-		for Op01key,D in MS.Din.iteritems():
+		for Op01key,D in MS.Din.items():
 			if MS.io[D['index'][0]]['N'] == 0: continue		# ignore string belonging in blocks with 0 nodes
 			(Op0,ly0,m1,Op1,ly1) = Op01key
 			if m1 > 0:		# String coming out of 'R' with operator Op0
@@ -2562,7 +2567,7 @@ class QH_model(model): #CHANGED model to Model
 			D['orb'] = ly1
 			if self.ignore_herm_conj and D['Op'] != 'AOp': create_nodes_in_list.append(Op01key)
 	##	Targets
-		for Op23key,D in MS.Dout.iteritems():
+		for Op23key,D in MS.Dout.items():
 			if MS.io[D['index'][0]]['N'] == 0: continue		# ignore string belonging in blocks with 0 nodes
 			Op2,ly2,m2,Op3,ly3 = Op23key
 			if m2 > 0:		# The final string leading to 'F' (backwards) with Op3
@@ -2584,7 +2589,7 @@ class QH_model(model): #CHANGED model to Model
 			io['name'] = Op01key[0] + str(self.layers[Op01key[1]][0]) + '-' + str((Op01key[2] - Op01key[4] + Op01key[1]) // N) + '-' + Op01key[3] + str(self.layers[Op01key[4]][0]) + '.' + str(bid)
 	
 	##	5)	Create the nodes for the r = 0 cases
-		for r0Op,V in r0_list.iteritems():
+		for r0Op,V in r0_list.items():
 			Op0,ly0,m1,Op12,ly12,m2,Op3,ly3 = r0Op		# guarentee that m1, m2 > 0
 			if self.ignore_herm_conj:
 				if Op0 == 'A': continue
@@ -2595,7 +2600,7 @@ class QH_model(model): #CHANGED model to Model
 			XNode = MPOgraph1[pre_Op1_ly][pre_Op1_node].setdefault(post_Op2_node, [])
 			XNode.append((Op12+'Op',V))
 			if verbose >= 5: print( "\t\tr = 0: (%s, %s, %s) -> (_%s, %s, %s-1), %sOp, ly=%s, V=%s" % (Op0+'_',ly0,m1,Op3,ly3,m2,Op12,ly12,V))
-		for r0Op,V in r0m0_list.iteritems():
+		for r0Op,V in r0m0_list.items():
 			if r0Op[0] == 'AAaa':
 				XNode = MPOgraph1[r0Op[1]]['R'].setdefault('F', [])
 				XNode.append(('AAaaOp',V))
@@ -2626,7 +2631,7 @@ class QH_model(model): #CHANGED model to Model
 					#print( '\t\t\t', block['conj']
 		if verbose >= 1:
 			print( '\ttarget fractional error: %s  (tol = %s)' % (self.V_eps, MS.info['ABC_tol']))
-			print( '\tnorm err / total norm: %s / %s' % (MS.info['total_norm_err'], np.linalg.norm([MS.info['2norm']] + [V for OOOO,V in r0_list.iteritems()])))
+			print( '\tnorm err / total norm: %s / %s' % (MS.info['total_norm_err'], np.linalg.norm([MS.info['2norm']] + [V for OOOO,V in r0_list.items()])))
 			str_nodes = np.zeros(N, dtype=int)
 			M_nodes = np.zeros(N, dtype=int)
 			for s in range(N):
@@ -2813,7 +2818,7 @@ class QH_model(model): #CHANGED model to Model
 			ns=[0]*(n)+[1]
 			
 			def psi(xx):
-				return  hermval(xx,ns)**2*np.exp(-xx**2)/np.sqrt(np.pi)/2.**n/(1.*sp.misc.factorial(n))
+				return  hermval(xx,ns)**2*np.exp(-xx**2)/np.sqrt(np.pi)/2.**n/(1.*sp.special.factorial(n))
 			
 			integrated=np.zeros(xs.shape)
 			for i,xx in enumerate(xs):
@@ -2964,15 +2969,15 @@ def F_NM(a, b, qx, qy):
 	if a==0 and b==0:
 		return  np.exp(-q2/4.)
 	elif a > b:
-		return   (  np.sqrt(1.*sp.misc.factorial(b, exact=True)/sp.misc.factorial(a, exact=True))*np.sqrt(2.)**(b-a)  )*np.exp(-q2/4.) * (qx-1j*qy)**(a-b) * sp.special.eval_genlaguerre(b, a-b, q2/2.)
+		return   (  np.sqrt(1.*sp.special.factorial(b, exact=True)/sp.special.factorial(a, exact=True))*np.sqrt(2.)**(b-a)  )*np.exp(-q2/4.) * (qx-1j*qy)**(a-b) * sp.special.eval_genlaguerre(b, a-b, q2/2.)
 	if a < b:
-		return   (np.sqrt(1.*sp.misc.factorial(a, exact=True)/sp.misc.factorial(b, exact=True))*np.sqrt(2.)**(a-b))*np.exp(-q2/4.) * (-qx-1j*qy)**(b-a) * sp.special.eval_genlaguerre(a, b-a, q2/2.)
+		return   (np.sqrt(1.*sp.special.factorial(a, exact=True)/sp.special.factorial(b, exact=True))*np.sqrt(2.)**(a-b))*np.exp(-q2/4.) * (-qx-1j*qy)**(b-a) * sp.special.eval_genlaguerre(a, b-a, q2/2.)
 	else:
 		return np.exp(-q2/4.) * sp.special.eval_genlaguerre(a, 0, q2/2.)
 
 def phi_N(a, y):
 	"""Conventional Landau gauge orbitals"""
-	return np.exp(-0.5*y**2) * sp.special.eval_hermite(a, y) / np.sqrt(np.sqrt(np.pi) * sp.misc.factorial(a, exact=True) * 2**a)
+	return np.exp(-0.5*y**2) * sp.special.eval_hermite(a, y) / np.sqrt(np.sqrt(np.pi) * sp.special.factorial(a, exact=True) * 2**a)
 	
 	
 
@@ -2993,12 +2998,16 @@ class LL(bands):
 	def pre_F(self, a, b):
 		a = self[a]
 		b = self[b]
+		#print(b)
+		#print(sp.special.factorial(b, exact=True))
 		if a==b:
 			return 1.
 		elif a > b:
-			return np.sqrt(1.*sp.misc.factorial(b, exact=True)/sp.misc.factorial(a, exact=True))*np.sqrt(2.)**(b-a)
+			#misc replaced by special
+			return np.sqrt(1.*sp.special.factorial(b, exact=True)/sp.special.factorial(a, exact=True))*np.sqrt(2.)**(b-a)
 		else:
-			return np.sqrt(1.*sp.misc.factorial(a, exact=True)/sp.misc.factorial(b, exact=True))*np.sqrt(2.)**(a-b)
+			#misc replaced by special
+			return np.sqrt(1.*sp.special.factorial(a, exact=True)/sp.special.factorial(b, exact=True))*np.sqrt(2.)**(a-b)
 
 	def F(self, a, b, qx, qy):
 		qx = qx / float(self.anisotropy)
@@ -3043,7 +3052,7 @@ class LL(bands):
 		max_ab = max(a, b)
 		min_ab = min(a, b)
 		diff_ab = max_ab - min_ab
-		sqrt_coef = Fr(sp.misc.factorial(min_ab, exact=True), sp.misc.factorial(max_ab, exact=True) * 2**diff_ab)
+		sqrt_coef = Fr(sp.special.factorial(min_ab, exact=True), sp.special.factorial(max_ab, exact=True) * 2**diff_ab)
 		S = ""
 		if sqrt_coef.denominator == 1:
 			if sqrt_coef.numerator != 1: S += sqrt_coef.numerator
@@ -3114,7 +3123,7 @@ class general_LL(bands):
 				print( "WARNING: u has norm {}".format(norm2))
 			Pa.append(np.array(PaA))
 	
-		Pab = np.ones( (len(u), len(u)) , dtype = np.int)
+		Pab = np.ones( (len(u), len(u)) , dtype = np.int64)
 		for a in range(len(u)):
 			for b in range(len(u)):
 				p = list(set( Pa[a]*Pa[b]))
@@ -3159,8 +3168,8 @@ class general_LL(bands):
 			F = 0.
 		
 		for ua, ub in zip(self.u[a], self.u[b]):
-			for k1, v1 in ua.iteritems():
-				for k2, v2 in ub.iteritems():
+			for k1, v1 in ua.items():
+				for k2, v2 in ub.items():
 					F = F + np.conj(v1)*v2*F_NM(k1, k2, qx, qy)
 				
 		return F

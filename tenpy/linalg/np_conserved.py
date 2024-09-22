@@ -623,6 +623,8 @@ class Array:
         res._qdata_sorted = True
         return res
 
+
+    
     # properties ==============================================================
 
     @property
