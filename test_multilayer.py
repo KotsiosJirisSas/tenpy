@@ -21,6 +21,9 @@ V = { 'eps':Veps, 'xiK':2., 'rV(r)': { ('L','L'): {'rV': rvr} }, 'coulomb': { ('
 root_config = [0]*NLL
 
 model_par = {
+
+	#ahhhh ok ok so it constructs the periodic one, ggwp with 24 sites for some reason
+	'boundary_conditions': ('periodic', 12),
 	'verbose': 2,
 	'layers': [ ('L', l) for l in range(NLL) ],
 	#'layers':[ ('L', 1)],
@@ -33,6 +36,7 @@ model_par = {
 }
 
 print ("-"*10 + "Comparing analytic V(q) Yukawa and V(r) Yukawa" +"-"*10)
+print("START MODEL")
 M = mod.QH_model(model_par)
 print ("Vmk norm: (all should be zero)")
 for a in range(NLL):

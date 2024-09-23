@@ -84,6 +84,9 @@ except:
 	pass
 
 class QH_model(model): #CHANGED model to Model
+	#IN ORDER TO MOVE THIS TO THE MODEL IN TENPY3 WE NEED TO ALSO DEFINE THE LATTICE - SEE WHAT IS THIS LATTICE TYPE EXACTLY ETC
+	#
+
 	"""	A multilayered quantum hall system on a cylinder.
 		
 		Parameters when creating model:
@@ -161,7 +164,9 @@ class QH_model(model): #CHANGED model to Model
 		# ('periodic'):			with 1-flux unit cell
 		# ('periodic', N_phi):	periodic with N_phi flux unit cell
 		# ('finite', N_phi):	finite
-		if 'L' in pars: print( "!\tWarning! 'L' parameter not used in quantum Hall.  Use 'boundary_conditions': ('periodic', NumPhi) instead.")
+		if 'L' in pars: 
+			print( "!\tWarning! 'L' parameter not used in quantum Hall.  Use 'boundary_conditions': ('periodic', NumPhi) instead.")
+		
 		pars_bc = set_var(pars, 'boundary_conditions', set_var(pars, 'bc', 'periodic'))
 		if isinstance(pars_bc, tuple) or isinstance(pars_bc, list):
 			self.bc = pars_bc[0]
@@ -238,7 +243,8 @@ class QH_model(model): #CHANGED model to Model
 		
 		self.make_Vmk(self.Vs, verbose=verbose)	# 2-body terms
 		self.convert_Vmk_tolist()
-
+		#print(self.Vmk)
+		#quit()
 		if 'Ts' in pars:
 			self.make_Trm(pars['Ts'])	# 1-body terms
 			self.convert_Trm_tolist()
@@ -275,6 +281,8 @@ class QH_model(model): #CHANGED model to Model
 
 		if verbose >= 7: 
 			self.print_MPOgraph()
+
+		print("WORKS UP TO HERE: MPO GRAPH IS CONSTRUCTED, SO NEED TO CONSTRUCT HMPO FROM MPOGRAPH")
 		self.build_H_mpo_from_MPOgraph(self.MPOgraph, verbose=verbose)
 		#if verbose >= 2: print( "\tMPO chi:", self.chi
 		if verbose >= 2: 
@@ -1050,13 +1058,13 @@ class QH_model(model): #CHANGED model to Model
 		
 		with open(filename, 'wb') as f:
 			if self.verbose >= 1: print( ("\t\tSaving Vmk file '%s'." % filename))
-			cPickle.dump(data, f, protocol=-1)
+			pickle.dump(data, f, protocol=-1)
 
 
 	def load_Vmk(self, filename):
 		with open(filename, 'rb') as f:
 			if self.verbose >= 1: print( ("\t\tLoading Vmk file '%s'." % filename))
-			data = cPickle.load(f)
+			data = pickle.load(f)
 		if data['Lx'] != self.Lx: print( ("Warning! File '%s' Lx = %s different from the current model Lx = %s." % (filename, data['Lx'], self.Lx)))
 		self.maxM = data['maxM']
 		self.maxK = data['maxK']
@@ -2116,7 +2124,8 @@ class QH_model(model): #CHANGED model to Model
 	##################################################	
 	def make_MPOgraph1_from_Vmk_old(self, verbose=0, force_keep=False):
 		"""	Given Vmk_list, make the MPOgraph1.  Make a node for each (m,r) """
-		if verbose >= 1: print( "Making MPOgraph1 from Vmk...")
+		if verbose >= 1: 
+			print( "Making MPOgraph1 from Vmk...")
 		N = self.Nlayer
 		L = self.L
 		self.make_split_Vmk_list(verbose, force_keep)
@@ -2646,6 +2655,7 @@ class QH_model(model): #CHANGED model to Model
 	##	8) Wrap-up
 		self.MPOgraph1 = MPOgraph1
 		del self.MPOgraph		# Undo the hack earlier
+		#print(MS)
 		self.Vmk_MS = {'version':1.2, 'Nlayer':self.Nlayer, 'MS':MS, 'r0_list':r0_list, 'r0m0_list':r0m0_list,
 			'Lx':self.Lx, 'Vq0':self.Vq0, 'p_type':self.p_type, 'species':self.species, 'bands':self.bands}
 		#self.print(_MPOgraph(MPOgraph1)
