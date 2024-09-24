@@ -182,7 +182,9 @@ class Site(Hdf5Exportable):
         if not hasattr(self, 'perm'):  # default permutation for the local states
             self.perm = np.arange(self.dim)
         self.add_op('Id', npc.diag(1., self.leg), hc='Id')
+       
         for name, op in site_ops.items():
+            
             self.add_op(name, op)
         if 'JW' not in self.opnames:
             # include trivial `JW` to allow combinations
@@ -2016,3 +2018,194 @@ class ClockSite(Site):
 
     def __repr__(self):
         return f'ClockSite(q={self.q}, conserve={self.conserve})'
+
+
+
+"""
+Added Tue 24. september. 2024 by DP
+creates QH_MultilayerFermionSite
+"""
+
+from scipy.linalg import block_diag
+
+class QH_MultilayerFermionSite(Site):
+    r"""Create a :class:`Site` for spinful (spin-1/2) fermions.
+
+    Local states are:
+         ``empty``  (vacuum),
+         ``up``     (one spin-up electron),
+         ``down``   (one spin-down electron), and
+         ``full``   (both electrons)
+
+    Local operators can be built from creation operators.
+
+    .. warning ::
+        Using the Jordan-Wigner string (``JW``) in the correct way is crucial to get correct
+        results, otherwise you just describe hardcore bosons!
+
+    ==============  =============================================================================
+    operator        description
+    ==============  =============================================================================
+    ``Id``          Identity :math:`\mathbb{1}`
+    ``JW``          Sign for the Jordan-Wigner string :math:`(-1)^{n_{\uparrow}+n_{\downarrow}}`
+    ``JWu``         Partial sign for the Jordan-Wigner string :math:`(-1)^{n_{\uparrow}}`
+    ``JWd``         Partial sign for the Jordan-Wigner string :math:`(-1)^{n_{\downarrow}}`
+    ``Cu``          Annihilation operator spin-up :math:`c_{\uparrow}`
+                    (up to 'JW'-string on sites left of it).
+    ``Cdu``         Creation operator spin-up :math:`c^\dagger_{\uparrow}`
+                    (up to 'JW'-string on sites left of it).
+    ``Cd``          Annihilation operator spin-down :math:`c_{\downarrow}`
+                    (up to 'JW'-string on sites left of it).
+                    Includes ``JWu`` such that it anti-commutes onsite with ``Cu, Cdu``.
+    ``Cdd``         Creation operator spin-down :math:`c^\dagger_{\downarrow}`
+                    (up to 'JW'-string on sites left of it).
+                    Includes ``JWu`` such that it anti-commutes onsite with ``Cu, Cdu``.
+    ``Nu``          Number operator :math:`n_{\uparrow}= c^\dagger_{\uparrow} c_{\uparrow}`
+    ``Nd``          Number operator :math:`n_{\downarrow}= c^\dagger_{\downarrow} c_{\downarrow}`
+    ``NuNd``        Dotted number operators :math:`n_{\uparrow} n_{\downarrow}`
+    ``Ntot``        Total number operator :math:`n_t= n_{\uparrow} + n_{\downarrow}`
+    ``dN``          Total number operator compared to the filling :math:`\Delta n = n_t-filling`
+    ``Sx, Sy, Sz``  Spin operators :math:`S^{x,y,z}`, in particular
+                    :math:`S^z = \frac{1}{2}( n_\uparrow - n_\downarrow )`
+    ``Sp, Sm``      Spin flips :math:`S^{\pm} = S^{x} \pm i S^{y}`,
+                    e.g. :math:`S^{+} = c^\dagger_\uparrow c_\downarrow`
+    ==============  =============================================================================
+
+    The spin operators are defined as :math:`S^\gamma =
+    (c^\dagger_{\uparrow}, c^\dagger_{\downarrow}) \sigma^\gamma (c_{\uparrow}, c_{\downarrow})^T`,
+    where :math:`\sigma^\gamma` are spin-1/2 matrices (i.e. half the pauli matrices).
+
+    ============= ============= ======= =======================================
+    `cons_N`      `cons_Sz`     qmod    *excluded* onsite operators
+    ============= ============= ======= =======================================
+    ``'N'``       ``'Sz'``      [1, 1]  ``Sx, Sy``
+    ``'N'``       ``'parity'``  [1, 4]  --
+    ``'N'``       ``None``      [1]     --
+    ``'parity'``  ``'Sz'``      [2, 1]  ``Sx, Sy``
+    ``'parity'``  ``'parity'``  [2, 4]  --
+    ``'parity'``  ``None``      [2]     --
+    ``None``      ``'Sz'``      [1]     ``Sx, Sy``
+    ``None``      ``'parity'``  [4]     --
+    ``None``      ``None``      []      --
+    ============= ============= ======= =======================================
+
+    Parameters
+    ----------
+    cons_N : ``'N' | 'parity' | None``
+        Whether particle number is conserved, c.f. table above.
+    cons_Sz : ``'Sz' | 'parity' | None``
+        Whether spin is conserved, c.f. table above.
+    filling : float
+        Average filling. Used to define ``dN``.
+
+    Attributes
+    ----------
+    cons_N : ``'N' | 'parity' | None``
+        Whether particle number is conserved, c.f. table above.
+    cons_Sz : ``'Sz' | 'parity' | None``
+        Whether spin is conserved, c.f. table above.
+    filling : float
+        Average filling. Used to define ``dN``.
+    """
+    #N is number of layers!
+    def __init__(self, N=2,L=2,cons_N='N', cons_Sz='Sz', filling=1.):
+        if not cons_N:
+            cons_N = 'None'
+        if cons_N not in ['N', 'parity', 'None']:
+            raise ValueError("invalid `cons_N`: " + repr(cons_N))
+        if not cons_Sz:
+            cons_Sz = 'None'
+        if cons_Sz not in ['Sz', 'parity', 'None']:
+            raise ValueError("invalid `cons_Sz`: " + repr(cons_Sz))
+        
+        # 0) Build the operators.
+        #TO DO: ADD APPROPRIATE CONSERVATIONS
+
+        #LABEL FOR POSSIBLE STATES SPANNING SINGLE UNIT OF HILBERT SPACE!
+        states = [format(i, f'0{N}b') for i in range(2**N)]
+        assert L % N == 0
+        ##	Hilbert space & Operators
+        d = 2 * np.ones(L, dtype=np.int64)
+
+        
+        Id = [ np.eye(2) for s in range(N) ]
+
+        #StrOp is JW?
+        StrOp = [ np.diag([1., -1]) for s in range(N) ]
+        nOp = [ np.diag([0., 1]) for s in range(N) ]
+        nOp_shift=[nOp[s]-0.5*Id[s] for s in range(N)]#shifted density so that I can easily calculate particle-hole symmetric things using your correlation functions, SG
+        AOp = [ np.diag([1.], -1) for s in range(N) ]		# creation
+        aOp = [ np.diag([1.], 1) for s in range(N) ]		# annihilation
+        invnOp = [ np.diag([1., 0]) for s in range(N) ]
+        site_ops = ['Id', 'StrOp', 'nOp', 'AOp', 'aOp', 'invnOp','nOp_shift'] #LISTS SITE OPS
+        JW=StrOp#??? not sure even if correct
+
+        #BOND OPS SEE WHERE YOU NEED THOSE
+        AOp_l = np.outer( AOp[0], Id[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3]) 
+        AOp_r = np.outer(Id[0], AOp[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3])  
+        bond_ops = ['AOp_l', 'AOp_r']
+        
+        #self.Qp_flat = np.zeros([L, 2, self.num_q], np.int64)
+        #print(AOp)
+        #print(invnOp)
+        #x=block_diag(AOp)
+        #print(x)
+        ops = dict( JW=block_diag(*JW),StrOp=block_diag(*StrOp), nOp=block_diag(*nOp),nOp_shift=block_diag(*nOp_shift),AOp=block_diag(*AOp),aOp=block_diag(*aOp),invnOp=block_diag(*invnOp))
+      
+
+
+        """
+        NEED TO IMPLEMENT JW PROBABLY, NOT SURE IF IT IS IMPLEMENTED OR NOT!
+        JWu = np.diag(1. - 2 * Nu_diag)  # (-1)^Nu
+        JWd = np.diag(1. - 2 * Nd_diag)  # (-1)^Nd
+        JW = JWu * JWd  # (-1)^{Nu+Nd}
+        """
+        
+
+     
+        leg = npc.LegCharge.from_trivial(2**(N))
+
+
+        self.cons_N = cons_N
+        self.cons_Sz = cons_Sz
+        self.filling = filling
+        Site.__init__(self, leg, states, sort_charge=True, **ops)
+        # specify fermionic operators
+        self.need_JW_string |= set(['AOp', 'aOp', 'StrOp','JW']) #HMMMMMM MAYBE DO NEED TO DO SOMETHING
+        """
+
+        THIS BIT is copied from the old code and i have no clue what it does
+        BUT I THINK IT PRODUCES ROOT_CONFIGURATION?
+        iT SEEMS LIKE IT CONSERVES K HERE - see what konstantinos says on conservation
+
+        ##	Fill in charges
+        ##	Get total filling (p/q) in unit cell from root_config
+        ##		Qmat is 2-array shaped (num_cons_Q, N), denoting unscaled charges of each layer
+        ##		root_config is a 2-array shaped (#, N)  (# need not equal L/N)
+        
+		ps = np.sum(np.tensordot(self.Qmat, self.root_config, axes = [[1], [1]]), axis = 1) #ith total charge in root_config
+		q = self.root_config.shape[0] * self.root_config.shape[1]		# number of sites
+		self.filling = [ (ps[i], q) for i in range(len(ps)) ]		#p/q for each charge
+		
+		do_cons_K = int(self.cons_K > 0)		# 0 or 1
+		for s in range(L):		# runs over sites
+			for n in range(self.d[s]):		# run over Hilbert space (empty/full)
+				for i in range(len(ps)):	# runs over num_cons_Q
+					self.Qp_flat[s, n, i+do_cons_K] = n*q*self.Qmat[i, s%N] - ps[i]
+					#C = q N - p
+				if do_cons_K:
+					self.Qp_flat[s, n, 0] = (s//N) * np.dot(self.Kvec, self.Qp_flat[s,n,1:])
+		
+		#TEST ME
+		#print( q, self.mod_q
+	    ##	Rescale mod_q by q; skip K cons since it isn't scaled if cons_K!=1
+		for j in range(self.num_q):
+			if self.mod_q[j] > 1:
+				self.mod_q[j] *= q
+        """
+
+    def __repr__(self):
+        """Debug representation of self."""
+        return "SpinHalfFermionSite({cN!r}, {cS!r}, {f:f})".format(cN=self.cons_N,
+                                                                   cS=self.cons_Sz,
+                                                                   f=self.filling)

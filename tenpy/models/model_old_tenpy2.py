@@ -936,6 +936,12 @@ class model(object):
 
 	def build_H_mpo_from_MPOgraph(self, G, verbose = 0):
 		"""	Builds W-matrices from an abstracted representation 'G' of the MPO.  """
+		
+		#print(G[0].keys())
+		print(len(G))
+		print(G[0][('Mk', 'aL-6-AL.12', 22)])
+		print(G[0][('Mk', 'aL-6-AL.12', 22)][('_a', np.int64(1), np.int64(12))])
+		#quit()
 		if verbose >= 1: 
 			print( "Building H_mpo (W) from MPO graph...")
 		L = self.L
@@ -992,17 +998,18 @@ class model(object):
 						except:
 							KeyError
 		self.H_mpo = W
+		#print(len(W[0][0][0]))
 		print('site_number=',self.L)
 		#print(W)
 		print('WORKS!')
 		#print(self.H_mpo)
-
+		"""
 		quit()
 		if self.num_q:
 			self.detect_Qmpo_flat(verbose=verbose)
 
 		self.init_model_for_conservation()
-	
+		"""
 
 
 	def detect_Qmpo_flat(self, trim=True, verbose=1):

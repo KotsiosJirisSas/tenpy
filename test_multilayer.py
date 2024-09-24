@@ -23,6 +23,7 @@ root_config = [0]*NLL
 model_par = {
 
 	#ahhhh ok ok so it constructs the periodic one, ggwp with 24 sites for some reason
+	# - for reason of there being 2 layers!
 	'boundary_conditions': ('periodic', 12),
 	'verbose': 2,
 	'layers': [ ('L', l) for l in range(NLL) ],

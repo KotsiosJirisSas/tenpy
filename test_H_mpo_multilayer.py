@@ -1,16 +1,78 @@
 """Call of (finite) DMRG."""
 
+import numpy as np
+from tenpy.linalg import np_conserved as npc
+from tenpy.models import multilayer_qh as mod
+from tenpy.models.multilayer_qh import interlace_zero
+#from tenpy.algorithms import simulation
+import itertools
+#from tenpy.mps.mps import iMPS
+np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
+
+NLL = 2; Veps = 1e-4
+xi = 1
+d = 0
+def rvr(r):
+	return np.exp(-r/xi)
+
+#Potential data for (single/multilayered) model Laughlin
+V = { 'eps':Veps, 'xiK':2., 'rV(r)': { ('L','L'): {'rV': rvr} }, 'coulomb': { ('L','L'):  {'v':-1., 'xi': xi}} }
+
+root_config = [0]*NLL
+
+model_par = {
+
+	#ahhhh ok ok so it constructs the periodic one, ggwp with 24 sites for some reason
+	# - for reason of there being 2 layers!
+	'boundary_conditions': ('periodic', 8),
+	'verbose': 2,
+	'layers': [ ('L', l) for l in range(NLL) ],
+	#'layers':[ ('L', 1)],
+	'Lx': 12.,
+	'Vs': V,
+	'cons_C': 'total',
+	'cons_K': True,
+	'root_config': root_config,
+	'exp_approx': 'slycot',
+}
+
+print ("-"*10 + "Comparing analytic V(q) Yukawa and V(r) Yukawa" +"-"*10)
+print("START MODEL")
+M = mod.QH_model(model_par)
+print('OLD CODE FINISHED')
+
+
 from tenpy.networks.mps import MPS
 from tenpy.models.QH_new_model import QHChain
 from tenpy.algorithms import dmrg
+from tenpy.networks.mpo import MPO
 
-N = 16  # number of sites
+N=8
 
-H_MPO=1
+H_MPO=M.H_mpo
+#print(M.H_mpo)
+
 #IMPORT HMPO
-model_params={"L": N, "J": 1., "g": 1., "bc_MPS": "finite"}
+from tenpy.models.lattice import Chain
+from tenpy.networks.site import QH_MultilayerFermionSite
 
+from tenpy.networks.mpo import MPO
+model_params={"L": 8, "bc_MPS": "finite", 'site':None, 'bc':'periodic'}
+#lattice=Lattice(model_params)
+
+hilber_space_single_site=QH_MultilayerFermionSite()
+define_chain=Chain(N,hilber_space_single_site)
+
+#NEED TO READ OUT Ws!
+H = MPO.from_grids([hilber_space_single_site] * N, Ws, bc='finite', IdL=0, IdR=-1)
+#MANAGED TO DEFINE A CHAIN WITH (HOPEFULLY) CORRECT MATRICES
+
+quit()
 model=QHChain(model_params,H_MPO)
+
+quit()
+
+
 sites = model.lat.mps_sites()
 psi = MPS.from_product_state(sites, ['up'] * N, "finite")
 dmrg_params = {"trunc_params": {"chi_max": 100, "svd_min": 1.e-10}, "mixer": True}

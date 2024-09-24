@@ -285,8 +285,12 @@ class QH_model(model): #CHANGED model to Model
 		print("WORKS UP TO HERE: MPO GRAPH IS CONSTRUCTED, SO NEED TO CONSTRUCT HMPO FROM MPOGRAPH")
 		self.build_H_mpo_from_MPOgraph(self.MPOgraph, verbose=verbose)
 		#if verbose >= 2: print( "\tMPO chi:", self.chi
+		#print(self.H_mpo)
 		if verbose >= 2: 
 			print( "\tBuilding QH_model took {} seconds.".format(time.time() - self.model_init_t0))
+
+
+		
 	def Vq0_energy(self, psi=None, verbose=0):
 	#TODO, check why passing in psi doesn't work.
 		"""	Gives the energy per unit FLUX from V(q=0) component.	"""
