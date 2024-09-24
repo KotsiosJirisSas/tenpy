@@ -26,8 +26,8 @@ model_par = {
 	# - for reason of there being 2 layers!
 	'boundary_conditions': ('periodic', 8),
 	'verbose': 2,
-	'layers': [ ('L', l) for l in range(NLL) ],
-	#'layers':[ ('L', 1)],
+	#'layers': [ ('L', l) for l in range(NLL) ],
+	'layers':[ ('L', 1)],
 	'Lx': 12.,
 	'Vs': V,
 	'cons_C': 'total',
@@ -50,8 +50,9 @@ from tenpy.networks.mpo import MPO
 N=8
 
 H_MPO=M.H_mpo
-#print(M.H_mpo)
-
+#print(M.H_mpo[0][0])
+#print(len(M.H_mpo[0][0][0][0][0]))
+#quit()
 #IMPORT HMPO
 from tenpy.models.lattice import Chain
 from tenpy.networks.site import QH_MultilayerFermionSite
@@ -60,11 +61,15 @@ from tenpy.networks.mpo import MPO
 model_params={"L": 8, "bc_MPS": "finite", 'site':None, 'bc':'periodic'}
 #lattice=Lattice(model_params)
 
-hilber_space_single_site=QH_MultilayerFermionSite()
+hilber_space_single_site=QH_MultilayerFermionSite(N=1)
 define_chain=Chain(N,hilber_space_single_site)
 
+print(len(H_MPO))
+
+#NEED TO MATCH THESE PROPERLY???
 #NEED TO READ OUT Ws!
-H = MPO.from_grids([hilber_space_single_site] * N, Ws, bc='finite', IdL=0, IdR=-1)
+H = MPO.from_grids([hilber_space_single_site] * N, M.H_mpo, bc='periodic', IdL=0, IdR=-1)
+#H = MPO.from_grids([hilber_space_single_site] * N, M.H_mpo, bc='finite', IdL=0, IdR=-1)
 #MANAGED TO DEFINE A CHAIN WITH (HOPEFULLY) CORRECT MATRICES
 
 quit()

@@ -53,6 +53,10 @@
 		
 """
 
+from scipy.linalg import block_diag
+
+
+
 
 import numpy as np
 import scipy as sp
@@ -283,7 +287,11 @@ class QH_model(model): #CHANGED model to Model
 			self.print_MPOgraph()
 
 		print("WORKS UP TO HERE: MPO GRAPH IS CONSTRUCTED, SO NEED TO CONSTRUCT HMPO FROM MPOGRAPH")
-		self.build_H_mpo_from_MPOgraph(self.MPOgraph, verbose=verbose)
+
+		#USE THE NEW FUNCTION INSTEAD OF THE OLD ONE TO CREATE MPO. REASON FOR THIS IS THAT HERE WE FILL MPO WITH
+		#NPC.ARRAY - THIS IS INITIALIZED IN HILBERT SPACE!
+		
+		self.build_H_mpo_from_MPOgraph_DP(self.MPOgraph, verbose=verbose)
 		#if verbose >= 2: print( "\tMPO chi:", self.chi
 		#print(self.H_mpo)
 		if verbose >= 2: 
@@ -1915,6 +1923,10 @@ class QH_model(model): #CHANGED model to Model
 		##	Hilbert space & Operators
 			self.d = 2 * np.ones(L, dtype=np.int64)
 
+
+			"""
+			change slightly by making it diagonal?
+			
 			self.Id = [ np.eye(2) for s in range(N) ]
 			self.StrOp = [ np.diag([1., -1]) for s in range(N) ]
 			self.nOp = [ np.diag([0., 1]) for s in range(N) ]
@@ -1929,7 +1941,34 @@ class QH_model(model): #CHANGED model to Model
 			self.bond_ops = ['AOp_l', 'AOp_r']
 			
 			self.Qp_flat = np.zeros([L, 2, self.num_q], np.int64)
+			"""
 
+			self.Id = [ np.eye(2) for s in range(N) ]
+			self.StrOp = [ np.diag([1., -1]) for s in range(N) ]
+			self.nOp = [ np.diag([0., 1]) for s in range(N) ]
+			self.nOp_shift=[self.nOp[s]-0.5*self.Id[s] for s in range(N)]#shifted density so that I can easily calculate particle-hole symmetric things using your correlation functions, SG
+			self.AOp = [ np.diag([1.], -1) for s in range(N) ]		# creation
+			self.aOp = [ np.diag([1.], 1) for s in range(N) ]		# annihilation
+			self.invnOp = [ np.diag([1., 0]) for s in range(N) ]
+			#self.StrOp,self.nOp,self.nOp_shift,self.AOp,self.aOp,self.invnOp=block_diag(*self.StrOp), block_diag(*self.nOp),block_diag(*self.nOp_shift),block_diag(*self.AOp),block_diag(*self.aOp),block_diag(*self.invnOp)
+			#TRY THIS MAYBE STUPID BUT MAYBE WORTH IT
+			
+			#OK TOUCHED STUFF
+			from tenpy.networks.site import QH_MultilayerFermionSite
+			spin_testara=QH_MultilayerFermionSite(N=1)
+
+			
+			
+			self.site_ops = ['Id', 'StrOp', 'nOp', 'AOp', 'aOp', 'invnOp','nOp_shift']
+
+			self.AOp_l = np.outer( self.AOp[0], self.Id[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3])
+			self.AOp_r = np.outer(self.Id[0], self.AOp[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3])
+			self.bond_ops = ['AOp_l', 'AOp_r']
+			
+			self.Qp_flat = np.zeros([L, 2, self.num_q], np.int64)
+
+			self.Id, self.StrOp, self.nOp, self.nOp_shift,self.AOp,self.aOp,self.invnOp =spin_testara.Id, spin_testara.StrOp, spin_testara.nOp, spin_testara.nOp_shift,spin_testara.AOp,spin_testara.aOp,spin_testara.invnOp 
+			print('INNNBIG')
 		elif self.p_type == 'B':
 		##	Hilbert space & Operators
 			d = self.N_bosons + 1		# assume all the d's are the same
@@ -2150,6 +2189,7 @@ class QH_model(model): #CHANGED model to Model
 				site = (start_layer + i) % N
 				node = nodeheader + (i,)
 				stoploop = False
+			
 				try:
 					XNode = MPOgraph1[site][node]
 					if not must_keep: stoploop = True		# all the previous nodes already exist
@@ -2466,11 +2506,13 @@ class QH_model(model): #CHANGED model to Model
 	## m1 is spacing between Op0 and Op1, r is betwen Op1 and Op2, m2 is between Op2 and Op3
 	## the positions are the positions of the actual tensors, not the orbitals
 	## therefore orbitals at the same physical site but in different layers will have different positions
+		
 		MS = Markov.MPO_system(dtype = self.dtype)
 		r0_list = {}		# store all the terms with r = 0 separately
 		r0m0_list = {}
 		r0_onem0_list={}
 		for V in self.splitV_list:
+		
 			(Op0,ly0),m1,(Op1,ly1),r,(Op2,ly2),m2,(Op3,ly3),Vstrength,must_keep = V
 			Op0 = Op0[0]; Op1 = Op1[0]; Op2 = Op2[0]; Op3 = Op3[0];
 			if np.abs(Vstrength) == 0: continue
@@ -3085,7 +3127,6 @@ class LL(bands):
 			S += ' + ' + str(LagPoly[0]) + ') '
 		S += r"\exp{-\frac{q^2}{4}}"
 		return S
-		
 
 class general_LL(bands):
 	""" Allows you set a linear combination of form factors.

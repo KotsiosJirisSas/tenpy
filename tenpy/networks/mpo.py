@@ -2747,6 +2747,9 @@ def grid_insert_ops(site, grid):
         ``sum([strength*site.get_op('opname') for opname, strength in entry])``
         and entries ``'opname'`` replaced by ``site.get_op('opname')``.
     """
+    #print('INARA')
+    #print(len(grid[0][0]))
+    #print(grid[0][0][0])
     new_grid = [None] * len(grid)
     for i, row in enumerate(grid):
         new_row = new_grid[i] = list(row)

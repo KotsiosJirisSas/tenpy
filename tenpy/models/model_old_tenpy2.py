@@ -932,15 +932,15 @@ class model(object):
 					+ ' + '.join([ '%s*%s' % (tg[1],tg[0]) for tg in v[target] ]) for target in v ])
 		if multiline: print( "===================================================")
 
-
-
-	def build_H_mpo_from_MPOgraph(self, G, verbose = 0):
+	def build_H_mpo_from_MPOgraph_DP(self, G, verbose = 0):
 		"""	Builds W-matrices from an abstracted representation 'G' of the MPO.  """
 		
 		#print(G[0].keys())
-		print(len(G))
-		print(G[0][('Mk', 'aL-6-AL.12', 22)])
-		print(G[0][('Mk', 'aL-6-AL.12', 22)][('_a', np.int64(1), np.int64(12))])
+		#print(G[0][('Mk', 'AL-5-aL.9', 26)].keys())
+		#quit()
+		#print(len(G))
+		#print(G[0][('Mk', 'aL-6-AL.12', 22)])
+		#print(G[0][('Mk', 'aL-6-AL.12', 22)][('_a', np.int64(1), np.int64(12))])
 		#quit()
 		if verbose >= 1: 
 			print( "Building H_mpo (W) from MPO graph...")
@@ -959,13 +959,23 @@ class model(object):
 			raise ValueError(self.dtype)
 
 		for n in site_names:
+			#if n=='Id':
+			#	print(n)
 			op = getattr(self, n)			
+			#if n=='Id':
+			#	print(op)
+			#INDEED ATTACHES NPC ARRAYS TO THIS STUFF
+			#WHY DOES IT THEN ATTACH list to H_mpo?
 			if type(op)!=list:
 				op = [op]
 			setattr(self, n, op)
-
+		#print(self.Id[0])
 		self.chi = chi = np.array([len(G[(i+1)%L]) for i in range(L)], dtype = np.int64)
+		
+		#OK SETS SIZES OF MATRICES CORRESPONDING TO LAYER ETC
 		self.W = W = [ np.zeros( (chi[i-1], chi[i], d[i%len(d)], d[i%len(d)] ), dtype = self.dtype) for i in range(L)]
+		self.W=W= [[[None for _ in range(chi[i-1])] for _ in range(chi[i])] for i in range(L)]
+
 		
 		##	MPO_indices is a dictionary for each bond; ind[key] = index position
 		##	MPO_labels is a list for each bond; ind[pos] = key name
@@ -992,9 +1002,120 @@ class model(object):
 				for c, U in v.items():
 					for u in U:
 						op = getattr(self, u[0])
+						#print(op)
+						
 						op = op[i%len(op)]
+						#print('BLAAAA')
+						try:
+							#w[ir, indices[i][c], :, :] += u[1]*op
+							#print(ir)
+							#print(indices[i][c])
+							#print(w[ir][ indices[i][c]])
+							if w[ir][indices[i][c]]==None:
+								#print('INNN')
+								w[ir][ indices[i][c]] = u[1]*op
+							else:
+								w[ir][indices[i][c]] += u[1]*op
+							#print(w[ir][ indices[i][c]])
+							#print(u[1])
+							#print(op)
+							#quit()
+						except:
+							KeyError
+		self.H_mpo = W
+		#print(len(W[0][0][0]))
+		print('site_number=',self.L)
+		#print(W)
+		print('WORKS!')
+		#print(self.H_mpo)
+		"""
+		quit()
+		if self.num_q:
+			self.detect_Qmpo_flat(verbose=verbose)
+
+		self.init_model_for_conservation()
+		"""
+
+
+
+	def build_H_mpo_from_MPOgraph(self, G, verbose = 0):
+		"""	Builds W-matrices from an abstracted representation 'G' of the MPO.  """
+		
+		#print(G[0].keys())
+		#print(G[0][('Mk', 'AL-5-aL.9', 26)].keys())
+		#quit()
+		#print(len(G))
+		#print(G[0][('Mk', 'aL-6-AL.12', 22)])
+		#print(G[0][('Mk', 'aL-6-AL.12', 22)][('_a', np.int64(1), np.int64(12))])
+		#quit()
+		if verbose >= 1: 
+			print( "Building H_mpo (W) from MPO graph...")
+		L = self.L
+		
+		try:
+			iter(self.d)
+			d = self.d
+		except:
+			d = [self.d]		
+		try:
+			site_names = self.site_ops
+		except:
+			site_names = []
+		if self.dtype == np.int64:
+			raise ValueError(self.dtype)
+
+		for n in site_names:
+			#if n=='Id':
+			#	print(n)
+			op = getattr(self, n)			
+			#if n=='Id':
+			#	print(op)
+			#INDEED ATTACHES NPC ARRAYS TO THIS STUFF
+			#WHY DOES IT THEN ATTACH list to H_mpo?
+			if type(op)!=list:
+				op = [op]
+			setattr(self, n, op)
+		#print(self.Id[0])
+		self.chi = chi = np.array([len(G[(i+1)%L]) for i in range(L)], dtype = np.int64)
+		
+		#OK SETS SIZES OF MATRICES CORRESPONDING TO LAYER ETC
+		self.W = W = [ np.zeros( (chi[i-1], chi[i], d[i%len(d)], d[i%len(d)] ), dtype = self.dtype) for i in range(L)]
+		
+		
+		##	MPO_indices is a dictionary for each bond; ind[key] = index position
+		##	MPO_labels is a list for each bond; ind[pos] = key name
+		##	(The two objects are reversed lookups of each other)
+			#indices = self.MPO_indices = [ dict(itertools.izip(G[(i+1)%L].keys(), range(chi[i]))) for i in range(L) ]
+		MPO_labelsR = [ set(G[(s+1)%L].keys()) for s in range(L) ] #formed from rows
+		MPO_labelsC = [ set( [ k for r in G[s%L].values() for k in r.keys()]  )   for s in range(L) ] #formed from columns
+		
+		self.MPO_labels = [ list(MPO_labelsR[s] & MPO_labelsC[s]) for s in range(L)]
+		
+		indices = self.MPO_indices = [ dict([ (key,i) for i,key in enumerate(self.MPO_labels[s]) ]) for s in range(L) ]
+
+		
+		self.vL = np.array([ ind['R'] for ind in indices])
+		self.vR = np.array([ ind['F'] for ind in indices])
+		for i in range(L):
+			g = G[i%len(G)]
+			w = W[i]
+			ind = indices[(i-1)%L]
+			for r, v in g.items(): #row and list of edges
+				if r not in ind: #CHECK ME - due to union of MPO labels sometimes we call pruned node
+					continue
+				ir = ind[r] #where in hilbert space
+				for c, U in v.items():
+					for u in U:
+						op = getattr(self, u[0])
+						#print(op)
+						
+						op = op[i%len(op)]
+						
 						try:
 							w[ir, indices[i][c], :, :] += u[1]*op
+							print(u[1])
+							print(op)
+							quit()
 						except:
 							KeyError
 		self.H_mpo = W

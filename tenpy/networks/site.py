@@ -468,6 +468,9 @@ class Site(Hdf5Exportable):
             The operator given by `name`, with labels ``'p', 'p*'``.
             If name already was an npc Array, it's directly returned.
         """
+
+        #print('get the name')
+        #print(name)
         names = name.split()
         op = getattr(self, names[0], None)
         if op is None:
@@ -2108,7 +2111,7 @@ class QH_MultilayerFermionSite(Site):
         Average filling. Used to define ``dN``.
     """
     #N is number of layers!
-    def __init__(self, N=2,L=2,cons_N='N', cons_Sz='Sz', filling=1.):
+    def __init__(self, N=2,cons_N='None', cons_Sz='None', filling=1.):
         if not cons_N:
             cons_N = 'None'
         if cons_N not in ['N', 'parity', 'None']:
@@ -2123,9 +2126,9 @@ class QH_MultilayerFermionSite(Site):
 
         #LABEL FOR POSSIBLE STATES SPANNING SINGLE UNIT OF HILBERT SPACE!
         states = [format(i, f'0{N}b') for i in range(2**N)]
-        assert L % N == 0
+        #assert L % N == 0
         ##	Hilbert space & Operators
-        d = 2 * np.ones(L, dtype=np.int64)
+        #d = 2 * np.ones(L, dtype=np.int64)
 
         
         Id = [ np.eye(2) for s in range(N) ]
@@ -2141,9 +2144,9 @@ class QH_MultilayerFermionSite(Site):
         JW=StrOp#??? not sure even if correct
 
         #BOND OPS SEE WHERE YOU NEED THOSE
-        AOp_l = np.outer( AOp[0], Id[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3]) 
-        AOp_r = np.outer(Id[0], AOp[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3])  
-        bond_ops = ['AOp_l', 'AOp_r']
+        #AOp_l = np.outer( AOp[0], Id[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3]) 
+        #AOp_r = np.outer(Id[0], AOp[0] ).reshape(2, 2, 2, 2).transpose([0, 2, 1, 3])  
+        #bond_ops = ['AOp_l', 'AOp_r']
         
         #self.Qp_flat = np.zeros([L, 2, self.num_q], np.int64)
         #print(AOp)
@@ -2165,7 +2168,7 @@ class QH_MultilayerFermionSite(Site):
      
         leg = npc.LegCharge.from_trivial(2**(N))
 
-
+        #states=['empty','full']
         self.cons_N = cons_N
         self.cons_Sz = cons_Sz
         self.filling = filling

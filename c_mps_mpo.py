@@ -29,6 +29,8 @@ W_bulk = [[Id, Sp, Sm, Sz, -hz * Sz],
     [None, None, None, None, 0.5 * J * Sp], 
     [None, None, None, None, J * Delta * Sz],
           [None, None, None, None, Id]]
+
+print(W_bulk[0])
 W_first = [W_bulk[0]]  # first row
 W_last = [[row[-1]] for row in W_bulk]  # last column
 Ws = [W_first] + [W_bulk] * (N - 2) + [W_last]
