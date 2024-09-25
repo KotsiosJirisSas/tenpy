@@ -1,0 +1,8 @@
+25.9.2025. DP - created the shortened version of Zalatels tenpy2 files which produce tenpy3 MPO.
+DP modified four files:
+site.py - added class QH_MultilayerFermionSite which produces QH-fermions, still need charge conservation
+multilayer_qh_DP_final.py - removed unecessary bits. Replaced H_MPO arrays by npc.Arrays, commented out charge 
+conservation which calls old_npc
+model_old_tenpy3_final_DP.py - modified function build_H_mpo (whatever the name) to contain npc.Array instead
+of just an array
+test_H_mpo_multilater.py - this is the code which constructs MPO - i.e. run this to start the process

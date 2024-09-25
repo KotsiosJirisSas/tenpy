@@ -277,6 +277,7 @@ class MPO:
         IdR = cls._get_Id(IdR, L)
         if legs is None:
             if bc != 'infinite':
+
                 # ensure that we have only a single entry in the first and last leg
                 # i.e. project grids[0][:, :] -> grids[0][IdL[0], :]
                 # and         grids[-1][:, :] -> grids[-1][:,IdR[-1], :]
@@ -290,9 +291,13 @@ class MPO:
                     grids[-1] = [[row[IdR[-1]]] for row in last_grid]
                     IdR[-1] = 0
                     IdL[-1] = None
+
                 legs = _calc_grid_legs_finite(chinfo, grids, Ws_qtotal, None)
             else:
+                
                 legs = _calc_grid_legs_infinite(chinfo, grids, Ws_qtotal, None, IdL[0])
+        print('FINITO')
+        quit()
         # now build the `W` from the grid
         assert len(legs) == L + 1
         Ws = []
@@ -2805,6 +2810,7 @@ def _calc_grid_legs_infinite(chinfo, grids, Ws_qtotal, leg0, IdL_0):
     When initializing from an MPO graph directly, use :meth:`MPOGraph._calc_legcharges` directly.
     """
     if leg0 is not None:
+       
         # have charges of first leg: simple case, can use the _calc_grid_legs_finite version.
         legs = _calc_grid_legs_finite(chinfo, grids, Ws_qtotal, leg0)
         legs[-1].test_contractible(legs[0])  # consistent?
@@ -2838,6 +2844,8 @@ def _calc_grid_legs_infinite(chinfo, grids, Ws_qtotal, leg0, IdL_0):
     else:  # no `break` in the for loop, i.e. we are unable to determine all grid legcharges.
         # this should not happen (if we have no bugs), but who knows ^_^
         # if it happens, there might be unconnected parts in the graph
+        #WE GET THIS ERROR- WHAT IS THE PROBLEM HM HM?
+        
         raise ValueError("Can't determine LegCharge for the MPO")
     legs = [npc.LegCharge.from_qflat(chinfo, qflat, qconj=+1) for qflat in charges[:-1]]
     legs.append(legs[0])
