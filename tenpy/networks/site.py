@@ -2029,9 +2029,9 @@ Added Tue 24. september. 2024 by DP
 creates QH_MultilayerFermionSite
 Comments:
 ------------------------------------
-01/10/24: 1)Need to correctly incorporate the N conservation symmetry. Can skip the Sz,parity conservations as they dont apply here anyway. The charge is implemented by initializing a chargeinfo class instance like chinfo = npc.chargeinfo([1],['N']). N is the summetry 
-	    and 1 is the mod of the symmetry. Then, create the charges of the physical legs by initializing an instance of the LegCharge class: LegCHarge.from_qflat(chinfo,qflat) with qflat = [0,1] saying the first index in a leg has charge 0 and the second has charge 1.
-     	  2) I think we may need to treat the spin as a separate species rather than consider the combined spin up x spin down hilbert space as the 'fundamental' one.
+01/10/24 (KV) : 1)Need to correctly incorporate the N conservation symmetry. Can skip the Sz,parity conservations as they dont apply here anyway. The charge is implemented by initializing a chargeinfo class instance like chinfo = npc.chargeinfo([1],['N']). N is the summetry 
+	          and 1 is the mod of the symmetry. Then, create the charges of the physical legs by initializing an instance of the LegCharge class: LegCHarge.from_qflat(chinfo,qflat) with qflat = [0,1] saying the first index in a leg has charge 0 and the second has charge 1.
+     	        2) I think we may need to treat the spin as a separate species rather than consider the combined spin up x spin down hilbert space as the 'fundamental' one.
 """
 
 from scipy.linalg import block_diag
