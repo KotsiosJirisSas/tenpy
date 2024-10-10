@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 import sys
 import os
-sys.path.append('/home/v/vasiliou/tenpynew2/tenpy') #comment out if not me
+sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') #comment out if not me
 from tenpy.networks.mpo import MPOGraph
 from tenpy.networks.mpo import MPO
 #from tenpy.networks.site import [Placeholder] #this is whatever class captures the QH hilbert space. Should be very close to FermionSite(spinless)
@@ -51,12 +51,23 @@ def G2G_map(G):
     Input: The Graph at site i
     Output: The mapped Graph at site i
     '''
+    #print(len(G))
+    #print(G[0])
+    #quit()
     G_new = {}
     for key_L in G.keys():
         if key_L == 'R': key_L_new = 'IdL'
         elif key_L == 'F': key_L_new = 'IdR'
         else:
-            if isinstance(key_L,tuple): key_L_new = str(key_L) #dumb way of turning all node labels to strings
+            if isinstance(key_L,tuple): 
+                
+                if isinstance(key_L[1], str):
+                    key_L_new=(key_L[0],key_L[1],int(key_L[2]))
+                else:
+                    key_L_new=(key_L[0],int(key_L[1]),int(key_L[2]))
+                
+                key_L_new = str(key_L_new) #dumb way of turning all node labels to strings
+             
             else: key_L_new = key_L
         if key_L_new not in G_new:
             G_new[key_L_new] = {} # or []?
@@ -65,7 +76,16 @@ def G2G_map(G):
             if key_R == 'R': key_R_new = 'IdL'
             elif key_R == 'F': key_R_new = 'IdR'
             else:
-                if isinstance(key_R,tuple): key_R_new = str(key_R) #dumb way of turning all node labels to strings
+                if isinstance(key_R,tuple): 
+               
+                    #GET RID OF np.int64 from the string
+                    if isinstance(key_R[1], str):
+                        key_R_new=(key_R[0],key_R[1],int(key_R[2]))
+                    else:
+                        key_R_new=(key_R[0],int(key_R[1]),int(key_R[2]))
+                   
+                    key_R_new = str(key_R_new) #dumb way of turning all node labels to strings
+                   
                 else: key_R_new = key_R
             if key_R_new not in G_new[key_L_new]:
                 G_new[key_L_new][key_R_new] = []
@@ -126,7 +146,7 @@ def build_MPO(Model, Ws_qtotal=None):
     grids = Model._build_grids()
     IdL = [s.get('IdL', None) for s in Model._ordered_states]
     IdR = [s.get('IdR', None) for s in Model._ordered_states]
-    legs, Ws_qtotal = M._calc_legcharges(Ws_qtotal)
+    legs, Ws_qtotal = Model._calc_legcharges(Ws_qtotal)
     H = MPO.from_grids(Model.sites, grids, Model.bc, IdL, IdR, Ws_qtotal, legs, Model.max_range)
     return H
 

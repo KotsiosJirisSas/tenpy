@@ -296,14 +296,14 @@ class MPO:
             else:
                 
                 legs = _calc_grid_legs_infinite(chinfo, grids, Ws_qtotal, None, IdL[0])
-        print('FINITO')
-        quit()
-        # now build the `W` from the grid
         assert len(legs) == L + 1
         Ws = []
+        print('entering the long part')
         for i in range(L):
+            #print(i)
             W = npc.grid_outer(grids[i], [legs[i], legs[i + 1].conj()], Ws_qtotal[i], ['wL', 'wR'])
             Ws.append(W)
+        print('its finally finished')
         return cls(sites, Ws, bc, IdL, IdR, max_range, explicit_plus_hc)
 
     @classmethod
@@ -1998,6 +1998,7 @@ class MPOGraph:
             stack = []
             stack.append((i, keyL))
             while len(stack):
+                
                 i, keyL = stack.pop(-1)  # We are replacing system stack with one of our own
                 l = states[i][keyL]
                 site = sites[i]
@@ -2008,7 +2009,7 @@ class MPOGraph:
                 edges = self.graph[i][keyL]
                 edge_stack = []
                 for keyR, ops in edges.items():
-                    r = st_r[keyR]
+                    r = st_r[keyR]                
                     qR = ch_r[r]
                     if qR is None:
                         op_qtotal = site.get_op(ops[0][0]).qtotal
@@ -2016,9 +2017,9 @@ class MPOGraph:
                         if infinite or i + 1 < L:
                             edge_stack.append(((i + 1) % L, keyR))
                 stack = edge_stack + stack
-
+        print('entering the bad bit')
         travel_q_LR(0, 'IdL')
-
+        print('exiting the bad bit')
         # now we can still have unknown edges in the case of "dead ends" in the MPO graph.
 
         def travel_q_RL(i, keyL):
@@ -2784,8 +2785,12 @@ def _calc_grid_legs_finite(chinfo, grids, Ws_qtotal, leg0):
             raise ValueError("finite MPO with len of first bond != 1")
         q = chinfo.make_valid()
         leg0 = npc.LegCharge.from_qflat(chinfo, [q], qconj=+1)
+        #print(leg0)
     legs = [leg0]
+    #print(leg0)
+    #quit()
     for i, gr in enumerate(grids):
+        print(i)
         gr_legs = [legs[-1], None]
         gr_legs = npc.detect_grid_outer_legcharge(gr,
                                                   gr_legs,
@@ -2823,8 +2828,13 @@ def _calc_grid_legs_infinite(chinfo, grids, Ws_qtotal, leg0, IdL_0):
     charges[0][IdL_0] = chinfo.make_valid(None)  # default charge = 0.
 
     for _ in range(1000 * L):  # I don't expect interactions with larger range than that...
+        print(_)
         for i in range(L):
+
+            
             grid = grids[i]
+            #print(grid[0][0])
+            #quit()
             QsL, QsR = charges[i:i + 2]
             for vL, row in enumerate(grid):
                 qL = QsL[vL]

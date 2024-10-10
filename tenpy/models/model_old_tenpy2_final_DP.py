@@ -967,7 +967,9 @@ class model(object):
 			#INDEED ATTACHES NPC ARRAYS TO THIS STUFF
 			#WHY DOES IT THEN ATTACH list to H_mpo?
 			if type(op)!=list:
+				#print(op)
 				op = [op]
+				
 			setattr(self, n, op)
 		#print(self.Id[0])
 		self.chi = chi = np.array([len(G[(i+1)%L]) for i in range(L)], dtype = np.int64)

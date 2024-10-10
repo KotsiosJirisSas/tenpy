@@ -302,7 +302,7 @@ class QH_model(model): #CHANGED model to Model
 			self.print_MPOgraph()
 
 		print("MPO GRAPH IS CONSTRUCTED, SO NEED TO CONSTRUCT HMPO FROM MPOGRAPH....")
-
+		
 		#BUILD H_MPO USING NPC ARRAYS - THIS IS THE ONLY BIT I MODIFIED IN model_old_tenpy2 - rest is untouched
 		self.build_H_mpo_from_MPOgraph(self.MPOgraph, verbose=verbose)
 		
@@ -1823,10 +1823,15 @@ class QH_model(model): #CHANGED model to Model
 			#TRY THIS MAYBE STUPID BUT MAYBE WORTH IT
 			
 			#OK TOUCHED STUFF
+			from tenpy.networks.site import QH_MultilayerFermionSite_2
+			
+			root_config_ = np.array([0,1,0])
+			root_config_ = root_config_.reshape(3,1)
+			spin_testara=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
 			from tenpy.networks.site import QH_MultilayerFermionSite
 			spin_testara=QH_MultilayerFermionSite(N=1)
-
-			
+			#from tenpy.networks.site import FermionSite
+			#spin_testara=FermionSite(conserve='N')
 			
 			self.site_ops = ['Id', 'StrOp', 'nOp', 'AOp', 'aOp', 'invnOp','nOp_shift']
 
@@ -1837,6 +1842,8 @@ class QH_model(model): #CHANGED model to Model
 			self.Qp_flat = np.zeros([L, 2, self.num_q], np.int64)
 
 			self.Id, self.StrOp, self.nOp, self.nOp_shift,self.AOp,self.aOp,self.invnOp =spin_testara.Id, spin_testara.StrOp, spin_testara.nOp, spin_testara.nOp_shift,spin_testara.AOp,spin_testara.aOp,spin_testara.invnOp 
+			
+			#self.Id, self.StrOp, self.nOp, self.nOp_shift,self.AOp,self.aOp,self.invnOp =spin_testara.Id, spin_testara.JW, spin_testara.N, spin_testara.dN,spin_testara.Cd,spin_testara.C,spin_testara.InvN 
 			print('INNNBIG')
 		elif self.p_type == 'B':
 		##	Hilbert space & Operators

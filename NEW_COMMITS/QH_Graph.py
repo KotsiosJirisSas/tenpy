@@ -1,7 +1,7 @@
 """Call of (finite) DMRG."""
 import sys
 import os
-sys.path.append('/home/v/vasiliou/tenpynew2/tenpy') 
+sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
 import numpy as np
 from tenpy.linalg import np_conserved as npc
 from tenpy.models import multilayer_qh_DP_final as mod
@@ -14,8 +14,9 @@ from tenpy.algorithms import dmrg
 from tenpy.networks.mpo import MPO
 from tenpy.models.lattice import Chain
 from tenpy.networks.site import QH_MultilayerFermionSite
-
-
+from tenpy.networks.mpo import MPOGraph
+from tenpy.networks.mpo import MPO
+import QH_G2MPO
 
 np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
 
@@ -52,6 +53,63 @@ print ("-"*10 + "Comparing analytic V(q) Yukawa and V(r) Yukawa" +"-"*10)
 print("START MODEL")
 M = mod.QH_model(model_par)
 print('OLD CODE FINISHED')
+
+
+
+G=M.MPOgraph
+
+#G_new=[]
+#for i in range(len(G)):
+#	G_new.append( QH_G2MPO.G2G_map(G[i])) #make whatever necessary changes to the graph
+G_new=[QH_G2MPO.G2G_map(G[0])]
+#print(len(G_new[0]))
+from tenpy.networks.site import FermionSite_testara
+#spin = SpinHalfSite(conserve=None)
+spin=FermionSite_testara(conserve='N')
+L = 1# number of unit cell for infinite system
+sites = [spin] * L 
+
+
+M = MPOGraph(sites=sites,bc='infinite',max_range=None) #: Initialize MPOGRAPH instance
+#lst=G_new[0].keys()
+
+#from collections import Counter
+#repeated = [item for item, count in Counter(lst).items() if count > 0]
+#print(len(repeated))
+#quit()
+a=[]
+#print(len(G[0].values()))
+for r in G_new[0].values():
+	for k in r.keys():
+		a.append(k)
+#print(len(a))
+#a=set( a  )
+#print(len(a))
+
+#alal=set(G_new[0].keys())|set(a)
+#print(len(alal))
+#quit()
+States = [ set(G_new[0].keys()) , set( [ k for r in G_new[0].values() for k in r.keys()]  ) ] #extract auxilliary state strings from the Graph
+
+#print(len(States[0]))
+#quit()
+#print(len(States[1]))
+#print(States[1])
+#quit()
+M.states = States #: Initialize aux. states in model
+M._ordered_states = QH_G2MPO.set_ordered_states(States) #: sort these states(assign an idnex to each one)
+#print(M._ordered_states[1])
+#print('done')
+#quit()
+#print(len(M._ordered_states[0] ))
+#quit()
+M.test_sanity()
+M.graph = G_new #: INppuut the graph in the model 
+#print(len(G_new[0]))
+
+grids =M._build_grids()#:Build the grids from the graph
+H = QH_G2MPO.build_MPO(M,None)#: BUild the MPO
+print('bildara')
 quit()
 
 '''

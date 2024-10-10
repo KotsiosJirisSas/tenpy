@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 import sys
 import os
-sys.path.append('/home/v/vasiliou/tenpynew2/tenpy') #comment out if not me
+sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') #comment out if not me
 from tenpy.networks.site import SpinHalfSite
 from tenpy.networks.mpo import MPOGraph
 from tenpy.networks.mpo import MPO
@@ -104,7 +104,7 @@ print('-'*100)
 G_new = G2G_map(G_old[0])
 print(get_opnames(G_new))
 #So G has been mapped correctly
-
+#print(len(G_new))
 ####################
 # ATTACH G TO A MODEL!!!
 ####################
@@ -113,6 +113,8 @@ spin = SpinHalfSite(conserve="Sz")
 L = 1  # number of unit cell for infinite system
 sites = [spin] * L  # repeat entry of list N times
 M = MPOGraph(sites=sites,bc='infinite',max_range=None)
+
+#quit()
 print('='*100)
 print('Initialized the model')
 print('Inifinite or finite? ',M.bc)
@@ -176,5 +178,5 @@ def build_MPO(Model, Ws_qtotal=None):
     H = MPO.from_grids(Model.sites, grids, Model.bc, IdL, IdR, Ws_qtotal, legs, Model.max_range)
     return H
 H = build_MPO(M,None)
-
+print("Model finished building",'...'*10)
 quit()

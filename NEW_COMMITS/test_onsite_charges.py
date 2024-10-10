@@ -3,7 +3,7 @@ Here I am creating the Hamiltonian Hilbert space and checking the charges of the
 '''
 import sys
 import os
-sys.path.append('/home/v/vasiliou/tenpynew2/tenpy')
+sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy')
 import numpy as np
 from tenpy.linalg import np_conserved as npc
 from tenpy.models import multilayer_qh_DP_final as mod

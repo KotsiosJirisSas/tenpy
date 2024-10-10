@@ -2255,6 +2255,10 @@ class QH_MultilayerFermionSite_2(Site):
         for n in range(d): # runs over the hilber space
             for i in range(len(ps)): #runs over the conserved charges
                 Qp_flat[n, i] = n*q*Qmat[i,0] - ps[i] #C = q N - p
+        #UNSHIFT CHARGS
+        #Qp_flat[0, 0] =0; 
+        #Qp_flat[1, 0] =1; 
+
         chinfo = npc.ChargeInfo([1], ['N'])
         leg = npc.LegCharge.from_qflat(chinfo, Qp_flat[:,0]) #Qp_flat[:,0] = (-1,2)
         #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW is constructed
@@ -2293,7 +2297,97 @@ class QH_MultilayerFermionSite_2(Site):
         self.filling = filling_fractions[0]
         Site.__init__(self, leg, state_labels=state_labels, sort_charge=True, **ops)
         # specify fermionic operators
-        self.need_JW_string |= set(['C', 'Cd', 'JW']) #????
+        self.need_JW_string |= set(['AOp', 'aOp','StrOp', 'JW']) #????
+
+    def __repr__(self):
+        """Debug representation of self."""
+        return "FermionSite({c!r}, {f:f})".format(c=self.conserve, f=self.filling)
+
+
+
+
+class FermionSite_testara(Site):
+    r"""Create a :class:`Site` for spin-less fermions.
+
+    Local states are ``empty`` and ``full``.
+
+    .. warning ::
+        Using the Jordan-Wigner string (``JW``) is crucial to get correct results,
+        otherwise you just describe hardcore bosons!
+        Further details in :doc:`/intro/JordanWigner`.
+
+    ==============  ===================================================================
+    operator        description
+    ==============  ===================================================================
+    ``Id``          Identity :math:`\mathbb{1}`
+    ``JW``          Sign for the Jordan-Wigner string.
+    ``C``           Annihilation operator :math:`c` (up to 'JW'-string left of it)
+    ``Cd``          Creation operator :math:`c^\dagger` (up to 'JW'-string left of it)
+    ``N``           Number operator :math:`n= c^\dagger c`
+    ``dN``          :math:`\delta n := n - filling`
+    ``dNdN``        :math:`(\delta n)^2`
+    ==============  ===================================================================
+
+    ============== ====  ===============================
+    `conserve`     qmod  *excluded* onsite operators
+    ============== ====  ===============================
+    ``'N'``        [1]   --
+    ``'parity'``   [2]   --
+    ``'None'``     []    --
+    ============== ====  ===============================
+
+    Parameters
+    ----------
+    conserve : str
+        Defines what is conserved, see table above.
+    filling : float
+        Average filling. Used to define ``dN``.
+
+    Attributes
+    ----------
+    conserve : str
+        Defines what is conserved, see table above.
+    filling : float
+        Average filling. Used to define ``dN``.
+    """
+
+    def __init__(self, conserve='N', filling=0.5):
+        if not conserve:
+            conserve = 'None'
+        if conserve not in ['N', 'parity', 'None']:
+            raise ValueError("invalid `conserve`: " + repr(conserve))
+        JW = np.array([[1., 0.], [0., -1.]])
+        C = np.array([[0., 1.], [0., 0.]])
+        Cd = np.array([[0., 0.], [1., 0.]])
+        N = np.array([[0., 0.], [0., 1.]])
+        dN = np.array([[-filling, 0.], [0., 1. - filling]])
+        dNdN = dN**2  # (element wise power is fine since dN is diagonal)
+        Id=np.eye(2)
+        StrOp = np.diag([1., -1])
+        nOp = np.diag([0., 1])
+        nOp_shift= nOp-0.5*Id #shifted density so that I can easily calculate particle-hole symmetric things using your correlation functions, SG
+        AOp = np.diag([1.], -1)		# creation
+        aOp = np.diag([1.], 1) 	# annihilation
+        invnOp = np.diag([1., 0])
+
+
+        ops = dict(JW=JW,StrOp=StrOp, aOp=C, AOp=Cd, nOp=N, nOp_shift=nOp_shift, invnOp=invnOp)
+        if conserve == 'N':
+            chinfo = npc.ChargeInfo([1], ['N'])
+            leg = npc.LegCharge.from_qflat(chinfo, [0, 1])
+            self.charge_to_JW_parity = np.array([1])
+        elif conserve == 'parity':
+            chinfo = npc.ChargeInfo([2], ['parity_N'])
+            leg = npc.LegCharge.from_qflat(chinfo, [0, 1])
+            self.charge_to_JW_parity = np.array([1])
+        else:
+            leg = npc.LegCharge.from_trivial(2)
+            # no charge_to_JW_parity possible
+        self.conserve = conserve
+        self.filling = filling
+        Site.__init__(self, leg, ['empty', 'full'], sort_charge=True, **ops)
+        # specify fermionic operators
+        self.need_JW_string |= set(['AOp', 'aOp', 'JW','StrOp'])
 
     def __repr__(self):
         """Debug representation of self."""
