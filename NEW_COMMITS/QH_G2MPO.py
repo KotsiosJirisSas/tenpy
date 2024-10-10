@@ -2,35 +2,43 @@ import pickle
 import numpy as np
 import sys
 import os
-sys.path.append('/home/v/vasiliou/tenpynew2/tenpy')
-from tenpy.networks.site import SpinHalfSite
+sys.path.append('/home/v/vasiliou/tenpynew2/tenpy') #comment out if not me
 from tenpy.networks.mpo import MPOGraph
 from tenpy.networks.mpo import MPO
-
+#from tenpy.networks.site import [Placeholder] #this is whatever class captures the QH hilbert space. Should be very close to FermionSite(spinless)
 '''
-Here I am trying to create  a spin 1/2 model for the Long-range spin Hamiltonian 
-H = \\sum_{i,r}( Jz[r] Z_i x Z_{i+r} + J_{r} (X_i X_{i+r}+Y_{i}Y_{i+r})
-Where J ~1/r^2. The approximation of this as a sum of exponential terms is done with slycot in old tenpy and the Graph G is inputted here (data.pkl) as the starting point
+~~~10 Oct 2024~~~
+~~~~~~~~KV~~~~~~~
+
+SKELETON FOR MPO CONSTRUCTION FOR QUANTUM HALL SYSTEMS WITH NUMBER CONSERVATION STRAIGHT FROM THE GRAPH G OF THE FINITE STATE MACHINE
+
+INPUTS:
+1)  MODEL PARAMETERS. GET FED INTO THE CREATION OF THE HILBERT SPACE AND ALSO THE CREATION OF THE GRAPH
+2)  THE GRAPH G. THIS CAN EITHER BE IMPORTED FROM TENPY2 OR PREFERABLY FROM THE CODE DOM ALTERED TO WORK IN TENPY3. 
+    POINT IS, THE GRAPH SHOULD BE A LIST OF DICTIONARIES OF DICTIONARIES, WITH THE GRAPH AT INDEX i OF THE LIST LOOKS LIKE
+    G[i] = {r:{c:['Operator Name',Operator_strength]}}
 
 
+STEPS:
+0) Change certain aspects of the Graph to make sure it is compatible to use for tenpy3:
+    a)changes 'R' and 'F' nodes to 'IdL','IdR'
+    b) turns aby tuple nodes to string nodes, so all nodes are represented by straight strings that are sorted lexicographically (except IdL,IdR which automatically get sorted 1st and last respectively)
+    c) make sure Operator_strength entries are all floats
 
-Note 1: Need to take care that the local operators match between old and new Tenpy
-NOte 2: generalize part of the code when W's are more that 1 site. Only the mapping aspect should need updating and the part where i explicitly set the auxilliary space states
+1) Create Hilbert space os a single site, along with all the local operators and the charges of the physical legs. Then create the sites: a chain of length L of them (L= size or unit cell)
+2) Initialize an MPOgraoh instance: MPOGraph(sites=sites,bc='infinite',max_range=None)
+3) Extract the auxilliary Hilber space states (ie the node strings) from the Graph and *manually* feed them into the MPOgraph instance (M), along with their ordering.
+   (Maybe even find a way to do it from within the MPOgraph class by writing new class functions)
+4) Manually input the graph into the instance: M.graph = G
+5) Create the grid. Basically turns G ---> W where W's are grids (matrices) and W_ij contains the name and strength of the onsite operator connecting nodes i and j
+6) Call Build_MPO which builds the MPO from the model instance M. Breaking it down:
+   a) It first goes through the nodes and calculates the charges for the auxilliary legs
+   b) Calls the MPO class function MPO.from_grids() which initializes the MPO based on all the above collected information.
+   This is pretty much the MPOgraphs.Build_MPO function with small changes. Maybe incorporate directly
+7) Done
 '''
-#data.pkl has non-zero Jz,J_\pm
-#data_2.pkl only has non-zero Jz. so its simpler.
-#data_3.pkl only has non-zero J\pm.
-#All these were created in the haldaneshastry.py model in old Tenpy
-
-with open('data.pkl', 'rb') as f:
-    loaded_data = pickle.load(f, encoding='latin1')
-with open('data_2.pkl', 'rb') as f:
-    loaded_data_2 = pickle.load(f, encoding='latin1')
-with open('data_3.pkl', 'rb') as f:
-    loaded_data_3 = pickle.load(f, encoding='latin1')
-
-G_old = loaded_data_2
-
+#####################################################################################################
+#Functions we might need (Some might need minor modification for QH case, as they are based on SPin chain case)
 def G2G_map(G):
     '''
     Provides a mapping from tenpy2 to tenpy3 Graph dictionaries. Helpful for building MPO in TenPy3 using Markov Processes from Tenpy2.
@@ -72,7 +80,7 @@ def G2G_map(G):
     return G_new
 def get_opnames(G):
     '''
-    Given the graph, go through all nodes and print out the physical operators
+    Given the graph, go through all nodes and prints out the physical operators.
     '''
     Opnames = []
     for k1 in G.keys():
@@ -82,36 +90,10 @@ def get_opnames(G):
             if op not in Opnames:
                 Opnames.append(op)
     return Opnames
-
-print('-'*100)
-G_new = G2G_map(G_old[0])
-print(get_opnames(G_new))
-#So G has been mapped correctly
-
-####################
-# ATTACH G TO A MODEL!!!
-####################
-#STEP1: CREATE HILBERT SPACE AND CHARGE INFORMATION
-spin = SpinHalfSite(conserve="Sz")
-L = 1  # number of unit cell for infinite system
-sites = [spin] * L  # repeat entry of list N times
-M = MPOGraph(sites=sites,bc='infinite',max_range=None)
-print('='*100)
-print('Initialized the model')
-print('Inifinite or finite? ',M.bc)
-print('Unit cell size: L = ',M.L)
-print('Physical Hilbert Space:',M.sites[0].state_labels)
-print('Physical leg charge info:',M.sites[0].leg)
-print('='*100)
-print(M._ordered_states)# These ordered states live on the bonds not on sites, hence having L+1 of them. But really states[-1] == states[0] when it comes to bonds.
-#######################
-#extract the states explicitly for each bond. Here I am doing this explicitly because there is only L=0 but in general, need to generalize...
-#Then, attach a dictionary to them to label their index. Then finally endow the model instance with self.states, self._ordered_states attributes!
-G = []
-G.append(G_new)
-States = [ set(G[0].keys()) , set( [ k for r in G[0].values() for k in r.keys()]  ) ] #formed from rows and columns
-
 def _mpo_graph_state_order(key):
+    '''
+    Assignes an ordering to each MPO node based on the string
+    '''
     if isinstance(key, str):
         if key == 'IdL':  # should be first
             return (-2, ) #-2 is higher priority ===> gets sorted first
@@ -123,6 +105,9 @@ def _mpo_graph_state_order(key):
         raise ValueError
 
 def set_ordered_states(states):
+    '''
+    creates a dictionary for each bond in the system that assigns an index to each node: {'node1':index_1,....}. We always have 'IdL':1,'IdR':-1
+    '''
     res = []
     for s in states:
         d = {}
@@ -130,26 +115,12 @@ def set_ordered_states(states):
             d[key] = i
         res.append(d)
     return res
-    
-res = set_ordered_states(States)
-M.states = States
-M._ordered_states = res
-M.test_sanity()
-IdL = [s.get('IdL', None) for s in res] #[0,0] in our case. Two 0's cause two bonds
-IdR = [s.get('IdR', None) for s in res] #[13,13] in our case. Two cause two bonds
-#####################################################
-#build grid, by first setting the graph attribute.
-# At this point we have instead of a dictionary a grid whose elements are tuples that look like W_ij = [('Op_name',Op_strength)]
-M.graph = G
-grids =M._build_grids()
-###################################################
-#Now the big step, calculate the leg charges and create the MPO
-print('Sp charge',M.sites[0].get_op('Sp').qtotal)
-print('Sm charge',M.sites[0].get_op('Sm').qtotal)
-print('Sz charge',M.sites[0].get_op('Sz').qtotal)
-print('Id charge',M.sites[0].get_op('Id').qtotal)
-print('-'*100)
+
 def build_MPO(Model, Ws_qtotal=None):
+    '''
+    Input: the MPOgraph instance
+    OUtput: The MPO instance
+    '''
     Model.test_sanity()
     #M._set_ordered_states()
     grids = Model._build_grids()
@@ -158,6 +129,19 @@ def build_MPO(Model, Ws_qtotal=None):
     legs, Ws_qtotal = M._calc_legcharges(Ws_qtotal)
     H = MPO.from_grids(Model.sites, grids, Model.bc, IdL, IdR, Ws_qtotal, legs, Model.max_range)
     return H
-H = build_MPO(M,None)
 
-quit()
+#####################################################################################################
+#sketch of how it will look:
+#model_parameters = {}
+#site = QHSite(model_parameters)
+#system size = L
+#sites = [site] * L  
+#G = function(model_parameters): extract the graph however you do it.
+#G = G2G_map(G) #make whatever necessary changes to the graph
+#M = MPOGraph(sites=sites,bc='infinite',max_range=None) : Initialize MPOGRAPH instance
+#States = [ set(G[0].keys()) , set( [ k for r in G[0].values() for k in r.keys()]  ) ] extract auxilliary state strings from the Graph
+#M.states = States : Initialize aux. states in model
+#M._ordered_states = set_ordered_states(States) : sort these states(assign an idnex to each one)
+#M.graph = G : INppuut the graph in the model 
+#grids =M._build_grids():Build the grids from the graph
+#H = build_MPO(M,None): BUild the MPO
