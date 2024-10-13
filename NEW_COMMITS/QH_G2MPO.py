@@ -134,6 +134,7 @@ def set_ordered_states(states):
         for i, key in enumerate(sorted(s, key=_mpo_graph_state_order)):
             d[key] = i
         res.append(d)
+    
     return res
 
 def build_MPO(Model, Ws_qtotal=None):
