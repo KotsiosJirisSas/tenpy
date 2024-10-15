@@ -2173,7 +2173,7 @@ class QH_MultilayerFermionSite(Site):
      
         leg = npc.LegCharge.from_trivial(2**(N))
 
-        #states=['empty','full']
+        states=['empty','full']
         self.cons_N = cons_N
         self.cons_Sz = cons_Sz
         self.filling = filling
@@ -2220,7 +2220,7 @@ class QH_MultilayerFermionSite(Site):
 
 
 class QH_MultilayerFermionSite_2(Site):
-    def __init__(self,root_config,N=1,conserve='N'):
+    def __init__(self,root_config,N=1,conserve='N',sort_charge=True):
         '''
         03 Oct 2024 KV
         root_config is a 2-array shaped (#, N)  (# is not L/N, where L is total sites in unit cell and N is layers, but it has to be a multiple of that). Note that here we are creating the  charges for a single site...
@@ -2295,7 +2295,7 @@ class QH_MultilayerFermionSite_2(Site):
         '''
         self.conserve = conserve
         self.filling = filling_fractions[0]
-        Site.__init__(self, leg, state_labels=state_labels, sort_charge=True, **ops)
+        Site.__init__(self, leg, state_labels=state_labels, sort_charge=sort_charge, **ops)
         # specify fermionic operators
         self.need_JW_string |= set(['AOp', 'aOp','StrOp', 'JW']) #????
 

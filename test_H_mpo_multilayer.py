@@ -52,12 +52,12 @@ print('OLD CODE FINISHED')
 
 
 H_mpo=M.H_mpo
-print(len(M.MPOgraph[0]))
-quit()
+#print(len(M.MPOgraph[0]))
+#quit()
 
-print(len(H_mpo))
-print(len(H_mpo[0]))
-print(len(H_mpo[0][0]))
+#print(len(H_mpo))
+#print(len(H_mpo[0]))
+#print(len(H_mpo[0][0]))
 
 
 
@@ -71,63 +71,22 @@ root_config = root_config.reshape(3,1)
 
 
 
-from tenpy.networks.site import FermionSite
+#from tenpy.networks.site import FermionSite
 
 #hilber_space_single_site=QH_MultilayerFermionSite_2(N=1,root_config=root_config,conserve='N')
-#hilber_space_single_site=QH_MultilayerFermionSite(N=1)
-#Id, StrOp, nOp,nOp_shift,AOp,aOp,invnOp= hilber_space_single_site.Id,hilber_space_single_site.StrOp, hilber_space_single_site.nOp, hilber_space_single_site.nOp_shift, hilber_space_single_site.AOp, hilber_space_single_site.aOp, hilber_space_single_site.invnOp
+hilber_space_single_site=QH_MultilayerFermionSite(N=1)
+Id, StrOp, nOp,nOp_shift,AOp,aOp,invnOp= hilber_space_single_site.Id,hilber_space_single_site.StrOp, hilber_space_single_site.nOp, hilber_space_single_site.nOp_shift, hilber_space_single_site.AOp, hilber_space_single_site.aOp, hilber_space_single_site.invnOp
 #
 
 
 
 
-hilber_space_single_site=FermionSite(conserve='N')
+#hilber_space_single_site=FermionSite(conserve='N')
 
-Id, nOp,nOp_shift,AOp,aOp= hilber_space_single_site.Id, hilber_space_single_site.N, hilber_space_single_site.dN, hilber_space_single_site.Cd, hilber_space_single_site.C
+#Id, nOp,nOp_shift,AOp,aOp= hilber_space_single_site.Id, hilber_space_single_site.N, hilber_space_single_site.dN, hilber_space_single_site.Cd, hilber_space_single_site.C
 
 J, Delta, hz = 1., 1., 0.2
-"""
-copy=H_mpo.copy()
-for i in range(len(H_mpo)):
-	
 
-	for j in range(len(H_mpo[0])):
-	
-		for k in range(len(H_mpo[0][0])):
-			if H_mpo[i][j][k]==None:
-				copy[i][j][k]=0*Id
-
-
-print('aaaaa')
-num=0
-
-num_col=0
-for j in range(len(H_mpo[0])):
-	num_row=0
-	for k in range(len(H_mpo[0][0])):
-		if H_mpo[0][j][k]==None:
-			num_row+=1
-	#print(num_row)
-	if num_row==len(H_mpo[0]):
-		num+=1
-	
-print(num)
-
-for j in range(len(H_mpo[0])):
-	num_row=0
-	for k in range(len(H_mpo[0][0])):
-		if H_mpo[0][k][j]==None:
-			num_row+=1
-	#print(num_row)
-	print(len(H_mpo[0]))
-	if num_row==len(H_mpo[0]):
-		num+=1
-"""	
-#print(num)
-#quit()
-#print(copy[0][0])
-
-#quit()
 W_bulk = [[Id, nOp, aOp,AOp , -hz *nOp], 
           [None, None, None, None, 0.532 * J * AOp],
     [None, J * Delta * AOp, None, None, 0.512 * J * aOp], 
@@ -143,19 +102,11 @@ W_bulk = [[Id, nOp, nOp,nOp , -hz *AOp],
 W_bulk = [[Id, 0*Id, 0*Id ], 
           [1.01*aOp, 0*Id, 0*Id],
     [0*Id, AOp, Id] ]
- 
-
-
-#W_bulk=[[-0.6647744*Id, None, None],
-#[None,None ,StrOp],
-#[None, None, 0.2412*Id]]
-#print(W_bulk[2])
 
 
 
-#W_bulk = [[ Id,Id, 0*Id], 
-#          [ None, None, None],
-#    		[ None, None, None]]
+
+
 Ws =  [W_bulk] * (N ) 
 
 
@@ -175,5 +126,34 @@ Ws =  [W_bulk] * (N )
 #H = MPO.from_grids([hilber_space_single_site] * N,Ws, bc='finite', IdL=0, IdR=-1)
 
 #MANAGED TO DEFINE A CHAIN WITH (HOPEFULLY) CORRECT MATRICES
-H = MPO.from_grids([hilber_space_single_site] * N, Ws, bc='finite', IdL=0, IdR=-1)
+
+H = MPO.from_grids([hilber_space_single_site] * N, Ws, bc='infinite', IdL=0, IdR=-1)
+
+
+
+N=2
+
+model_params={"L": N, "conserve": "N", "bc_MPS": "infinite"}
+#QHModel(model_params,  lattice,H_MPO)
+
+root_config_ = np.array([0,1,0])
+root_config_ = root_config_.reshape(3,1)
+
+
+#print(hilber_space_single_site)
+#print(H.sites)
+#quit()
+#model = QHChain(model_params,root_config_,H_MPO=H)
+model = QHChain(H,L=2)
+sites = model.lat.mps_sites()
+
+psi = MPS.from_product_state(sites, ['empty'] * N, "infinite")
+dmrg_params = {"trunc_params": {"chi_max": 100, "svd_min": 1.e-10}, "mixer": True}
+info = dmrg.run(psi, model, dmrg_params)
+print("E =", info['E'])
+# E = -1.342864022725017
+print("max. bond dimension =", max(psi.chi))
+# max. bond dimension = 56
+print("corr. length =", psi.correlation_length())
+# corr. length = 4.915809146764157
 print("FINISHED")

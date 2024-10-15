@@ -1828,8 +1828,8 @@ class QH_model(model): #CHANGED model to Model
 			root_config_ = np.array([0,1,0])
 			root_config_ = root_config_.reshape(3,1)
 			spin_testara=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
-			from tenpy.networks.site import QH_MultilayerFermionSite
-			spin_testara=QH_MultilayerFermionSite(N=1)
+			#from tenpy.networks.site import QH_MultilayerFermionSite
+			#spin_testara=QH_MultilayerFermionSite(N=1)
 			#from tenpy.networks.site import FermionSite
 			#spin_testara=FermionSite(conserve='N')
 			

@@ -706,6 +706,19 @@ class MPOModel(Model):
         return cp
 
     def test_sanity(self):
+        print('test this')
+        #print(len(self.H_MPO.sites))
+        #print(len(self.lat.mps_sites()))
+
+        #print(self.H_MPO.sites[0])
+        #print(self.lat.mps_sites()[0])
+        #print(self.H_MPO.sites[0]==self.lat.mps_sites()[0])
+        #a=self.lat.mps_sites()[0]
+        #HMM HMM
+        #print(a.StrOp==self.H_MPO.sites[0].StrOp)
+        #WHY ARE THEY UNEQUAL??
+        #AND WHY ARE THEY SpinHalfFermionsite
+        #print(self.lat)
         if self.H_MPO.sites != self.lat.mps_sites():
             raise ValueError("lattice incompatible with H_MPO.sites")
 
@@ -884,6 +897,7 @@ class CouplingModel(Model):
     def __init__(self, lattice, explicit_plus_hc=False):
         Model.__init__(self, lattice)
         L = self.lat.N_sites
+
         self.onsite_terms = {}
         self.coupling_terms = {}
         self.exp_decaying_terms = ExponentiallyDecayingTerms(L)

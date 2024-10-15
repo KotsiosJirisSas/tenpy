@@ -13,10 +13,14 @@ from tenpy.models.QH_new_model import QHChain
 from tenpy.algorithms import dmrg
 from tenpy.networks.mpo import MPO
 from tenpy.models.lattice import Chain
-from tenpy.networks.site import QH_MultilayerFermionSite
+from tenpy.networks.site import QH_MultilayerFermionSite_2
 from tenpy.networks.mpo import MPOGraph
 from tenpy.networks.mpo import MPO
 import QH_G2MPO
+
+
+#CONSTRUCT SQUEEZED STATE
+
 
 np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
 
@@ -32,7 +36,7 @@ V = { 'eps':Veps, 'xiK':2., 'rV(r)': { ('L','L'): {'rV': rvr} }, 'coulomb': { ('
 root_config = [0]*NLL
 
 
-N=2
+N=3
 model_par = {
 
 	#ahhhh ok ok so it constructs the periodic one, ggwp with 24 sites for some reason
@@ -68,9 +72,16 @@ if len(G_new) != len(G):
 	print('Something went wrong in creating the list of dictionaries')
 	raise ValueError
 
-#IMPORT site
-from tenpy.networks.site import FermionSite_testara
-spin=FermionSite_testara(conserve='N')
+
+
+from tenpy.networks.site import QH_MultilayerFermionSite_2
+
+root_config_ = np.array([0,1,0])
+root_config_ = root_config_.reshape(3,1)
+spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
+
+
+#spin=FermionSite_testara(conserve='N')
 L = len(G_new) #System size for finite case, or unit cell for infinite
 
 
@@ -129,4 +140,58 @@ print("Test passed!"+".."*10)
 grids =M._build_grids()#:Build the grids from the graph
 H = QH_G2MPO.build_MPO(M,None)#: Build the MPO
 print('bildara')
+
+
+"""Call of infinite DMRG."""
+
+
+
+from tenpy.networks.mps import MPS
+from tenpy.models.model import MPOModel
+from tenpy.models.lattice import Chain
+from tenpy.algorithms import dmrg
+
+
+pstate=["empty", "full","empty"]
+
+
+psi = MPS.from_product_state(sites, pstate, bc="infinite")
+
+
+
+lattice=Chain(N,spin, bc="periodic",  bc_MPS="infinite")
+model=MPOModel(lattice, H)
+
+from tenpy.algorithms import dmrg
+dmrg_params = {"trunc_params": {"chi_max": 100, "svd_min": 1.e-10}, "mixer": True}
+
+print("Run DMRG:")
+engine = dmrg.TwoSiteDMRGEngine(psi, model, dmrg_params)  
+E0, psi = engine.run()
+
+
+print("E =", E0)
+print("DONE")
+
+
+
+
+Length=psi.correlation_length()
+print('correlation length:',Length)
+
+
+
+filling=psi.expectation_value("nOp")
+
+print('Filling:',filling)
+
+
+E_spec=psi.entanglement_spectrum()
+print('entanglement spectrum:',E_spec)
+
+
+
+EE=psi.entanglement_entropy()
+print('entanglement entropy:',EE)
+#filling=psi.correlation_function("AOp", "aOp")
 quit()

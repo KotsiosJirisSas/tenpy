@@ -141,6 +141,9 @@ def run_infinite(gs):
     }
 
     M = TFIChain(model_params)
+    print('bc:')
+    print(M.lat.__dict__)
+    quit()
     psi = MPS.from_product_state(M.lat.mps_sites(), (["up", "down"] * L)[:L], M.lat.bc_MPS)
 
     engine = dmrg.TwoSiteDMRGEngine(psi, M, dmrg_params)
@@ -270,7 +273,7 @@ if __name__ == "__main__":
     #gs=np.linspace(0.5,1.2,10)[::-1]
     #gs = [0.8,0.9]
       
-    #results = run_infinite(gs)
+    results = run_infinite(gs)
     #plot(results, filename + '.png')
     results =run_finite(gs)
     filename = 'finite_DMRG_tfi_phase_transition'

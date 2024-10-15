@@ -1943,6 +1943,7 @@ class MPOGraph:
             for keyL, a in stL.items():
                 row = [None] * len(stR)
                 for keyR, lst in graph[keyL].items():
+                    
                     b = stR[keyR]
                     row[b] = lst
                 grid[a] = row
