@@ -1,7 +1,7 @@
 """PRODUCES GRAPH AND MPO FOR QUANTUM HALL SYSTEMS"""
 import sys
 import os
-sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
+sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
 import numpy as np
 from tenpy.linalg import np_conserved as npc
 from tenpy.models import multilayer_qh_DP_final as mod

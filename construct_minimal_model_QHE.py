@@ -23,7 +23,7 @@ data = {"psi": psi,  # e.g. an MPS
 
 with h5py.File("file.h5", 'w') as f:
     hdf5_io.save_to_hdf5(f, data)
-quit()
+
 
 
 Length=psi.correlation_length()
@@ -92,7 +92,7 @@ print(lattice.bc)
 #sites = model.lat.mps_sites()
 from tenpy.algorithms import dmrg
 #psi = MPS.from_product_state(sites, ['down'] * N, "finite")
-dmrg_params = {"trunc_params": {"chi_max": 100, "svd_min": 1.e-10}, "mixer": True}
+dmrg_params = {"trunc_params": {"chi_max": 100, "svd_min": 1.e-10}, "mixer": True, "max_sweeps":10}
 print('enter DMRG algorithm:')
 #E0, psi  = dmrg.run(psi, model, dmrg_params)
 engine = dmrg.TwoSiteDMRGEngine(psi, model, dmrg_params)  # (re)initialize DMRG environment with new model

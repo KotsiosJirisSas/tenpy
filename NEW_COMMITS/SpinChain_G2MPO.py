@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 import sys
 import os
-sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') #comment out if not me
+sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') #comment out if not me
 from tenpy.networks.site import SpinHalfSite
 from tenpy.networks.mpo import MPOGraph
 from tenpy.networks.mpo import MPO

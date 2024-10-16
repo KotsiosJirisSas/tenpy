@@ -338,7 +338,9 @@ class DMRGEngine(IterativeSweeps):
         self.sweep_stats['max_E_trunc'].append(max_E_trunc)
         self.sweep_stats['max_chi'].append(np.max(self.psi.chi))
         self.sweep_stats['norm_err'].append(norm_err)
-
+        print("statistics of a run\n"+"####"*10)
+        for key, value in self.sweep_stats.items():
+            print(f"{key}: {value[-1]}")
         return E, self.psi
 
     def status_update(self, iteration_start_time: float):

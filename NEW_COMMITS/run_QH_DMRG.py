@@ -1,8 +1,8 @@
-
+#!/usr/bin/env python
 """Code for running DMRG """
 import sys
 import os
-sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
+sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
 import numpy as np
 from tenpy.linalg import np_conserved as npc
 from tenpy.models import multilayer_qh_DP_final as mod
@@ -21,7 +21,7 @@ from tenpy.networks.mpo import MPOGraph
 from tenpy.networks.mpo import MPO
 import QH_G2MPO
 import QH_Graph_final
-
+print(sys.executable)
 
 np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
 
@@ -109,7 +109,7 @@ psi = MPS.from_product_state(sites, pstate, bc="infinite")
 lattice=Chain(N,spin, bc="periodic",  bc_MPS="infinite")
 model=MPOModel(lattice, H)
 
-dmrg_params = {"trunc_params": {"chi_max": 100, "svd_min": 1.e-10}, "mixer": True}
+dmrg_params = {"trunc_params": {"chi_max": 100, "svd_min": 1.e-10}, "mixer": True, "max_sweeps":100}
 
 print("Run DMRG:")
 engine = dmrg.TwoSiteDMRGEngine(psi, model, dmrg_params)  
