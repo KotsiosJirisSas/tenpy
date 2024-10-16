@@ -23,46 +23,92 @@ import QH_G2MPO
 import QH_Graph_final
 print(sys.executable)
 
+
 np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
 
-NLL = 1; Veps = 1e-4
-xi = 1
-d = 0
-def rvr(r):
-	return np.exp(-r/xi)
+
+###	Layer naming scheme	###
+# See line 22 of multilayer_qh for details
+# A layer is a component - like a spin species, or bilayer index. It can have any key as name.
+# Each layer can have multiple Landau levels.
+# The Hilbert space is specified by
+# 'layers': [  ( layer_key, landau level), (layer_key, landau level) , . . . ]
+# For example,  [ ('up', 0), ('up', 1), ('down', 1) ]
+# will have two species, 'up' and 'down'; 'up' contains LLs of n = 0 and 1, and 'down' a single n = 1 LL.
+# For nu = 1/3,   we will use  [ ('L', LL)], with LL specified below.
+
+
+##	These are parameters to run
+Lx = 16;			# circumference
+LL = 0;			# which Landau level to put in
+mixing_chi = 850; #Bond dimension in initial sweeps
+chi = 1250;		#Bond dimension of MPS
+xi = 6;			# The Gaussian falloff for the Coulomb potential
+Veps = 1e-5		# how accurate to approximate the MPO
+
+### Specifying potentials ###
+# A variety of potentials have been coded - haldane, TK, GaussianCoulomb, or an arbitrary real space V(r)
+# The general syntax is
+# V[potential_type] =  {  (layer1, layer2): info_dict, (layer1, layer2): info_dict, ... }
+# where the tuple (layer1, layer2) specifies which two species are interacting, and info_dict details the potential, with data that depends on the type of potential
+
+# V also has some other possible keys; for instance:
+# eps: MPO approximation error
+# xiK: estimate of real space extent of potential. This gives heuristic for how the integrals are performed for the matrix elements of the interaction (can be set to whatever 'xi' is without problem)
+
 
 #Potential data for (single/multilayered) model Laughlin
-V = { 'eps':Veps, 'xiK':2., 'rV(r)': { ('L','L'): {'rV': rvr} }, 'coulomb': { ('L','L'):  {'v':-1., 'xi': xi}} }
+def rV(r):		# this is r * V(r)
+	return np.exp(-(r/xi)**2/2.)
+#V = { 'eps':Veps, 'xiK':xi, 'rV(r)': {('L','L'):{'rV':rV}} } # allow you to specify an arbitrary potential
 
-root_config = [0]*NLL
+V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} } # use the built-in function
 
+root_config = np.array([0, 1, 0])		# this is how the initial wavefunction looks
 
-N=3
 model_par = {
-
-	#ahhhh ok ok so it constructs the periodic one, ggwp with 24 sites for some reason
-	# - for reason of there being 2 layers!
-	'boundary_conditions': ('infinite', N), #for finite replace by periodic here
-	'verbose': 2,
-	#'layers': [ ('L', l) for l in range(NLL) ],
-	'layers':[ ('L', 1)],
-	'Lx': 12.,
+	'verbose': 3,
+	'layers': [ ('L', LL) ],
+	'Lx': Lx,
 	'Vs': V,
-	'cons_C': 'total',
-	'cons_K': False,
-	'root_config': root_config,
-	'exp_approx': 'slycot',
+#	'boundary_conditions': ('periodic', 1),
+	'cons_C': 'total', #Conserve number for each species (only one here!)
+	'cons_K': False, #Conserve K
+	'root_config': root_config, #Uses this to figure out charge assignments
+	'exp_approx': '1in', #For multiple orbitals, 'slycot' is more efficient; but for 1 orbital, Roger's handmade code '1in' is slightly more efficient
 }
+
+#DMRG run parameters. See DMRG.run for list of such parameters.
+
+dmrg_par = {
+	'N_STEPS': 2,
+	'STARTING_ENV_FROM_PSI': 21,
+	'MAX_STEPS': 36,
+	'MIN_STEPS': 16,
+	'MAX_ERROR_E' : 1e-6,
+	'MAX_ERROR_S' : 1e-4,
+	'CHI_LIST': {0:mixing_chi, 12:chi},
+	'TRUNC_CUT': 1e-9,
+	'LANCZOS_PAR' : {'N_min': 2, 'N_max': 20, 'p_tol': 5e-6, 'p_tol_to_trunc': 1/25., 'cache_v':np.inf},
+	'mixer': (0.000001, 2., 10, 'id'),
+}
+
+
+
+
 
 print("Start model in Old Tenpy",".."*10)
 M = mod.QH_model(model_par)
 print("Old code finished producing MPO graph",".."*10)
-
+#quit()
 
 G=M.MPOgraph
+
 G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
-
-
+#print(len(G_new))
+#quit()
+G_new=[G_new[0],G_new[0],G_new[0]]
+print(len(G_new))
 root_config_ = np.array([0,1,0])
 root_config_ = root_config_.reshape(3,1)
 spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
@@ -106,7 +152,7 @@ psi = MPS.from_product_state(sites, pstate, bc="infinite")
 
 
 #initialize MPOModel
-lattice=Chain(N,spin, bc="periodic",  bc_MPS="infinite")
+lattice=Chain(L,spin, bc="periodic",  bc_MPS="infinite")
 model=MPOModel(lattice, H)
 
 dmrg_params = {"trunc_params": {"chi_max": 100, "svd_min": 1.e-10}, "mixer": True, "max_sweeps":100}
