@@ -2235,8 +2235,13 @@ class QH_model(model): #CHANGED model to Model
 					D0123['Vr'] = Vr_list
 				Vr_list[r] += Vstrength
 				if must_keep: D0123['keep'] = True
-		#Opkey_str = lambda (OO1,ll1,mm,OO2,ll2): OO1+str(ll1)+'_'+str(mm)+'_'+OO2+str(ll2)
-		#Opkey_Herm = lambda (OO1,ll1,mm,OO2,ll2): ('a' if OO1=='A' else 'A', ll1, mm, 'a' if OO2=='A' else 'A', ll2)
+		#changed from python2
+		#Opkey_str = lambda (OO1, ll1, mm, OO2, ll2): OO1 + str(ll1) + '_' + str(mm) + '_' + OO2 + str(ll2)
+		Opkey_str = lambda tupla: tupla[0] + str(tupla[1]) + '_' + str(tupla[2]) + '_' + tupla[3] + str(tupla[4])
+		#print('banana'*10)
+		#print(Opkey_str('keyse'))
+		#quit()
+		#Opkey_Herm = lambda (OO1, ll1, mm, OO2, ll2): ('a' if OO1 == 'A' else 'A', ll1, mm, 'a' if OO2 == 'A' else 'A', ll2)
 	#TODO: pair them up by Herm and use the ignore_herm_conj flag
 		
 	##	2) Compute the total norms
@@ -2252,17 +2257,28 @@ class QH_model(model): #CHANGED model to Model
 
 	##	3) Do the exponential approximation and store the result
 		for Op01key,Op01Dict in splitV_dict.items():
+			#print(Op01key)
 			Op0,ly0,m1,Op1,ly1 = Op01key
-			Op23keys = Op01Dict.keys()	# define order
+			Op23keys =list( Op01Dict.keys())
+			#print(isinstance(Op23keys,np.ndarray))
+				# define order
+			#print(Op23keys)
 			if not np.any([ v['keep'] for k,v in Op01Dict.items() ]): continue		# nothing worth keeping, move along
+			#print(Op23keys)
 		##	First gather the sequences of the numbers
 			seqs = []
 			for Op23key in Op23keys:
 				Op2,ly2,m2,Op3,ly3 = Op23key
+				#print('keyara')
+				#print(Op23key)
 				Op23Dict = Op01Dict[Op23key]
+				#print(Op23Dict)
+				#print(Op01Dict[Op23key])
 				seqs.append( Op23Dict['Vr'][(ly2-ly1-1)%N+1 : : N] )
 				#print( '\t ', Op23key, Op23Dict['keep'], seqs[-1]
 		##	The approximation
+			#print(Op23Dict)
+			#print(Op23keys)
 			Op01Dict['keys'] = Op23keys	# fix the order of the keys (to match with 'Markov')
 			Op01Dict['Markov'] = Markov.seq_approx(seqs, target_err = self.V_eps * total_norm, target_frac_err = 1., max_nodes = None)
 		
@@ -2275,11 +2291,15 @@ class QH_model(model): #CHANGED model to Model
 					print( '\t%s\t#nodes = 0/__,      (dropped),       ' % ( Op01key, ))
 					print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.items() if isinstance(Ok, tuple) ]))
 				continue		# nothing worth keeping, move along
+			#
 			Op23keys = Op01Dict['keys']
+			#print(Op23keys[('A', np.int64(0), np.int64(0), 'a', np.int64(0))])
+			#quit()
 			M,entry,exits,MInfo = Op01Dict['Markov'].MeeInfo()
 			if verbose >= 3:
 				print( '\t%s\t#nodes = %s/%s, norm err = %.7f, ' % ( Op01key, len(M), MInfo['l'],  MInfo['norm_err'] ))
-				print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.items() if isinstance(Ok, tuple) ]))
+				#COMMENTED OUT
+				#print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.items() if isinstance(Ok, tuple) ]))
 		
 		##	Prepare the nodes leading up to the loop
 			if m1 > 0:		# String coming out of Op0
@@ -2313,7 +2333,14 @@ class QH_model(model): #CHANGED model to Model
 					MPOgraph1[ly1][pre_Op1_node][Op01key + (i,)] = [(entry_Op, entry[i])]
 
 		##	Prepare the nodes after exiting the loop and connect them
+			#print(Op23keys)
 			for j,Op23key in enumerate(Op23keys):
+				#print("keys")
+				#
+				#print('_________________')
+				#print(Op23key)
+				#quit()
+				#quit()
 				Op2,ly2,m2,Op3,ly3 = Op23key
 				if m2 > 0:		# The final string leading to 'F' (backwards)
 					if Op3 == 'a' or Op3 == 'A':
