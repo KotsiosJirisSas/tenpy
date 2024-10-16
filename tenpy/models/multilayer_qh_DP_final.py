@@ -1828,7 +1828,7 @@ class QH_model(model): #CHANGED model to Model
 			root_config_ = np.array([0,1,0])
 			root_config_ = root_config_.reshape(3,1)
 			spin_testara=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
-			#from tenpy.networks.site import QH_MultilayerFermionSite
+			from tenpy.networks.site import QH_MultilayerFermionSite
 			#spin_testara=QH_MultilayerFermionSite(N=1)
 			#from tenpy.networks.site import FermionSite
 			#spin_testara=FermionSite(conserve='N')
@@ -2238,9 +2238,7 @@ class QH_model(model): #CHANGED model to Model
 		#changed from python2
 		#Opkey_str = lambda (OO1, ll1, mm, OO2, ll2): OO1 + str(ll1) + '_' + str(mm) + '_' + OO2 + str(ll2)
 		Opkey_str = lambda tupla: tupla[0] + str(tupla[1]) + '_' + str(tupla[2]) + '_' + tupla[3] + str(tupla[4])
-		#print('banana'*10)
-		#print(Opkey_str('keyse'))
-		#quit()
+		
 		#Opkey_Herm = lambda (OO1, ll1, mm, OO2, ll2): ('a' if OO1 == 'A' else 'A', ll1, mm, 'a' if OO2 == 'A' else 'A', ll2)
 	#TODO: pair them up by Herm and use the ignore_herm_conj flag
 		
@@ -2277,8 +2275,7 @@ class QH_model(model): #CHANGED model to Model
 				seqs.append( Op23Dict['Vr'][(ly2-ly1-1)%N+1 : : N] )
 				#print( '\t ', Op23key, Op23Dict['keep'], seqs[-1]
 		##	The approximation
-			#print(Op23Dict)
-			#print(Op23keys)
+			
 			Op01Dict['keys'] = Op23keys	# fix the order of the keys (to match with 'Markov')
 			Op01Dict['Markov'] = Markov.seq_approx(seqs, target_err = self.V_eps * total_norm, target_frac_err = 1., max_nodes = None)
 		
@@ -2299,7 +2296,7 @@ class QH_model(model): #CHANGED model to Model
 			if verbose >= 3:
 				print( '\t%s\t#nodes = %s/%s, norm err = %.7f, ' % ( Op01key, len(M), MInfo['l'],  MInfo['norm_err'] ))
 				#COMMENTED OUT
-				#print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.items() if isinstance(Ok, tuple) ]))
+				print( 'targets = ' + ', '.join([ '%s (%.2e)' % (Opkey_str(Ok), np.linalg.norm(OD['Vr'])) for Ok,OD in Op01Dict.items() if isinstance(Ok, tuple) ]))
 		
 		##	Prepare the nodes leading up to the loop
 			if m1 > 0:		# String coming out of Op0
@@ -2447,6 +2444,8 @@ class QH_model(model): #CHANGED model to Model
 		if verbose >= 1:
 			print( '\tProcessed %s Vmk terms.', len(self.splitV_list))
 			if self.ignore_herm_conj: print( '\tAvoiding Hermitian conjugate terms.')
+		Opkey_str = lambda tupla: tupla[0] + str(tupla[1]) + '_' + str(tupla[2]) + '_' + tupla[3] + str(tupla[4])
+		
 		#Opkey_str = lambda (OO1,ll1,mm,OO2,ll2): OO1+str(ll1)+'_'+str(mm)+'_'+OO2+str(ll2)
 		#Opkey_Herm = lambda (OO1,ll1,mm,OO2,ll2): ('a' if OO1=='A' else 'A', ll1, mm, 'a' if OO2=='A' else 'A', ll2)
 		MS.check_sanity()

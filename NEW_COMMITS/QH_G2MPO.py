@@ -60,13 +60,21 @@ def G2G_map(G):
         elif key_L == 'F': key_L_new = 'IdR'
         else:
             if isinstance(key_L,tuple): 
+                #print(key_L)
+                keyara=[]
+                for i in range(len(key_L)):
+                    if isinstance(key_L[i], str):
+                        keyara.append(key_L[i])
+                    elif isinstance(key_L[i], np.int64):
+                        keyara.append(int(key_L[i]))
+                    elif isinstance(key_L[i], np.float64):
+                        keyara.append(float(key_L[i]))
+                    else:
+                        keyara.append(key_L[i])
                 
-                if isinstance(key_L[1], str):
-                    key_L_new=(key_L[0],key_L[1],int(key_L[2]))
-                else:
-                    key_L_new=(key_L[0],int(key_L[1]),int(key_L[2]))
-                
-                key_L_new = str(key_L_new) #dumb way of turning all node labels to strings
+                keyara=tuple(keyara)
+                #print(keyara)
+                key_L_new = str(keyara) #dumb way of turning all node labels to strings
              
             else: key_L_new = key_L
         if key_L_new not in G_new:
@@ -79,12 +87,19 @@ def G2G_map(G):
                 if isinstance(key_R,tuple): 
                
                     #GET RID OF np.int64 from the string
-                    if isinstance(key_R[1], str):
-                        key_R_new=(key_R[0],key_R[1],int(key_R[2]))
-                    else:
-                        key_R_new=(key_R[0],int(key_R[1]),int(key_R[2]))
-                   
-                    key_R_new = str(key_R_new) #dumb way of turning all node labels to strings
+                    keyara=[]
+                    for i in range(len(key_R)):
+                        if isinstance(key_R[i], str):
+                            keyara.append(key_R[i])
+                        elif isinstance(key_R[i], np.int64):
+                            keyara.append(int(key_R[i]))
+                        elif isinstance(key_R[i], np.float64):
+                            keyara.append(float(key_R[i]))
+                        else:
+                            keyara.append(key_R[i])
+                    
+                    keyara=tuple(keyara)
+                    key_R_new = str(keyara) #
                    
                 else: key_R_new = key_R
             if key_R_new not in G_new[key_L_new]:
