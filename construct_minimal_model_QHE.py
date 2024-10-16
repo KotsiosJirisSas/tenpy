@@ -15,7 +15,15 @@ sites = [spin] * N  # repeat entry of list N times
 #pstate = ["empty", "full"] * (N // 2)  # Neel state
 pstate=["empty", "full","empty"]
 psi = MPS.from_product_state(sites, pstate, bc="infinite")
+import h5py
+from tenpy.tools import hdf5_io
 
+data = {"psi": psi,  # e.g. an MPS
+        "parameters": {"L": 6, "g": 1.3}}
+
+with h5py.File("file.h5", 'w') as f:
+    hdf5_io.save_to_hdf5(f, data)
+quit()
 
 
 Length=psi.correlation_length()
