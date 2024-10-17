@@ -263,6 +263,7 @@ class DMRGEngine(IterativeSweeps):
         """
         options = self.options
         # parameters for lanczos
+        print("IN")
         p_tol_to_trunc = options.get('P_tol_to_trunc', 0.05, 'real')
         if p_tol_to_trunc is not None:
             svd_min = self.trunc_params.silent_get('svd_min', 0.)
@@ -719,7 +720,8 @@ class DMRGEngine(IterativeSweeps):
             Change in the wave function ``1. - abs(<theta_guess|theta_diag>)``
         """
         N = -1  # (unknown)
-
+        #print(self.lanczos_params)
+        #quit()
         if self.diag_method == 'default':
             # use ED for small matrix dimensions, but lanczos by default
             max_N = self.options.get('max_N_for_ED', 400, int)
