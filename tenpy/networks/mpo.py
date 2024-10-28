@@ -2160,6 +2160,7 @@ class MPOEnvironment(BaseEnvironment):
             Number of sites over which to converge the environment for infinite systems.
             See above.
         """
+        #print(self.finite)
         if not self.finite  and (init_LP is None or init_RP is None) and \
                 start_env_sites is None and self.bra is self.ket:
             norm_err = np.linalg.norm(self.ket.norm_test())
@@ -2176,15 +2177,36 @@ class MPOEnvironment(BaseEnvironment):
         if self.finite and start_env_sites != 0:
             warnings.warn("setting `start_env_sites` to 0 for finite MPS")
             start_env_sites = 0
+        print(init_LP)
         init_LP, init_RP = self._check_compatible_legs(init_LP, init_RP, start_env_sites)
+        print(init_LP)
+        #print(init_RP)
+        #quit()
+        #print('AAAAAAAAA')
+        #print(init_LP)
+        #print(init_RP)
+        #quit()
+        
         if self.ket.bc == 'segment' and (init_LP is None or init_RP is None):
             raise ValueError("Environments with segment b.c. need explicit environments!")
+       
         super().init_first_LP_last_RP(init_LP, init_RP, age_LP, age_RP, start_env_sites)
 
     def _check_compatible_legs(self, init_LP, init_RP, start_env_sites):
         if init_LP is not None:
             try:
+                print('WHY DO YOU BREAK :(')
                 i = -start_env_sites
+                print(i)
+                MPO_Bs=self.H.get_W(i).get_leg('wL')
+                mpo=self.H.get_W(i)
+                #print("left side mpo")
+                #print(mpo.size)
+                #print(mpo)
+                print("*"*10,"charges of enviroment")
+                print(init_LP.get_leg('wR'))
+                print("*"*10,"charges of mpo")
+                print(self.H.get_W(i).get_leg('wL'))
                 init_LP.get_leg('wR').test_contractible(self.H.get_W(i).get_leg('wL'))
             except ValueError:
                 warnings.warn("dropping `init_LP` with incompatible MPO legs")

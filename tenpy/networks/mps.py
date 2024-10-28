@@ -1958,6 +1958,9 @@ class MPS(BaseMPSExpectationValue):
             legL = legL.bunch()[1]
         if SVs is None:
             SVs = [np.ones(B.shape[1]) / np.sqrt(B.shape[1]) for B in Bflat]
+
+            #print(SVs)
+            #print(Bflat[-1].shape[1])
             SVs.append(np.ones(Bflat[-1].shape[2]) / np.sqrt(Bflat[-1].shape[2]))
         Bs = []
         if dtype is None:
@@ -1968,7 +1971,15 @@ class MPS(BaseMPSExpectationValue):
                 B = B[site.perm, :, :]
             # calculate the LegCharge of the right leg
             legs = [site.leg, legL, None]  # other legs are known
+            #print(type(legL))
+            #print(legs[1])
+            #quit()
             legs = npc.detect_legcharge(B, ci, legs, None, qconj=-1)
+            #print(i)
+            #print(legs)
+            #quit()
+            # print(legs)
+            #quit()
             B = npc.Array.from_ndarray(B, legs, dtype)
             B.iset_leg_labels(['p', 'vL', 'vR'])
             Bs.append(B)
@@ -1978,6 +1989,10 @@ class MPS(BaseMPSExpectationValue):
             # so we need to gauge `qtotal` of the last `B` such that the right leg matches.
             chdiff = Bs[-1].get_leg('vR').charges[0] - Bs[0].get_leg('vL').charges[0]
             Bs[-1] = Bs[-1].gauge_total_charge('vR', ci.make_valid(chdiff))
+        
+        #print('passed the first part')
+        #quit()
+        
         res = cls(sites, Bs, SVs, form=form, bc=bc)
         if res.L > 1 and max(res.chi) > 1:
             # the SVs set above are not the correct Schmidt values if chi > 1.
@@ -2982,9 +2997,13 @@ class MPS(BaseMPSExpectationValue):
         S.append(self.get_SR(last))
         # note: __init__ makes deep copies of B, S
         cp = self.__class__(sites, B, S, 'segment', 'B', self.norm)
+        
         cp.grouped = self.grouped
         if self.bc == 'segment':
             U_L, V_R = self.segment_boundaries
+
+            #print(cp)
+            #quit()
             if U_L is not None or V_R is not None:
                 if first != 0:
                     U_L = None
@@ -3993,17 +4012,25 @@ class MPS(BaseMPSExpectationValue):
         assert (L > 1)  # otherwise implement yourself...
         # normalize very left singular values
         S = self.get_SL(0)
+       
         if self.bc == 'segment':
             if S is None:
                 raise ValueError("Need S[0] and S[L] for segment boundary conditions.")
             self.set_SL(0, S / np.linalg.norm(S))
+           
             S = self.get_SR(L - 1)
+
+            #print(S/ np.linalg.norm(S))
+            #quit()
             self.set_SR(L - 1, S / np.linalg.norm(S))
         else:  # bc == 'finite':
             self.set_SL(0, np.array([1.]))  # trivial singular value on very left/right
             self.set_SR(L - 1, np.array([1.]))
         # sweep from left to right to bring it into left canonical form.
+        #(self.form)
+        #quit()
         if any([(f is None) for f in self.form]):
+            
             # ignore any 'S' and canonical form
             M = self.get_B(0, form=None)
             form = None
@@ -5528,6 +5555,30 @@ class BaseEnvironment(metaclass=ABCMeta):
         assert (self.bra.finite == self.ket.finite == self.finite)
         assert any(key in self.cache for key in self._LP_keys)
         assert any(key in self.cache for key in self._RP_keys)
+
+    def _update_gauge_LP(self, i, U, update_bra, update_ket):
+        """Update LP[i] following the MPS gauge ``A[i-1] A[i] -> (A[i-1] U) (Udagger A[i])``."""
+        assert update_bra or update_ket
+        if not self.has_LP(i):
+            return
+        LP = self.get_LP(i)
+        if update_ket:
+            LP = npc.tensordot(LP, U, axes=['vR', 'vL'])
+        if update_bra:
+            LP = npc.tensordot(U.conj(), LP, axes=['vL*', 'vR*'])
+        self.set_LP(i, LP, self.get_LP_age(i))
+
+    def _update_gauge_RP(self, i, U, update_bra, update_ket):
+        """Update LP[i] following the MPS gauge ``A[i-1] A[i] -> (A[i-1] U) (Udagger A[i])``."""
+        assert update_bra or update_ket
+        if not self.has_LP(i):
+            return
+        LP = self.get_LP(i)
+        if update_ket:
+            LP = npc.tensordot(LP, U, axes=['vR', 'vL'])
+        if update_bra:
+            LP = npc.tensordot(U.conj(), LP, axes=['vL*', 'vR*'])
+        self.set_LP(i, LP, self.get_LP_age(i))
 
     def _check_compatible_legs(self, init_LP, init_RP, start_env_sites):
         if init_LP is not None or init_RP is not None:

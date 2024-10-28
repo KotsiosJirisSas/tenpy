@@ -262,8 +262,12 @@ class DMRGEngine(IterativeSweeps):
             The current ground state approximation, i.e. just a reference to :attr:`psi`.
         """
         options = self.options
+
+        #print(options)
+        #quit()
         # parameters for lanczos
-        print("IN")
+        print("INN"*100)
+        #print(options)
         p_tol_to_trunc = options.get('P_tol_to_trunc', 0.05, 'real')
         if p_tol_to_trunc is not None:
             svd_min = self.trunc_params.silent_get('svd_min', 0.)
@@ -277,7 +281,7 @@ class DMRGEngine(IterativeSweeps):
         if e_tol_to_trunc is not None:
             e_tol_min = options.get('E_tol_min', 5.e-16, 'real')
             e_tol_max = options.get('E_tol_max', 1.e-4, 'real')
-
+        
         # energy and entropy before the iteration:
         if len(self.sweep_stats['E']) < 1:  # first iteration
             E_old = np.nan
@@ -285,14 +289,14 @@ class DMRGEngine(IterativeSweeps):
         else:
             E_old = self.sweep_stats['E'][-1]
             S_old = self.sweep_stats['S'][-1]
-
+        
         # perform sweeps
         logger.info('Running sweep with optimization')
         for i in range(self.N_sweeps_check - 1):
             self.sweep(meas_E_trunc=False)
         max_trunc_err = self.sweep(meas_E_trunc=True)
         max_E_trunc = np.max(self.E_trunc_list)
-
+        
         # update lanczos_params depending on truncation error(s)
         if p_tol_to_trunc is not None and max_trunc_err > p_tol_min:
             P_tol = max(p_tol_min, min(p_tol_max, max_trunc_err * p_tol_to_trunc))
@@ -306,6 +310,8 @@ class DMRGEngine(IterativeSweeps):
             self.lanczos_params.touch('E_tol')
             logger.debug("set lanczos_params['E_tol'] = %.2e", E_tol)
 
+
+        #print(self.finite)
         # update environment
         if not self.finite:
             update_env = options.get('update_env', self.N_sweeps_check // 2, int)
@@ -627,12 +633,19 @@ class DMRGEngine(IterativeSweeps):
             psi.set_B(j, A_new, form='A')
 
             old_UL, old_VR = psi.segment_boundaries
+            #print(old_UL,old_VR)
+            #print(U)
+            #quit()
             new_UL = npc.tensordot(old_UL, U, axes=['vR', 'vL'])
             psi.segment_boundaries = (new_UL, old_VR)
 
             for env in self._all_envs:
                 update_ket = env.ket is psi
                 update_bra = env.bra is psi
+                #print(type(env))
+                print('*'*100)
+                print(env)
+                #quit()
                 env._update_gauge_LP(j, U, update_bra, update_ket)
             # No need to clear the environments on the other bonds!
 

@@ -443,6 +443,7 @@ class Array:
         """
         if cutoff is None:
             cutoff = QCUTOFF
+            #print(QCUTOFF)
         data_flat = np.asarray(data_flat)  # unspecified dtype
         if dtype is None:
             dtype = data_flat.dtype
@@ -464,6 +465,7 @@ class Array:
                 qdata.append(qindices)
         # have set all those entries that were read out to zero. Only zeros should remain
         if np.any(np.abs(data_flat) > cutoff):
+            #print((np.abs(data_flat)))
             if raise_wrong_sector:
                 raise ValueError("wrong sector with non-zero entries")
             if warn_wrong_sector:

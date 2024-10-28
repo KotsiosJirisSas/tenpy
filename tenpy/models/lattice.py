@@ -3523,3 +3523,11 @@ def _parse_sites(sites, expected_number):
         raise ValueError("need to specify a single site or exactly {0:d}, got {1:d}".format(
             expected_number, len(sites)))
     return sites
+
+
+class CustomLattice(Lattice):
+    def __init__(self, sites,bc,bc_MPS):
+        L = len(sites)
+        positions = [[i] for i in range(L)]
+        site_indices = [[i] for i in range(L)]
+        super().__init__([positions], [site_indices], sites, bc=bc,  bc_MPS=bc_MPS)

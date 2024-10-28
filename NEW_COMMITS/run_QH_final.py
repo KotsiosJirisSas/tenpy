@@ -12,11 +12,12 @@ from tenpy.models.model import MPOModel
 from tenpy.models.lattice import Chain
 from tenpy.algorithms import dmrg
 from tenpy.networks.mps import MPS
-from tenpy.models.QH_new_model import QHChain
+
 from tenpy.algorithms import dmrg
 from tenpy.networks.mpo import MPO
-from tenpy.models.lattice import Chain
+
 from tenpy.networks.site import QH_MultilayerFermionSite_2
+from tenpy.networks.site import QH_MultilayerFermionSite_3
 from tenpy.networks.mpo import MPOGraph
 from tenpy.networks.mpo import MPO
 import QH_G2MPO
@@ -42,19 +43,20 @@ def rvr(r):
 V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} }
 
 root_config = np.array([0, 1, 0])		# this is how the initial wavefunction looks
-N=3
+broj=20
+N=3*broj
 model_par = {
 	'verbose': 3,
 	'layers': [ ('L', LL) ],
 	'Lx': Lx,
 	'Vs': V,
-	'boundary_conditions': ('infinite', N),
+	'boundary_conditions': ('periodic', N),
 	'cons_C': 'total', #Conserve number for each species (only one here!)
 	'cons_K': False, #Conserve K
 	'root_config': root_config, #Uses this to figure out charge assignments
 	'exp_approx': '1in', #For multiple orbitals, 'slycot' is more efficient; but for 1 orbital, Roger's handmade code '1in' is slightly more efficient
 }
-
+"""
 dmrg_par = {
 	'N_STEPS': 2,
 	#'STARTING_ENV_FROM_PSI': 21,
@@ -67,7 +69,7 @@ dmrg_par = {
 	'LANCZOS_PAR' : {'N_min': 2, 'N_max': 20, 'p_tol': 5e-6, 'p_tol_to_trunc': 1/25., 'cache_v':np.inf},
 	'mixer': (0.000001, 2., 10, 'id'),
 }
-
+"""
 
 
 
@@ -93,11 +95,23 @@ G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
 #quit()
 root_config_ = np.array([0,1,0])
 root_config_ = root_config_.reshape(3,1)
-spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
+#spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
+L = len(G_new)
 
-L = len(G_new) #System size for finite case, or unit cell for infinite
-sites = [spin] * L 
-M = MPOGraph(sites=sites,bc='infinite',max_range=None) #: Initialize MPOGRAPH instance
+sites=[]
+for i in range(L):
+	spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
+	#spin=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=i)
+	#spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
+	sites.append(spin)
+
+
+#sites = [spin] * L 
+print(sites)
+#quit()
+#print(len(sites))
+
+M = MPOGraph(sites=sites,bc='finite',max_range=None) #: Initialize MPOGRAPH instance
 
 '''
 M.states holds the keys for the auxilliary states of the MPO. These states live on the bonds.
@@ -121,22 +135,50 @@ M.graph = G_new #: INppuut the graph in the model
 print("Test passed!"+".."*10)
 grids =M._build_grids()#:Build the grids from the graph
 print("Building MPO"+".."*10)
+
+
 H = QH_G2MPO.build_MPO(M,None)#: Build the MPO
 print("Built"+".."*10)
 
 
 
-
-
 #initialize wavefunction as MPS
-pstate=["empty", "full","empty"]
-psi = MPS.from_product_state(sites, pstate, bc="infinite")
+pstate=["empty", "full","empty"]*broj
+psi = MPS.from_product_state(sites, pstate, bc="finite")
 
+#simple_lattice()
 
 #initialize MPOModel
-lattice=Chain(N,spin, bc="periodic",  bc_MPS="infinite")
+
+from tenpy.models.lattice import Lattice
+from tenpy.models.lattice import IrregularLattice
+#lattice=Chain(L=N,site=sites, bc="periodic",  bc_MPS="finite")
+#lattice=Chain(N,spin, bc="periodic",  bc_MPS="finite")
+pos= [[i] for i in range(L)]
+
+#quit()
+lattice = Lattice([1], sites,positions=pos, bc="periodic", bc_MPS="finite")
+x=lattice.mps_sites()
+#print(lattice.N_cells)
+#print(lattice.N_sites)
+#print(lattice.N_sites_per_ring)
+#print(lattice.unit_cell_positions)
+#quit()
+#print(len(x))
+from tenpy.models.lattice import CustomLattice
+#lattice=CustomLattice(sites,bc="periodic",  bc_MPS="finite")
+#irr_lat = IrregularLattice(lattice, remove=[[L - 1, 1],[L-2,1]])
+#for i in range(N):
+#	print(i)
+#x=irr_lat.mps_sites()
+#print(len(x))
+#print('irregular lattice')
+#quit()
 model=MPOModel(lattice, H)
 
+#print(lattice.Ls)
+#print(psi.L)
+#quit()
 dmrg_params = {"trunc_params": {"chi_max": 450, "svd_min": 1.e-9}, "mixer": (0.000001, 2., 10, 'id')}
 #'LANCZOS_PAR' : {'N_min': 2, 'N_max': 20, 'p_tol': 5e-6, 'p_tol_to_trunc': 1/25., 'cache_v':np.inf}
 
@@ -167,7 +209,7 @@ print("E =", E0)
 print("Finished running DMRG")
 
 
-
+quit()
 
 Length=psi.correlation_length()
 print('correlation length:',Length)
