@@ -87,40 +87,39 @@ def obtain_states_from_graphs(G_new,L, bc="infinite"):
 			print("Finished",".."*10 )
 		
 	elif bc=="infinite":
+		for bond in np.arange(L+1):
+			#CREATES INFINITE DMRG MODEL
+			
+			states_from_rows = set()
+			states_from_columns = set()
+			states = set()
+			states_from_rows = set(G_new[bond%L].keys())
+			states_from_columns = set([ k for r in G_new[(bond-1)%L].values() for k in r.keys()])
+			
+			#TAKE THE INTERSECTION
+			#TWO SETS SHOULD BE EQUAL BECAUSE YOU MULTIPLY ONE BY ANOTHER IN MATRIX
+			#IF THEY ARENT EQUAL CERTAIN ELEMENTS ARE JUST ZERO- HOWEVER GRAPH IS DISCONNECTED AND SO CHARGES WONT
+			#BE CALCULATED PROPERLY
+			#THUS NEED TO SET THOSE ELEMENTS EXPLICITLY TO ZERO
+			#same procedure in finite DMRG, but have yet to implement it fully
+			states = states_from_rows & states_from_columns #take intersection - MAYBE NEED UNION INTEAD??
+			
+			#LOOK AT UNION
+			states2=states_from_rows | states_from_columns
 
-		#CREATES INFINITE DMRG MODEL
-		bond=1
-		states_from_rows = set()
-		states_from_columns = set()
-		states = set()
-		states_from_rows = set(G_new[bond].keys())
-		states_from_columns = set([ k for r in G_new[bond-1].values() for k in r.keys()])
-		
-		#TAKE THE INTERSECTION
-		#TWO SETS SHOULD BE EQUAL BECAUSE YOU MULTIPLY ONE BY ANOTHER IN MATRIX
-		#IF THEY ARENT EQUAL CERTAIN ELEMENTS ARE JUST ZERO- HOWEVER GRAPH IS DISCONNECTED AND SO CHARGES WONT
-		#BE CALCULATED PROPERLY
-		#THUS NEED TO SET THOSE ELEMENTS EXPLICITLY TO ZERO
-		#same procedure in finite DMRG, but have yet to implement it fully
-		states = states_from_rows & states_from_columns #take intersection - MAYBE NEED UNION INTEAD??
-		
-		#LOOK AT UNION
-		states2=states_from_rows | states_from_columns
-
-		row=[]
-		#look at elements which are not in row and columns
-		non_included=states2-states
-		#save all the elements that are not in the row/column
-		for el in list(non_included):
-			if el in list(states_from_columns):
-				row.append([el,"column"])
-			else:
-				print("row")
-				row.append([el,"row"])
-		not_included_couplings=row
-		
-		#just produce states
-		for i in range(L+1):
+			row=[]
+			#look at elements which are not in row and columns
+			non_included=states2-states
+			#save all the elements that are not in the row/column
+			for el in list(non_included):
+				if el in list(states_from_columns):
+					row.append([el,"column"])
+				else:
+					print("row")
+					row.append([el,"row"])
+			not_included_couplings.append(row)
+			
+			#just produce states
 			States.append(states)
 	
 	return States,not_included_couplings

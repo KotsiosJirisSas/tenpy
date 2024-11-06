@@ -139,13 +139,14 @@ def create_infinite_DMRG_model(N):
 
     #remove rows
     #yet to implement remove columns
+    print(not_included_couplings)
     for i in range(L):
        
-        for element in not_included_couplings:
+        for element in not_included_couplings[i]:
             
             G_new[i].pop(element[0],None)
             print(element[0])
-    
+    quit()
    
     print("Finished",".."*10 )
  

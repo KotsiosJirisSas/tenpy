@@ -61,20 +61,20 @@ import QH_Graph_final
 np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
 #########################
 #sort the problem and match values to konstantinos values
-Lx = 22;			# circumference
+Lx = 12;			# circumference
 LL = 0;			# which Landau level to put in
 xi = 6;			# The Gaussian falloff for the Coulomb potential
 Veps = 1e-4		# how accurate to approximate the MPO
 
-
-N=6
+xi=1
+N=3
 
 
 def rvr(r):
     return np.exp(-r/xi)
 V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} }
 
-root_config = np.array([0, 1, 0])		# this is how the initial wavefunction looks
+root_config = np.array([0, 1, 0,0,1,0])		# this is how the initial wavefunction looks
 
 model_par = {
     'verbose': 3,
@@ -103,24 +103,38 @@ print("Old code finished producing MPO graph",".."*10)
 
 
 G=M.MPOgraph
-print(len(G))
-quit()
-#print(G[0].keys())
+#print(len(G))
+#quit()
+
+
+#OK FIRST AND SECOND ARE NOT THE SAME, BUT FIRST AND THIRD ARE
+"""
+for i in range(len(G[0].keys())):
+    print('one')
+    print(list(G[0].keys())[i])
+    print(list(G[2].keys())[i])
+"""
+#print(G[1]==G[0])
 #print(G[0][('_a', 0, 9)])
 #quit()
 G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
+
+#print(G_new[0]['IdL'])
+#quit()
 #print(G_new[0][('_a', 0, 9)])
 #print(G_new[0]["('_a', 0, 9)"])
 #quit()
 root_config_ = np.array([0,1,0])
 root_config_ = root_config_.reshape(3,1)
-spin=QH_MultilayerFermionSite(N=1,root_config=root_config_,conserve='N')
+#spin=QH_MultilayerFermionSite(N=1)#,root_config=root_config_,conserve='N')
+
+spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
 L = len(G_new)
 
 
 sites = [spin] * L 
 #print(sites)
-
+print(len(sites))
 #SORT THE STUPID ASSERTION PROBLEM WHICH ARISES AT CERTAIN VALUES
 M = MPOGraph(sites=sites,bc='infinite',max_range=None) #: Initialize MPOGRAPH instance
 
@@ -141,11 +155,14 @@ M._ordered_states = QH_G2MPO.set_ordered_states(States) #: sort these states(ass
 
 #remove rows
 #yet to implement remove columns
+print(L)
+print(len(G_new))
 for i in range(L):
     
-    for element in not_included_couplings:
+    for element in not_included_couplings[i]:
         
         G_new[i].pop(element[0],None)
+        print(i)
         print(element[0])
 
 
@@ -168,7 +185,7 @@ print("Built"+".."*10)
 #initialize wavefunction as MPS
 
 
-lattice=Chain(N,spin, bc="periodic",  bc_MPS="infinite")
+lattice=Chain(L,spin, bc="periodic",  bc_MPS="infinite")
 
 model=MPOModel(lattice, H)
 
