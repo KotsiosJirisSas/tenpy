@@ -44,13 +44,24 @@ dmrg_params = {
         'svd_min': 1.e-10,
     },
 }
+
+print(psi0_i)
+#x=psi0_i
+print(psi0_i.get_B(0)[0])
+#quit()
 eng0_i = dmrg.TwoSiteDMRGEngine(psi0_i, M_i, dmrg_params)
 E0_i, _ = eng0_i.run()
-resume_psi0_i = eng0_i.get_resume_data(sequential_simulations=True)
+#print("rest")
+#print(a)
+#quit()
 
+resume_psi0_i = eng0_i.get_resume_data(sequential_simulations=True)
+#print(psi0_i)
+
+#quit()
 #print(resume_psi0_i)
 
-print(psi0_i.entanglement_entropy())
+#print(psi0_i.entanglement_entropy())
 
 
 enlarge = 10  # this is a parameter: how large should the "segment" be?
@@ -87,6 +98,9 @@ psi_halfinf.set_SL(0, np.ones(1, float))
 
 print(psi_halfinf.get_SL(1))
 #quit()
+
+#a,b=psi_halfinf.segment_boundaries
+
 psi_halfinf.canonical_form_finite(cutoff=0.0)
 #print(psi_halfinf.get_SL(1))
 #quit()
@@ -98,12 +112,14 @@ B = psi_halfinf.get_B(0, form='B')
 print(B)
 #print(psi_halfinf.segment_boundaries[0])
 #quit()
-print(init_env_data)
+a,b=psi_halfinf.segment_boundaries
+#print(a,b)
+#quit()
 #quit()
 init_env_data_halfinf = init_env_data.copy()
 #print(psi_halfinf)
 print('MPOOOO')
-init_env_data_halfinf['init_LP'] = MPOEnvironment(psi0_i, M_i.H_MPO, psi0_i).init_LP(0, 0)#[4,:,4]
+#init_env_data_halfinf['init_LP'] = MPOEnvironment(psi0_i, M_i.H_MPO, psi0_i).init_LP(0, 0)#[4,:,4]
 #quit()
 print(init_env_data_halfinf['init_LP'])
 #quit()
@@ -149,15 +165,59 @@ array_defined=Array.from_ndarray( data_flat,
                      labels=labels,
                      raise_wrong_sector=True,
                      warn_wrong_sector=True)
-print(array_defined)
-quit()
+#print(array_defined)
+#quit()
 init_env_data_halfinf['init_LP'] =array_defined#Array(legcharges, dtype=np.float64, qtotal=None, labels=labels)
 #npc.array()shape=1,3,1
 #quit()
 #quit()
-
-#init_env_data_halfinf['init_LP'] = MPOEnvironment(psi_halfinf, M_s.H_MPO, psi_halfinf).init_LP(0, 0)[0,0]
+a=init_env_data_halfinf['init_LP']
+#init_env_data_halfinf['init_LP'] = MPOEnvironment(psi0_i, M_i.H_MPO, psi0_i).init_LP(0, 0)
 init_env_data_halfinf['age_LP'] = 0
+
+#quit()
+
+print("START"*100)
+print(init_env_data_halfinf['age_LP'])
+print(init_env_data_halfinf['init_LP'][0])
+print(a[0])
+
+print("STOP"*100)
+#quit()
+#print()
+print("START"*100)
+print(init_env_data_halfinf['init_RP'])
+a=init_env_data_halfinf['init_RP']
+print(init_env_data_halfinf['age_RP'])
+print("STOP"*100)
+
+
+
+init_env_data_halfinf['init_RP'] = MPOEnvironment(psi0_i, M_i.H_MPO, psi0_i).init_RP( 19, 19)
+#init_env_data_halfinf['age_RP']=0 
+print("START"*100)
+print(init_env_data_halfinf['age_RP'])
+print(init_env_data_halfinf['init_RP'][0])
+print(a[0])
+
+print("STOP"*100)
+"""
+[0.      0.13332 0.14834 0.15192 0.15297 0.15331 0.15343 0.15347 0.15348 0.15349 0.15349 0.15349
+ 0.15349 0.15349 0.15349 0.15349 0.15349 0.15349 0.15349 0.15349 0.15349]
+[0.94082 0.88667 0.87957 0.87797 0.87753 0.8774  0.87735 0.87734 0.87733 0.87733 0.87733 0.87733
+ 0.87733 0.87733 0.87733 0.87733 0.87733 0.87733 0.87733 0.87733]
+"""
+
+#quit()
+#print(init_env_data_halfinf['age_RP'])
+#print("STOP"*100)
+#quit()
+#init_env_data_halfinf['age_RP'] = 0
+print("AAAAAAA"*100)
+a,b=psi_halfinf.segment_boundaries
+#print(a)
+#print(b)
+#quit()
 
 #print(init_env_data_halfinf['init_LP'])
 #quit()
