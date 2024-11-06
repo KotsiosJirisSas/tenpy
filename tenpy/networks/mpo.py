@@ -1943,7 +1943,6 @@ class MPOGraph:
             for keyL, a in stL.items():
                 row = [None] * len(stR)
                 for keyR, lst in graph[keyL].items():
-                    
                     b = stR[keyR]
                     row[b] = lst
                 grid[a] = row
@@ -2208,12 +2207,21 @@ class MPOEnvironment(BaseEnvironment):
                 print("*"*10,"charges of mpo")
                 print(self.H.get_W(i).get_leg('wL'))
                 init_LP.get_leg('wR').test_contractible(self.H.get_W(i).get_leg('wL'))
+                #print("passes")
             except ValueError:
                 warnings.warn("dropping `init_LP` with incompatible MPO legs")
                 init_LP = None
         if init_RP is not None:
             try:
                 j = self.L - 1 + start_env_sites
+                #print("number of sites BLAH BLAH")
+                #print(start_env_sites)
+                #print(j)
+                #print(self.H.L)
+                #print('BANANANANANANANANANANA'*10)
+                #banana=self.H.get_W(j)
+                
+                #print(banana)
                 init_RP.get_leg('wL').test_contractible(self.H.get_W(j).get_leg('wR'))
             except ValueError:
                 warnings.warn("dropping `init_RP` with incompatible MPO legs")

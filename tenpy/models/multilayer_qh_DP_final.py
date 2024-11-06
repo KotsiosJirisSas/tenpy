@@ -1392,7 +1392,7 @@ class QH_model(model): #CHANGED model to Model
 		K = self.kappa*np.arange(-maxK, maxK+1)
 		
 		#Keep track of which a,b,c,d have been computed (many are related by symmetries)
-		did = np.zeros( (n_mu, n_mu, n_nu, n_nu), dtype = np.bool )
+		did = np.zeros( (n_mu, n_mu, n_nu, n_nu), dtype = np.bool_ )
 		
 		#Do the two species have the exact same bands?
 		same_bands = (b1==b2)

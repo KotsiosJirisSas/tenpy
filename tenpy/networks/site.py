@@ -2371,7 +2371,7 @@ class QH_MultilayerFermionSite_3(Site):
                 for i in range(len(ps)): #runs over the conserved charges
                     Qp_flat[n, 1+i] = n*q*Qmat[i,0] - ps[i] #C = q N - p
                 Qp_flat[n,0] = (site_loc//N) * np.dot(Kvec, Qp_flat[n,1:])
-        
+     
             chinfo = npc.ChargeInfo([1,1], ['N','K'])
             leg = npc.LegCharge.from_qflat(chinfo, Qp_flat) #Qp_flat[:,0] = (-1,2)
             #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW is constructed

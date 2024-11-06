@@ -1397,6 +1397,8 @@ class MPS(BaseMPSExpectationValue):
         self._B = [B.astype(dtype, copy=True).itranspose(self._B_labels) for B in Bs]
         self._S = [None] * (self.L + 1)
         for i in range(self.L + 1)[self.nontrivial_bonds]:
+            #print(i)
+            #print(SVs[i])
             if isinstance(SVs[i], npc.Array):
                 self._S[i] = SVs[i].copy()
             else:

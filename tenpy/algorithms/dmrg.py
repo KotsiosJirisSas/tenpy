@@ -607,7 +607,8 @@ class DMRGEngine(IterativeSweeps):
         self.update_stats['time'].append(time.time() - self.time0)
         self.trunc_err_list.append(err.eps)
         self.E_trunc_list.append(E_trunc)
-
+        #print("BC"*100)
+        #print(self.psi.bc)
         if self.psi.bc == 'segment':
             self.update_segment_boundaries()
 
@@ -617,7 +618,10 @@ class DMRGEngine(IterativeSweeps):
         This method is called at the end of :meth:`post_update_local` for 'segment' boundary MPS.
         It just updates the singular values on the very left/right end of the MPS segment.
         """
+
+        
         psi = self.psi
+        #print(psi)
         if self.i0 == 0 and self.move_right:
             # need to update bond to the left of site j=0
             j = 0
