@@ -2176,9 +2176,9 @@ class MPOEnvironment(BaseEnvironment):
         if self.finite and start_env_sites != 0:
             warnings.warn("setting `start_env_sites` to 0 for finite MPS")
             start_env_sites = 0
-        print(init_LP)
+        #print(init_LP)
         init_LP, init_RP = self._check_compatible_legs(init_LP, init_RP, start_env_sites)
-        print(init_LP)
+        #print(init_LP)
         #print(init_RP)
         #quit()
         #print('AAAAAAAAA')
@@ -2194,18 +2194,17 @@ class MPOEnvironment(BaseEnvironment):
     def _check_compatible_legs(self, init_LP, init_RP, start_env_sites):
         if init_LP is not None:
             try:
-                print('WHY DO YOU BREAK :(')
+                #print('WHY DO YOU BREAK :(')
                 i = -start_env_sites
-                print(i)
+                #print(i)
                 MPO_Bs=self.H.get_W(i).get_leg('wL')
                 mpo=self.H.get_W(i)
                 #print("left side mpo")
                 #print(mpo.size)
                 #print(mpo)
-                print("*"*10,"charges of enviroment")
-                print(init_LP.get_leg('wR'))
-                print("*"*10,"charges of mpo")
-                print(self.H.get_W(i).get_leg('wL'))
+                #print("*"*10,"charges of enviroment")
+                #print(init_LP.get_leg('wR'))
+          
                 init_LP.get_leg('wR').test_contractible(self.H.get_W(i).get_leg('wL'))
                 #print("passes")
             except ValueError:
@@ -2220,6 +2219,8 @@ class MPOEnvironment(BaseEnvironment):
                 #print(self.H.L)
                 #print('BANANANANANANANANANANA'*10)
                 #banana=self.H.get_W(j)
+                #print("*"*10,"charges of mpo")
+                #print(self.H.get_W(i).get_leg('wR'))
                 
                 #print(banana)
                 init_RP.get_leg('wL').test_contractible(self.H.get_W(j).get_leg('wR'))
@@ -2859,7 +2860,7 @@ def _calc_grid_legs_infinite(chinfo, grids, Ws_qtotal, leg0, IdL_0):
     charges[0][IdL_0] = chinfo.make_valid(None)  # default charge = 0.
 
     for _ in range(1000 * L):  # I don't expect interactions with larger range than that...
-        print(_)
+        #print(_)
         for i in range(L):
 
             

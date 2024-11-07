@@ -106,10 +106,13 @@ psi_halfinf.canonical_form_finite(cutoff=0.0)
 #quit()
 psi_halfinf.test_sanity()
 #print(psi_halfinf)
-#quit()
-print('START ZEOR')
+
+print(psi_halfinf._B[0])
+quit()
+print('START ZERO')
 B = psi_halfinf.get_B(0, form='B')
-print(B)
+#print(B)
+#quit()
 #print(psi_halfinf.segment_boundaries[0])
 #quit()
 a,b=psi_halfinf.segment_boundaries
@@ -119,9 +122,9 @@ a,b=psi_halfinf.segment_boundaries
 init_env_data_halfinf = init_env_data.copy()
 #print(psi_halfinf)
 print('MPOOOO')
-#init_env_data_halfinf['init_LP'] = MPOEnvironment(psi0_i, M_i.H_MPO, psi0_i).init_LP(0, 0)#[4,:,4]
+init_env_data_halfinf['init_LP'] = MPOEnvironment(psi0_i, M_i.H_MPO, psi0_i).init_LP(0, 0)#[4,:,4]
 #quit()
-print(init_env_data_halfinf['init_LP'])
+#print(init_env_data_halfinf['init_LP'])
 #quit()
 from tenpy.linalg.np_conserved import Array
 from tenpy.linalg.np_conserved import Array
@@ -168,6 +171,9 @@ array_defined=Array.from_ndarray( data_flat,
 #print(array_defined)
 #quit()
 init_env_data_halfinf['init_LP'] =array_defined#Array(legcharges, dtype=np.float64, qtotal=None, labels=labels)
+print('defined')
+print(array_defined)
+quit()
 #npc.array()shape=1,3,1
 #quit()
 #quit()
@@ -194,10 +200,14 @@ print("STOP"*100)
 
 
 init_env_data_halfinf['init_RP'] = MPOEnvironment(psi0_i, M_i.H_MPO, psi0_i).init_RP( 19, 19)
+
+
 #init_env_data_halfinf['age_RP']=0 
 print("START"*100)
 print(init_env_data_halfinf['age_RP'])
-print(init_env_data_halfinf['init_RP'][0])
+print(init_env_data_halfinf['init_RP'][3])
+
+quit()
 print(a[0])
 
 print("STOP"*100)

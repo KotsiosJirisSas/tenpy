@@ -60,35 +60,34 @@ import QH_Graph_final
 def create_segment_DMRG_model(L):
     np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
     #########################
-    Lx = 14;			# circumference
-    LL = 0;			# which Landau level to put in
-    mixing_chi = 450; #Bond dimension in initial sweeps
-    chi = 450;		#Bond dimension of MPS
-    xi = 6;			# The Gaussian falloff for the Coulomb potential
-    Veps = 1e-4		# how accurate to approximate the MPO
-
-
-    NLL = 1; Veps = 1e-4
-    xi = 1
-    d = 0
-    def rvr(r):
-        return np.exp(-r/xi)
+    #sort the problem and match values to konstantinos values
+    Lx = 14;            # circumference
+    LL = 0;         # which Landau level to put in
+    mixing_chi = 400; #Bond dimension in initial sweeps
+    chi = 400;      #Bond dimension of MPS
+    chi2 = 400
+    chi3 = 400
+    #chi4 = 4500
+    xi = 1; #
+    #xi = 1;            # The Gaussian falloff for the Coulomb potential
+    Veps = 1e-4 # how accurate to approximate the MPO
     V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} }
-
-    root_config = np.array([0, 1, 0])		# this is how the initial wavefunction looks
+    root_config = np.array([0, 1, 0])       # this is how the initial wavefunction looks
 
     model_par = {
         'verbose': 3,
         'layers': [ ('L', LL) ],
         'Lx': Lx,
         'Vs': V,
-        'boundary_conditions': ('infinite', L),
+        'boundary_conditions': ('infinite', L),#????????????????????????
+    #   'boundary_conditions': ('periodic', 1),
         'cons_C': 'total', #Conserve number for each species (only one here!)
         'cons_K': False, #Conserve K
         'root_config': root_config, #Uses this to figure out charge assignments
         'exp_approx': '1in', #For multiple orbitals, 'slycot' is more efficient; but for 1 orbital, Roger's handmade code '1in' is slightly more efficient
     }
-    
+        
+
 
 
 
@@ -122,50 +121,57 @@ def create_segment_DMRG_model(L):
         #quit()
         sites.append(spin)
 
-    try:
-        M = MPOGraph(sites=sites,bc='segment',max_range=None) #: Initialize MPOGRAPH instance
 
-        '''
-        M.states holds the keys for the auxilliary states of the MPO. These states live on the bonds.
+    M = MPOGraph(sites=sites,bc='segment',max_range=None) #: Initialize MPOGRAPH instance
 
-        Bond s is between sites s-1,s and there are L+1 bonds, meaning there is a bond 0 but also a bond L.
-        The rows of W[s] live on bond s while the columns of W[s] live on bond s+1
-        '''
+    '''
+    M.states holds the keys for the auxilliary states of the MPO. These states live on the bonds.
 
-        States=QH_Graph_final.obtain_states_from_graphs(G_new,L)
-        print("Ordering states",".."*10)
+    Bond s is between sites s-1,s and there are L+1 bonds, meaning there is a bond 0 but also a bond L.
+    The rows of W[s] live on bond s while the columns of W[s] live on bond s+1
+    '''
 
-        M.states = States #: Initialize aux. states in model
-        M._ordered_states = QH_G2MPO.set_ordered_states(States) #: sort these states(assign an index to each one)
-        print("Finished",".."*10 )
+    States,not_included_couplings=QH_Graph_final.obtain_states_from_graphs(G_new,L)
+    print("Ordering states",".."*10)
 
-
-
-        print("Test sanity"+".."*10)
-        M.test_sanity()
-        M.graph = G_new #: INppuut the graph in the model 
-        print("Test passed!"+".."*10)
-        grids =M._build_grids()#:Build the grids from the graph
-        print("Building MPO"+".."*10)
+    M.states = States #: Initialize aux. states in model
+    M._ordered_states = QH_G2MPO.set_ordered_states(States) #: sort these states(assign an index to each one)
+    print("Finished",".."*10 )
 
 
-        H = QH_G2MPO.build_MPO(M,None)#: Build the MPO
-        print("Built"+".."*10)
-
-
-
-        #initialize wavefunction as MPS
-    
-        
-        pos= [[i] for i in range(L)]
-
-        #quit()
-        lattice = Lattice([1], sites,positions=pos, bc="periodic", bc_MPS="segment")
-        x=lattice.mps_sites()
+    print(not_included_couplings)
+    for i in range(L):
+       
+        for element in not_included_couplings[i]:
             
-        model=MPOModel(lattice, H)
-    except:
-        model=0
+            G_new[i].pop(element[0],None)
+            print(element[0])
+
+
+    print("Test sanity"+".."*10)
+    M.test_sanity()
+    M.graph = G_new #: INppuut the graph in the model 
+    print("Test passed!"+".."*10)
+    grids =M._build_grids()#:Build the grids from the graph
+    print("Building MPO"+".."*10)
+
+
+    H = QH_G2MPO.build_MPO(M,None)#: Build the MPO
+    print("Built"+".."*10)
+
+
+    H.sort_legcharges()
+    #initialize wavefunction as MPS
+
+    
+    pos= [[i] for i in range(L)]
+
+    #quit()
+    lattice = Lattice([1], sites,positions=pos, bc="periodic", bc_MPS="segment")
+    x=lattice.mps_sites()
+        
+    model=MPOModel(lattice, H)
+   
 
     print("created model",".."*30)
     return model,sites
@@ -177,7 +183,7 @@ def load_data(name,sites):
         loaded_xxxx = pickle.load(f, encoding='latin1')
     #print(loaded_xxxx['qflat'])
     #quit()
-    number=len(sites)//3
+    number=len(sites)//3+1
     #print(number)
     Bflat=loaded_xxxx['Bs']*number
     #print(len(Bflat))
@@ -205,6 +211,9 @@ def load_data(name,sites):
 
     Ss=[Ss[2],Ss[0],Ss[1]]*number
     Ss.append(Ss[0])
+    
+    Bflat=Bflat[:L]
+    Ss=Ss[:L+1]
     
     chargeinfo=sites[0].leg.chinfo
     #print(chargeinfo)
@@ -238,9 +247,6 @@ def project_and_find_segment_mps(mps,N):
     #print(B)
     #quit()
     return psi_halfinf
-
-
-
 
 
 def set_left_environment(psi0_i,init_env_data,H_MPO):
@@ -360,100 +366,163 @@ def set_infinite_like_segment(mps,M_i,last):
     return psi_halfinf,init_env_data_halfinf
 
 
+def load_right_environment(name,num_site):
+   
+    #LOAD ENVIRONMENT
+    print("loading right environment",'..'*20)
+    with open(name+'.pkl', 'rb') as f:
+        loaded_xxxx = pickle.load(f, encoding='latin1')
+    Bflat=loaded_xxxx['RP_B']
+    qflat_list_c=loaded_xxxx['RP_q']
+   
+    print(Bflat.shape)
+    #shape=Bflat.shape
+   
+    #change the shape of Bflat and qflat
+    Bflat=np.transpose(Bflat, (1, 0, 2))
+    print(len(qflat_list_c))
+    qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
+    
 
 
-L=15
+
+
+    root_config_ = np.array([0,1,0])
+    root_config_ = root_config_.reshape(3,1)
+    site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=num_site)
+    chargeinfo=site.leg.chinfo
+    legcharges=[]
+    
+    #loads right environment
+    labels=['vL', 'wL', 'vL*']
+    conj_q=[1,1,-1]
+    #print()
+    print(qflat_list[1])
+
+    #shift K by num_site-2 to get the correct environment
+    for i in range(len(qflat_list[0])):
+        qflat_list[0][i][0]+=qflat_list[0][i][1]*(num_site-2)
+    for i in range(len(qflat_list[2])):
+        qflat_list[2][i][0]+=qflat_list[2][i][1]*(num_site-2)
+    for i in range(len(qflat_list[1])):
+        qflat_list[1][i][0]+=qflat_list[1][i][1]*(num_site-2)
+
+    print(qflat_list[1])
+    for i in range(len(qflat_list)):
+        
+        #print(i)
+        legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i]).bunch()[1]
+        legcharges.append(legcharge)
+
+
+    
+    
+    environment=Array.from_ndarray( Bflat,
+                        legcharges,
+                        dtype=np.float64,
+                        qtotal=None,
+                        cutoff=None,
+                        labels=labels,
+                        raise_wrong_sector=True,
+                        warn_wrong_sector=True)
+    print(environment)
+    print("environment is loaded",'..'*20)
+  
+    return environment
+
+
+
+def load_left_environment(name):
+   
+    #LOAD ENVIRONMENT
+    print("loading left environment",'..'*20)
+    with open(name+'.pkl', 'rb') as f:
+        loaded_xxxx = pickle.load(f, encoding='latin1')
+    print(loaded_xxxx.keys())
+    #quit()
+    Bflat=loaded_xxxx['LP1_B']
+    qflat_list_c=loaded_xxxx['LP1_q']
+   
+    
+    #shape=Bflat.shape
+   
+    #change the shape of Bflat and qflat
+    Bflat=np.transpose(Bflat, (1, 0, 2))
+    #SET IT TO ZEROS BUT WITH CORRECT CHARGES
+    a,b,c=Bflat.shape
+    Bflat=0*Bflat
+    for i in range(a):
+           Bflat[i,-1,i]=1
+    print(Bflat.shape)
+    #print(len(qflat_list_c))
+    qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
+    root_config_ = np.array([0,1,0])
+    root_config_ = root_config_.reshape(3,1)
+    site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=-1)
+    chargeinfo=site.leg.chinfo
+    legcharges=[]
+    
+    #loads right environment
+    labels=['vR*', 'wR', 'vR']
+    conj_q=[1,1,-1]
+
+    #shift K
+    for i in range(len(qflat_list[0])):
+        qflat_list[0][i][0]+=-qflat_list[0][i][1]*1
+    for i in range(len(qflat_list[2])):
+        qflat_list[2][i][0]+=-qflat_list[2][i][1]*1
+    for i in range(len(qflat_list[1])):
+        qflat_list[1][i][0]+=-qflat_list[1][i][1]*1
+
+    for i in range(len(qflat_list)):
+        #print(i)
+        #print(qflat_list[i])
+        legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i]).bunch()[1]
+        legcharges.append(legcharge)
+
+
+    
+    
+    environment=Array.from_ndarray( Bflat,
+                        legcharges,
+                        dtype=np.float64,
+                        qtotal=None,
+                        cutoff=None,
+                        labels=labels,
+                        raise_wrong_sector=True,
+                        warn_wrong_sector=True)
+    print(environment)
+    print("left environment is loaded",'..'*20)
+  
+    return environment
+
+L=14
+
+
 
 M,sites=create_segment_DMRG_model(L)
 #THIS ONE HAS BOTH N,K conservation
-name='qflat_QH_1_3-3'
+name='qflat_QH_1_3_K_cons'
 psi_halfinf=load_data(name,sites)
-
-
-
-
-psi_halfinf.canonical_form_finite(cutoff=0.0)
-print(psi_halfinf)
-#print(a)
-#print(b)
+#print(psi_halfinf._B[0])
 #quit()
-#psi_halfinf=project_and_find_segment_mps(mps,last)
-init_env_data_halfinf={}
-#initialize right enviroment
-#INSTEAD OF 44 SHOULD JUST BE A LAST ELEMENT?
-#what is the second parameter???
-last=L-1
-age=50
-init_env_data_halfinf['init_RP'] = MPOEnvironment(psi_halfinf, M.H_MPO, psi_halfinf).init_RP(last, age)    #DEFINE RIGHT ENVIROMENT
-init_env_data_halfinf['age_RP'] =0
-
-
-quit()
-'''
-M.states holds the keys for the auxilliary states of the MPO. These states live on the bonds.
-
-Bond s is between sites s-1,s and there are L+1 bonds, meaning there is a bond 0 but also a bond L.
-The rows of W[s] live on bond s while the columns of W[s] live on bond s+1
-'''
-
-
-
-#initialize wavefunction as MPS
-pstate=["empty", "full","empty"]*broj
-psi = MPS.from_product_state(sites, pstate, bc="segment")
-print(psi.bc)
-#simple_lattice()
-
-#initialize MPOModel
-
-from tenpy.models.lattice import Lattice
-from tenpy.models.lattice import IrregularLattice
-#lattice=Chain(L=N,site=sites, bc="periodic",  bc_MPS="finite")
-#lattice=Chain(N,spin, bc="periodic",  bc_MPS="finite")
-pos= [[i] for i in range(L)]
 #quit()
-lattice = Lattice([1], sites,positions=pos, bc="periodic", bc_MPS="segment")
-x=lattice.mps_sites()
+print(len(sites))
+name='env_QH_1_3_K_cons'
+right_env=load_right_environment(name,len(sites))
 
 
-
-
-quit()
-
-
-N=3
-M_i=create_infinite_DMRG_model(N)
-name="qflat_QH_1_3-2"
-
-#returns infinite DMRG MPS
-mps=load_data(name)
-
-root_config_ = np.array([0,1,0])
-root_config_ = root_config_.reshape(3,1)
-#spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
-
-spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
-sites=[spin]*3
-pstate=["empty", "full","empty"]
-#mps = MPS.from_product_state(sites, pstate, bc="infinite")
-
-
-N=5
-
-
-#DEFINE MPO MODEL M_i for infinite DMRG AND TURN IT INTO A SEGMENT
-M_s = M_i.extract_segment(enlarge=N)
-
-first, last = M_s.lat.segment_first_last
-#print(last)
+#print('babababa')
+#print(psi_halfinf._B[-1])
+#print(right_env)
+#print(M.H_MPO._W[-1])
 #quit()
-
-#MULTIPLY BY CELL SIZE
-
-#psi_halfinf,init_env_data_halfinf=set_infinite_like_segment(mps,M_i,last)
-#mps3 = MPS.from_product_state(sites, pstate, bc="infinite")
-mps2=mps.extract_segment(0,last)
-psi_halfinf = mps2.copy() 
+left_environment=load_left_environment(name)
+print('bababbab')
+print(psi_halfinf._B[0])
+print(left_environment)
+print(M.H_MPO._W[0])
+#quit()
 
 psi_halfinf.canonical_form_finite(cutoff=0.0)
 print(psi_halfinf)
@@ -466,13 +535,12 @@ init_env_data_halfinf={}
 #INSTEAD OF 44 SHOULD JUST BE A LAST ELEMENT?
 #what is the second parameter???
 
-age=50
-init_env_data_halfinf['init_RP'] = MPOEnvironment(mps, M_i.H_MPO, mps).init_RP(last, age)    #DEFINE RIGHT ENVIROMENT
+init_env_data_halfinf['init_LP'] = left_environment    #DEFINE RIGHT ENVIROMENT
+init_env_data_halfinf['age_LP'] =0
+
+init_env_data_halfinf['init_RP'] = right_env   #DEFINE RIGHT ENVIROMENT
 init_env_data_halfinf['age_RP'] =0
-#print(init_env_data_halfinf['init_RP'])
-#quit()
-#initialize left enviroment
-init_env_data_halfinf=set_left_environment(mps,init_env_data_halfinf,M_i.H_MPO)
+
 
 
 
@@ -484,16 +552,9 @@ dmrg_params = {
         'svd_min': 1.e-10,
     },
 }
-#print()
-#print(len(M_s))
-#print(M_s.lat.site)
-#quit()
-#print(M_s.H_MPO.L)
-#print(psi_halfinf)
-#quit()
-eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M_s, dmrg_params,
-                                     resume_data={'init_env_data': init_env_data_halfinf})
 
+eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M, dmrg_params,
+                                     resume_data={'init_env_data': init_env_data_halfinf})
 
 print("enviroment works")
 print("running DMRG")

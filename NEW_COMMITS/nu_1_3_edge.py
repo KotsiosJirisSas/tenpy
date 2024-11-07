@@ -61,33 +61,32 @@ def create_infinite_DMRG_model(N):
     np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
     #########################
     #sort the problem and match values to konstantinos values
-    Lx = 22;			# circumference
-    LL = 0;			# which Landau level to put in
-    xi = 6;			# The Gaussian falloff for the Coulomb potential
-    Veps = 1e-4		# how accurate to approximate the MPO
-
-
-    
-    
-
-    def rvr(r):
-        return np.exp(-r/xi)
+    Lx = 14;            # circumference
+    LL = 0;         # which Landau level to put in
+    mixing_chi = 400; #Bond dimension in initial sweeps
+    chi = 400;      #Bond dimension of MPS
+    chi2 = 400
+    chi3 = 400
+    #chi4 = 4500
+    xi = 1; #
+    #xi = 1;            # The Gaussian falloff for the Coulomb potential
+    Veps = 1e-4 # how accurate to approximate the MPO
     V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} }
-
-    root_config = np.array([0, 1, 0])		# this is how the initial wavefunction looks
-
+    root_config = np.array([0, 1, 0])       # this is how the initial wavefunction looks
+    N = 3
     model_par = {
         'verbose': 3,
         'layers': [ ('L', LL) ],
         'Lx': Lx,
         'Vs': V,
-        'boundary_conditions': ('infinite', N),
+        'boundary_conditions': ('infinite', N),#????????????????????????
+    #   'boundary_conditions': ('periodic', 1),
         'cons_C': 'total', #Conserve number for each species (only one here!)
         'cons_K': False, #Conserve K
         'root_config': root_config, #Uses this to figure out charge assignments
         'exp_approx': '1in', #For multiple orbitals, 'slycot' is more efficient; but for 1 orbital, Roger's handmade code '1in' is slightly more efficient
     }
-    
+        
 
 
 
@@ -103,6 +102,13 @@ def create_infinite_DMRG_model(N):
 
 
     G=M.MPOgraph
+    #import pickle
+    #print(G)
+    # Assuming 'data' is your object (like your transposed tensor) that you want to save
+    #with open('data_MPO_GRAPH.pkl', 'wb') as f:
+    #    pickle.dump(G[0], f)
+
+    #quit()
     #print(G[0].keys())
     #print(G[0][('_a', 0, 9)])
     #quit()
@@ -144,7 +150,7 @@ def create_infinite_DMRG_model(N):
        
         for element in not_included_couplings[i]:
             
-            G_new[i].pop(element[0],None)
+            #G_new[i].pop(element[0],None)
             print(element[0])
     
    
@@ -161,29 +167,32 @@ def create_infinite_DMRG_model(N):
 
     H = QH_G2MPO.build_MPO(M,None)#: Build the MPO
     print("Built"+".."*10)
-
-
-
+    
+    #bunch_legs=1
+    H.sort_legcharges()
+    #print(H._W[0])
+    #quit()
     #initialize wavefunction as MPS
    
-    
+    print(N)
     lattice=Chain(N,spin, bc="periodic",  bc_MPS="infinite")
     
     model=MPOModel(lattice, H)
 
     print("created model",".."*30)
+    #quit()
     return model
 
 def load_data(name):
-   
+    #LOADS MPS
     with open(name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
-    print(loaded_xxxx.keys())
+    #print(loaded_xxxx.keys())
     Bflat=loaded_xxxx['Bs']
 
     Ss=loaded_xxxx['Ss']
     qflat2=loaded_xxxx['qflat']
-    print(qflat2.shape)
+    #print(qflat2.shape)
     #quit()
     qflat=[]
     for i in range(len(qflat2)):
@@ -211,42 +220,49 @@ def load_data(name):
     #print(a)
     #print(left_leg)
     #quit()
+    left_leg.sort()
     #LegCharge(chargeinfo, slices, charges, qconj=1)
     #psi=MPS.from_product_state(sites, pstate,bc='infinite')
     #print(psi._B)
     mps=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='infinite',legL=left_leg)
+    print(mps)
     print('loaded mps from data',".."*30)
     return mps
 
 def load_environment(name):
-
+    #LOAD ENVIRONMENT
     print("loading environment",'..'*20)
     with open(name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     Bflat=loaded_xxxx['RP_B']
-    qflat_list=loaded_xxxx['RP_q']
+    qflat_list_c=loaded_xxxx['RP_q']
+   
     print(Bflat.shape)
     shape=Bflat.shape
-    #Bflat=np.reshape(Bflat,(shape[1],shape[0],shape[2]))
-    #quit()
-    #print(qflat_list[0])
-    #quit()
-    #quit()
-    #site=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
+   
+    #change the shape of Bflat and qflat
+    Bflat=np.transpose(Bflat, (1, 0, 2))
+    print(len(qflat_list_c))
+    qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
+    
+
+
+    #define site that defines charge information for environment
     root_config_ = np.array([0,1,0])
     root_config_ = root_config_.reshape(3,1)
     length=2
-    site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=length)
+    #site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=length)
+    site=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
     chargeinfo=site.leg.chinfo
     legcharges=[]
     
-    
+    #loads right environment
     labels=['vL', 'wL', 'vL*']
     conj_q=[1,1,-1]
 
     for i in range(len(qflat_list)):
-        print(i)
-        legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i])#.bunch()[1]
+        #print(i)
+        legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i]).bunch()[1]
         legcharges.append(legcharge)
 
 
@@ -262,7 +278,7 @@ def load_environment(name):
                         warn_wrong_sector=True)
     print(environment)
     print("environment is loaded",'..'*20)
-    quit()
+  
     return environment
 
 def project_and_find_segment_mps(mps,N):
@@ -283,7 +299,7 @@ def project_and_find_segment_mps(mps,N):
     psi_halfinf.test_sanity()
 
     print('projected MPS',".."*30)
-    B=psi_halfinf.get_B(0)
+    #B=psi_halfinf.get_B(0)
     #print(B)
     #quit()
     return psi_halfinf
@@ -292,24 +308,32 @@ def project_and_find_segment_mps(mps,N):
 
 
 
-def set_left_environment(psi0_i,init_env_data,H_MPO):
+def set_left_environment_projected(psi0_i,init_env_data,H_MPO):
 
     print('setting left environment',".."*30)
     #starting from infinite MPS and its enviroment and MPO define enviroment for segment DMRG
     init_env_data_halfinf = init_env_data.copy()
    
     init_env_data_halfinf['init_LP'] = MPOEnvironment(psi0_i, H_MPO, psi0_i).init_LP(0, 0)#[4,:,4]
-    print("IN"*100)
+   
+    print("left environment")
+    print(init_env_data_halfinf['init_LP'])
+    #quit()
+    #print("IN"*100)
+    #quit()
+    #label='vL'
+    #print(psi_halfinf.get_leg( label))
+    #quit()
     labels=['vR*', 'wR', 'vR']
 
 
     #obtain qflat of nontrivial stuff
+    
+    #fix charges on left leg
     label='wR'
-    print(init_env_data_halfinf['init_LP'])
-    #quit()
-    #get qflat from here
     a=np.array(init_env_data_halfinf['init_LP'].get_leg( label))
     a=str(a)
+    print(a)
     words =a.split('\n')
     #STRIP TO GET QFLAT
     words.pop(0)
@@ -326,37 +350,31 @@ def set_left_environment(psi0_i,init_env_data,H_MPO):
     kopy3=[]
     for i in kopy2:
         kopy3.append(int(i[-1].strip('[')))
+    print(kopy3)
+    kopy3=[]
+    for i in range(12):
+        kopy3.append(-3)
+    for i in range(48-12):
+        kopy3.append(0)
+    for i in range(60-48):
+        kopy3.append(3)
     
     #gives qflat for non-trivial leg    
-    #print(len(kopy3))    
-    #quit()
-    #a=init_env_data_halfinf['init_LP'].to_ndarray()
-    #a= init_env_data_halfinf['init_LP'].__iter__()[0]
-    #print(a.shape)
-   
-    #print(a.shape)
-    #quit()
-    #EXTRACT CHARGE INFORMATION FROM THIS MPO ENVIROMENT AND THEN SET THE CORRESPONDING CHARGE INFO TO
-    #LEFT BOUNDARY
-  
-    #chargeinfo=ChargeInfo([1],['N'])
-    #print(init_env_data_halfinf['init_LP'])
-    #quit()
     chargeinfo=init_env_data_halfinf['init_LP'].legs[0].chinfo
     
 
     legcharges=[]
     #define 3 legs
-    qflat=[6]
-    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=1)#.bunch()[1]
+    qflat=[0]
+    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=1).bunch()[1]
     legcharges.append(legcharge)
     #READ OFF FROM [:]
     qflat=kopy3
-    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=-1)#.bunch()[1]
+    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=-1).bunch()[1]
 
     legcharges.append(legcharge)
-    qflat=[6]
-    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=-1)#.bunch()[1]
+    qflat=[0]
+    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=-1).bunch()[1]
     legcharges.append(legcharge)
     #print(legcharges[1])
     #print('charges fine')
@@ -382,12 +400,17 @@ def set_left_environment(psi0_i,init_env_data,H_MPO):
                         warn_wrong_sector=True)
     
     
-    print(array_defined)
-    #init_env_data_halfinf['init_LP'] =array_defined
+    #print(array_defined)
+    init_env_data_halfinf['init_LP'] =array_defined
     init_env_data_halfinf['age_LP'] = 0
 
 
     print('setleft environment',".."*30)
+    #print(H_MPO._W[0])
+    #print(array_defined)
+    
+    #TODO: CHECK WHY PROJECTED STUFF DOES NOT WORK!!!
+    #quit()
     return init_env_data_halfinf
 
 def set_infinite_like_segment(mps,M_i,last):
@@ -411,16 +434,26 @@ def set_infinite_like_segment(mps,M_i,last):
 #name="qflat_QH_1_3-2"
 #load_data(name)
 #quit()
-name='env_QH_1_3-2'
-right_enviroment=load_environment(name)
- 
-quit()
 N=3
 M_i=create_infinite_DMRG_model(N)
-name="qflat_QH_1_3-2"
+
+name='env_QH_1_3_no_K'
+right_env=load_environment(name)
+#print(right_env)
+#quit()
+
+name="qflat_QH_1_3_no_K"
 
 #returns infinite DMRG MPS
 mps=load_data(name)
+#print(mps)
+#a=mps.expectation_value('nOp')
+#print(a)
+#quit()
+#quit()
+#print(mps._B[2])
+#quit()
+
 
 root_config_ = np.array([0,1,0])
 root_config_ = root_config_.reshape(3,1)
@@ -436,7 +469,9 @@ N=15
 
 
 #DEFINE MPO MODEL M_i for infinite DMRG AND TURN IT INTO A SEGMENT
-M_s = M_i.extract_segment(enlarge=N)
+first=0
+last=N*3-2
+M_s = M_i.extract_segment(first, last )#enlarge=N)
 
 first, last = M_s.lat.segment_first_last
 #print(last)
@@ -444,32 +479,38 @@ first, last = M_s.lat.segment_first_last
 
 #MULTIPLY BY CELL SIZE
 
-#psi_halfinf,init_env_data_halfinf=set_infinite_like_segment(mps,M_i,last)
-#mps3 = MPS.from_product_state(sites, pstate, bc="infinite")
+
 mps2=mps.extract_segment(0,last)
 psi_halfinf = mps2.copy() 
-
 psi_halfinf.canonical_form_finite(cutoff=0.0)
 print(psi_halfinf)
-#print(a)
-#print(b)
-#quit()
-#psi_halfinf=project_and_find_segment_mps(mps,last)
+
+psi_halfinf=project_and_find_segment_mps(mps,last)
 init_env_data_halfinf={}
 #initialize right enviroment
 #INSTEAD OF 44 SHOULD JUST BE A LAST ELEMENT?
 #what is the second parameter???
+#print(psi_halfinf._B[0])
+#quit()
+#age=50
 
-age=50
-init_env_data_halfinf['init_RP'] = MPOEnvironment(mps, M_i.H_MPO, mps).init_RP(last, age)    #DEFINE RIGHT ENVIROMENT
+#init_env_data_halfinf['init_LP']= MPOEnvironment(mps, M_i.H_MPO, mps).init_LP(0, 0)#set_left_environment(mps,init_env_data_halfinf,M_i.H_MPO)
+
+
+#print(init_env_data_halfinf['init_LP'])
+#quit()
+init_env_data_halfinf['init_RP'] = right_env   #DEFINE RIGHT ENVIROMENT
+init_env_data_halfinf=set_left_environment_projected(mps,init_env_data_halfinf,M_i.H_MPO)
+#init_env_data_halfinf['init_RP'] = MPOEnvironment(mps, M_i.H_MPO, mps).init_RP(last, age)    #DEFINE RIGHT ENVIROMENT
 
 print(init_env_data_halfinf['init_RP'])
 init_env_data_halfinf['age_RP'] =0
-quit()
+init_env_data_halfinf['age_LP'] =0
+#quit()
 #print(init_env_data_halfinf['init_RP'])
 #quit()
 #initialize left enviroment
-init_env_data_halfinf=set_left_environment(mps,init_env_data_halfinf,M_i.H_MPO)
+
 
 
 
@@ -488,6 +529,9 @@ dmrg_params = {
 #print(M_s.H_MPO.L)
 #print(psi_halfinf)
 #quit()
+#OK DOESNT WORK FOR PROJECTED
+#WORKS FOR UNPROJECTED WF
+
 eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M_s, dmrg_params,
                                      resume_data={'init_env_data': init_env_data_halfinf})
 

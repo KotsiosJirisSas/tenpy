@@ -648,7 +648,7 @@ class DMRGEngine(IterativeSweeps):
                 update_bra = env.bra is psi
                 #print(type(env))
                 print('*'*100)
-                print(env)
+                #print(env)
                 #quit()
                 env._update_gauge_LP(j, U, update_bra, update_ket)
             # No need to clear the environments on the other bonds!

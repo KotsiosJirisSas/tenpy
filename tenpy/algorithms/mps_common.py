@@ -1971,7 +1971,11 @@ class DensityMatrixMixer(Mixer):
         # rho_L ~=  theta theta^H = U S V^H V S U^H = U S S U^H  (for mixer -> 0)
         # Thus, rho_L U = U S S, i.e. columns of U are the eigenvectors of rho_L,
         # eigenvalues are S^2.
+
+        
         val_L, U = npc.eigh(rho_L)
+
+        print(val_L)
         U.iset_leg_labels(['(vL.p0)', 'vR'])
         val_L[val_L < 0.] = 0.  # for stability reasons
         val_L /= np.sum(val_L)
