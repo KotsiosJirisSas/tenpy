@@ -190,7 +190,10 @@ def load_data(name,sites):
     #ADD K AND N conservatrions
     qflat=[]
     for i in range(len(qflat2)):
-        qflat.append([qflat2[i][0],qflat2[i][1]])
+        kopy=[]
+        for m in range(len(qflat2[i])):
+            kopy.append(qflat2[i][m])
+        qflat.append(kopy)
     qflat=np.array(qflat)
     #print(qflat)
     #quit()
@@ -202,11 +205,7 @@ def load_data(name,sites):
 
     Ss=[Ss[2],Ss[0],Ss[1]]*number
     Ss.append(Ss[0])
-    #Ss=[Ss[0],Ss[1],Ss[2]]*number
-    for i in range(3*number):
-        print(Bflat[i].shape)
-        print(len(Ss[i]))
-    #chargeinfo=ChargeInfo([1],['N'])
+    
     chargeinfo=sites[0].leg.chinfo
     #print(chargeinfo)
     #quit()

@@ -44,13 +44,13 @@ V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} }
 
 root_config = np.array([0, 1, 0])		# this is how the initial wavefunction looks
 broj=20
-N=3*broj
+N=3
 model_par = {
 	'verbose': 3,
 	'layers': [ ('L', LL) ],
 	'Lx': Lx,
 	'Vs': V,
-	'boundary_conditions': ('periodic', N),
+	'boundary_conditions': ('infinite', N),
 	'cons_C': 'total', #Conserve number for each species (only one here!)
 	'cons_K': False, #Conserve K
 	'root_config': root_config, #Uses this to figure out charge assignments
@@ -86,7 +86,8 @@ print("Old code finished producing MPO graph",".."*10)
 
 
 G=M.MPOgraph
-
+print(len(G))
+quit()
 #print(G[0][('Mk', 'AL-6-aL.11', 0)])
 #quit()
 G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)

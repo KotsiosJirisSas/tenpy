@@ -15,7 +15,7 @@ from tenpy.networks.mps import MPS
 from tenpy.models.xxz_chain import XXZChain
 from tenpy.models.tf_ising import TFIChain
 
-tenpy.tools.misc.setup_logging(to_stdout="INFO")
+#tenpy.tools.misc.setup_logging(to_stdout="INFO")
 
 
 from tenpy.models.lattice import TrivialLattice
@@ -60,32 +60,33 @@ import QH_Graph_final
 
 np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
 #########################
+
+Lx=14
+LL=0
+chi=600
+mixing_chi=600
+chi2=600
+chi3=600
+xi=6
+
+Nlayer = 2; Veps = 1e-4
 #sort the problem and match values to konstantinos values
-Lx = 12;			# circumference
-LL = 0;			# which Landau level to put in
-xi = 6;			# The Gaussian falloff for the Coulomb potential
-Veps = 1e-4		# how accurate to approximate the MPO
+V = {'eps':Veps, 'coulomb': dict([ ((s,s),{'v':1, 'xi':1}) for s in range(Nlayer) ]) }  # V1 coulomb
 
-xi=1
+root_config = np.array([0, 1, 0])         # the DMRG is seeded with this config, the model can work
+root_config = np.tile(root_config, Nlayer).reshape((Nlayer,-1)).transpose().reshape((-1))
 N=3
-
-
-def rvr(r):
-    return np.exp(-r/xi)
-V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} }
-
-root_config = np.array([0, 1, 0,0,1,0])		# this is how the initial wavefunction looks
-
 model_par = {
-    'verbose': 3,
-    'layers': [ ('L', LL),('L',LL) ],
-    'Lx': Lx,
+    'verbose': 2,
+    'Nlayer': Nlayer,
+    'Lx': 12,                # circumference
     'Vs': V,
-    'boundary_conditions': ('infinite', N),
-    'cons_C': 'total', #Conserve number for each species (only one here!)
-    'cons_K': False, #Conserve K
-    'root_config': root_config, #Uses this to figure out charge assignments
-    'exp_approx': '1in', #For multiple orbitals, 'slycot' is more efficient; but for 1 orbital, Roger's handmade code '1in' is slightly more efficient
+    'cons_C': 'total',
+    'cons_K': True,
+    'root_config': root_config,
+    'ignore_herm_conj': True,    # this option only works with slycot
+    'exp_approx': 'slycot',      # use slycot xponential approximation when constructing
+    'boundary_conditions': ('infinite', N)
 }
 
 
@@ -124,8 +125,8 @@ G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
 #print(G_new[0][('_a', 0, 9)])
 #print(G_new[0]["('_a', 0, 9)"])
 #quit()
-root_config_ = np.array([0,1,0])
-root_config_ = root_config_.reshape(3,1)
+root_config_ = np.array(root_config)
+root_config_ = root_config_.reshape(6,1)
 #spin=QH_MultilayerFermionSite(N=1)#,root_config=root_config_,conserve='N')
 
 spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
@@ -133,6 +134,7 @@ L = len(G_new)
 
 
 sites = [spin] * L 
+print("NUMBER OF SITES")
 #print(sites)
 print(len(sites))
 #SORT THE STUPID ASSERTION PROBLEM WHICH ARISES AT CERTAIN VALUES
@@ -191,3 +193,17 @@ model=MPOModel(lattice, H)
 
 print("created model",".."*30)
     
+
+pstate=["empty", "empty","full","full","empty","empty"]
+psi = MPS.from_product_state(sites, pstate, bc="infinite")
+
+dmrg_params={"max_E_err": 1e-6,"max_S_err": 1e-7,"N_sweeps_check":2,"trunc_params": {"chi_max": 450, "trunc_cut": 1.e-7}, "mixer":True,
+             "lanczos_params": {'chi_list':{0:mixing_chi, 12:chi},'N_min': 2, 'N_max': 20, 'P_tol': 2e-6, 'P_tol_to_trunc': 1/25., 'cache_v':np.inf}, "max_sweeps":36}
+
+print("Run DMRG:")
+engine = dmrg.TwoSiteDMRGEngine(psi, model, dmrg_params)  
+E0, psi = engine.run()
+
+print("entanglement entropy")
+x=psi.entanglement_entropy()
+print(x)

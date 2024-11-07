@@ -146,7 +146,7 @@ def create_infinite_DMRG_model(N):
             
             G_new[i].pop(element[0],None)
             print(element[0])
-    quit()
+    
    
     print("Finished",".."*10 )
  
@@ -175,22 +175,22 @@ def create_infinite_DMRG_model(N):
     return model
 
 def load_data(name):
- 
+   
     with open(name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     print(loaded_xxxx.keys())
-
-
     Bflat=loaded_xxxx['Bs']
 
     Ss=loaded_xxxx['Ss']
     qflat2=loaded_xxxx['qflat']
+    print(qflat2.shape)
     #quit()
     qflat=[]
     for i in range(len(qflat2)):
         qflat.append(qflat2[i][0])
     qflat=np.array(qflat)
-   
+    #print(qflat)
+    #quit()
     root_config_ = np.array([0,1,0])
     root_config_ = root_config_.reshape(3,1)
     spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
@@ -218,6 +218,47 @@ def load_data(name):
     print('loaded mps from data',".."*30)
     return mps
 
+def load_environment(name):
+    with open(name+'.pkl', 'rb') as f:
+        loaded_xxxx = pickle.load(f, encoding='latin1')
+    Bflat=loaded_xxxx['RP_B']
+    qflat_list=loaded_xxxx['RP_q']
+    print(Bflat.shape)
+    #print(qflat_list[0])
+    #quit()
+    #quit()
+    #site=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
+    root_config_ = np.array([0,1,0])
+    root_config_ = root_config_.reshape(3,1)
+    length=19
+    site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=length)
+    chargeinfo=site.leg.chinfo
+    legcharges=[]
+    
+    
+    labels=['vR*', 'wR', 'vR']
+
+    
+    conj_q=[1,-1,-1]
+    for i in range(len(qflat_list)):
+        print(i)
+        legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i])#.bunch()[1]
+        legcharges.append(legcharge)
+
+
+    
+    
+    environment=Array.from_ndarray( Bflat,
+                        legcharges,
+                        dtype=np.float64,
+                        qtotal=None,
+                        cutoff=None,
+                        labels=labels,
+                        raise_wrong_sector=True,
+                        warn_wrong_sector=True)
+    print("environment is loaded",'..'*20)
+    quit()
+    return environment
 
 def project_and_find_segment_mps(mps,N):
 
@@ -362,6 +403,13 @@ def set_infinite_like_segment(mps,M_i,last):
     init_env_data_halfinf['age_LP'] = 0
     return psi_halfinf,init_env_data_halfinf
 
+#name="qflat_QH_1_3-2"
+#load_data(name)
+#quit()
+name='env_QH_1_3-2'
+right_enviroment=load_environment(name)
+ 
+quit()
 N=3
 M_i=create_infinite_DMRG_model(N)
 name="qflat_QH_1_3-2"
