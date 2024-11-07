@@ -219,27 +219,31 @@ def load_data(name):
     return mps
 
 def load_environment(name):
+
+    print("loading environment",'..'*20)
     with open(name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     Bflat=loaded_xxxx['RP_B']
     qflat_list=loaded_xxxx['RP_q']
     print(Bflat.shape)
+    shape=Bflat.shape
+    #Bflat=np.reshape(Bflat,(shape[1],shape[0],shape[2]))
+    #quit()
     #print(qflat_list[0])
     #quit()
     #quit()
     #site=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
     root_config_ = np.array([0,1,0])
     root_config_ = root_config_.reshape(3,1)
-    length=19
+    length=2
     site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=length)
     chargeinfo=site.leg.chinfo
     legcharges=[]
     
     
-    labels=['vR*', 'wR', 'vR']
+    labels=['vL', 'wL', 'vL*']
+    conj_q=[1,1,-1]
 
-    
-    conj_q=[1,-1,-1]
     for i in range(len(qflat_list)):
         print(i)
         legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i])#.bunch()[1]
@@ -256,6 +260,7 @@ def load_environment(name):
                         labels=labels,
                         raise_wrong_sector=True,
                         warn_wrong_sector=True)
+    print(environment)
     print("environment is loaded",'..'*20)
     quit()
     return environment
@@ -457,7 +462,10 @@ init_env_data_halfinf={}
 
 age=50
 init_env_data_halfinf['init_RP'] = MPOEnvironment(mps, M_i.H_MPO, mps).init_RP(last, age)    #DEFINE RIGHT ENVIROMENT
+
+print(init_env_data_halfinf['init_RP'])
 init_env_data_halfinf['age_RP'] =0
+quit()
 #print(init_env_data_halfinf['init_RP'])
 #quit()
 #initialize left enviroment
