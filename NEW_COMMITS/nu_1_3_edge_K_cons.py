@@ -58,9 +58,18 @@ import QH_Graph_final
 
 
 def create_segment_DMRG_model(L):
+
+    """
+    Creates MPOModel given model parameters:
+
+    L: Int, number of sites
+    """
+
+
+    #SET PARAMETERS
+    #TODO: MAKE MODEL PARAMETERS LOAD FROM OLD TENPY2
+
     np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
-    #########################
-    #sort the problem and match values to konstantinos values
     Lx = 14;            # circumference
     LL = 0;         # which Landau level to put in
     mixing_chi = 400; #Bond dimension in initial sweeps
@@ -79,8 +88,7 @@ def create_segment_DMRG_model(L):
         'layers': [ ('L', LL) ],
         'Lx': Lx,
         'Vs': V,
-        'boundary_conditions': ('infinite', L),#????????????????????????
-    #   'boundary_conditions': ('periodic', 1),
+        'boundary_conditions': ('infinite', L),
         'cons_C': 'total', #Conserve number for each species (only one here!)
         'cons_K': False, #Conserve K
         'root_config': root_config, #Uses this to figure out charge assignments
@@ -91,28 +99,22 @@ def create_segment_DMRG_model(L):
 
 
 
-
-
-
-
-
-
+    # construct MPO Model from the Graph using the tenpy2 code
     print("Start model in Old Tenpy",".."*10)
     M = mod.QH_model(model_par)
     print("Old code finished producing MPO graph",".."*10)
 
 
+    #load tenpy2 graph into tenpy3 graph
     G=M.MPOgraph
     G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
     
-    root_config_ = np.array([0,1,0])
-    root_config_ = root_config_.reshape(3,1)
 
 
     root_config_ = np.array([0,1,0])
     root_config_ = root_config_.reshape(3,1)
 
-
+    #define Hilbert spaces for each site with appropriate conservation laws
     sites=[]
     for i in range(L):
       
@@ -160,40 +162,50 @@ def create_segment_DMRG_model(L):
     print("Built"+".."*10)
 
 
+    #sort leg charges to make DMRG algortihm quicker
     H.sort_legcharges()
-    #initialize wavefunction as MPS
-
     
+    #Define lattice on which MPO is defined
     pos= [[i] for i in range(L)]
-
-    #quit()
     lattice = Lattice([1], sites,positions=pos, bc="periodic", bc_MPS="segment")
     x=lattice.mps_sites()
-        
+    
+    #create model from lattice and MPO
     model=MPOModel(lattice, H)
-   
-
     print("created model",".."*30)
     return model,sites
 
 def load_data(name,sites):
-    #name='qflat_QH_1_3-2'
- 
+    """
+    loads MPS as segment mps of length len(sites)
+    name: Str, name of the .pkl file from which we import
+    sites: list of class:Sites, list of hilbert spaces corresponding to each site
+    """
+
+
+    #TODO: THIS WORKS ONLY FOR NU=1/3, MAKE IT WORK FOR GENERAL FILLINGS
+    L=len(sites)
     with open(name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
-    #print(loaded_xxxx['qflat'])
-    #quit()
-    number=len(sites)//3+1
-    #print(number)
-    Bflat=loaded_xxxx['Bs']*number
-    #print(len(Bflat))
+    
+    #finds length of an infinite unit cell
+    Bflat0=loaded_xxxx['Bs']
+    infinite_unit_cell=len(Bflat0)
+
+    number=len(sites)//infinite_unit_cell+1
+    
+    #enlarge the unit cell accordingly,
+    #TODO: MAKE THIS PROCESS QUICKER
+    Bflat=Bflat0*number
+
+    #load singular values
     Ss=loaded_xxxx['Ss']
+    
+    #load charge infromation
     qflat2=loaded_xxxx['qflat']
-    #quit()
-    print(len(Ss))
-    print(len(Bflat))
-    #DEFINE K-charge on the left boundary
-    #ADD K AND N conservatrions
+
+    #change qflat into representation consistent with Tenpy3
+    #this is just charges of the leftmost leg
     qflat=[]
     for i in range(len(qflat2)):
         kopy=[]
@@ -201,25 +213,26 @@ def load_data(name,sites):
             kopy.append(qflat2[i][m])
         qflat.append(kopy)
     qflat=np.array(qflat)
-    #print(qflat)
-    #quit()
-    #ALSO NEED CHARGE VALUES?
-    #print(qflat)
-    #quit()
+  
 
+    #PERMUTE Ss values
+    last_ss=Ss[-1]
+    Ss.pop(-1)
+    Ss.insert(last_ss,0)
     #SINCE CONVERTING IT DIRECTLY TO SEGMENT MPS WE NEED TO ADD SINGULAR VALUES FOR THE FINAL RIGHTMOST LEG AS WELL!
-
-    Ss=[Ss[2],Ss[0],Ss[1]]*number
     Ss.append(Ss[0])
     
+
+    #cut the mps into mps of wanted size
     Bflat=Bflat[:L]
     Ss=Ss[:L+1]
     
+    #define left most leg of charges
     chargeinfo=sites[0].leg.chinfo
-    #print(chargeinfo)
-    #quit()
     left_leg=LegCharge.from_qflat(chargeinfo,qflat,qconj=1).bunch()[1]
     
+    #create MPS,
+    #charges are calculated from the left leg
     mps=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
     print('loaded mps from data',".."*30)
     return mps
@@ -367,18 +380,22 @@ def set_infinite_like_segment(mps,M_i,last):
 
 
 def load_right_environment(name,num_site):
-   
-    #LOAD ENVIRONMENT
+
+    #TODO: GENERALIZE TO ALL CONSERVATION LAWS SO THAT IT IS LOADED MORE SMOOTHLY
+    """
+    loads environment on the right hand side from old tenpy2 code
+    name:   Str, the file name in which the environment is saved
+    num_site: Int, number of sites in a segment
+    """
     print("loading right environment",'..'*20)
     with open(name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     Bflat=loaded_xxxx['RP_B']
     qflat_list_c=loaded_xxxx['RP_q']
    
-    print(Bflat.shape)
-    #shape=Bflat.shape
+    
    
-    #change the shape of Bflat and qflat
+    #change the shape of Bflat and qflat so that it is consistent with new tenpy
     Bflat=np.transpose(Bflat, (1, 0, 2))
     print(len(qflat_list_c))
     qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
@@ -386,20 +403,23 @@ def load_right_environment(name,num_site):
 
 
 
-
+    #create site at the end of the chain
     root_config_ = np.array([0,1,0])
     root_config_ = root_config_.reshape(3,1)
     site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=num_site)
     chargeinfo=site.leg.chinfo
     legcharges=[]
     
-    #loads right environment
+    #introduces right environment labels
     labels=['vL', 'wL', 'vL*']
     conj_q=[1,1,-1]
-    #print()
-    print(qflat_list[1])
+    
+   
 
-    #shift K by num_site-2 to get the correct environment
+    #shifts K by num_site-2 to get the correct charge matching in K sector
+    #rule is simple. K= \sum_i N_i i, so shift of each K value is just N_i*(num_sites-2)
+    #first column in qflat has information on K charges, and second on N charges
+
     for i in range(len(qflat_list[0])):
         qflat_list[0][i][0]+=qflat_list[0][i][1]*(num_site-2)
     for i in range(len(qflat_list[2])):
@@ -407,16 +427,14 @@ def load_right_environment(name,num_site):
     for i in range(len(qflat_list[1])):
         qflat_list[1][i][0]+=qflat_list[1][i][1]*(num_site-2)
 
-    print(qflat_list[1])
+    #creates all three legs of MPO
     for i in range(len(qflat_list)):
-        
-        #print(i)
         legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i]).bunch()[1]
         legcharges.append(legcharge)
 
 
     
-    
+    #creates MPO
     environment=Array.from_ndarray( Bflat,
                         legcharges,
                         dtype=np.float64,
@@ -432,57 +450,66 @@ def load_right_environment(name,num_site):
 
 
 
-def load_left_environment(name):
-   
+def load_left_environment(name,location=-1,vacuum=True):
+    """
+    loads environment on the right hand side from old tenpy2 code
+    name:   Str, the file name in which the environment is saved
+    vacuum: Bool, decides if left edge is trivial vacuum, if not environment is loaded 
+    location: Int, sets the location of the left edge
+    """
     #LOAD ENVIRONMENT
     print("loading left environment",'..'*20)
     with open(name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     print(loaded_xxxx.keys())
-    #quit()
+  
     Bflat=loaded_xxxx['LP1_B']
     qflat_list_c=loaded_xxxx['LP1_q']
    
     
-    #shape=Bflat.shape
-   
-    #change the shape of Bflat and qflat
+    #transpose bflat and qflat to make legs consistent with TeNpy3
     Bflat=np.transpose(Bflat, (1, 0, 2))
-    #SET IT TO ZEROS BUT WITH CORRECT CHARGES
-    a,b,c=Bflat.shape
-    Bflat=0*Bflat
-    for i in range(a):
-           Bflat[i,-1,i]=1
-    print(Bflat.shape)
-    #print(len(qflat_list_c))
     qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
+    
+    if vacuum:
+        #set Bflat to trivial identity so that left side is just vacuum
+        #else just uses preloaded environment
+        a,b,c=Bflat.shape
+        Bflat=0*Bflat
+        for i in range(a):
+            Bflat[i,-1,i]=1
+  
+
+
+   
+    #define Hilbert space for the left environment
     root_config_ = np.array([0,1,0])
     root_config_ = root_config_.reshape(3,1)
-    site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=-1)
+    site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=location)
     chargeinfo=site.leg.chinfo
     legcharges=[]
     
-    #loads right environment
+    #sets labels
     labels=['vR*', 'wR', 'vR']
     conj_q=[1,1,-1]
 
-    #shift K
+    #shift K accordingly by 1 site
     for i in range(len(qflat_list[0])):
-        qflat_list[0][i][0]+=-qflat_list[0][i][1]*1
+        qflat_list[0][i][0]+=qflat_list[0][i][1]*location
     for i in range(len(qflat_list[2])):
-        qflat_list[2][i][0]+=-qflat_list[2][i][1]*1
+        qflat_list[2][i][0]+=qflat_list[2][i][1]*location
     for i in range(len(qflat_list[1])):
-        qflat_list[1][i][0]+=-qflat_list[1][i][1]*1
+        qflat_list[1][i][0]+=qflat_list[1][i][1]*location
+    
 
+    #define all threee legs
     for i in range(len(qflat_list)):
-        #print(i)
-        #print(qflat_list[i])
         legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i]).bunch()[1]
         legcharges.append(legcharge)
 
 
     
-    
+    #define left environment
     environment=Array.from_ndarray( Bflat,
                         legcharges,
                         dtype=np.float64,
