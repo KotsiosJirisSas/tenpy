@@ -218,7 +218,8 @@ def load_data(name,sites):
     #PERMUTE Ss values
     last_ss=Ss[-1]
     Ss.pop(-1)
-    Ss.insert(last_ss,0)
+    Ss.insert(0,last_ss)
+    Ss=Ss*number
     #SINCE CONVERTING IT DIRECTLY TO SEGMENT MPS WE NEED TO ADD SINGULAR VALUES FOR THE FINAL RIGHTMOST LEG AS WELL!
     Ss.append(Ss[0])
     
