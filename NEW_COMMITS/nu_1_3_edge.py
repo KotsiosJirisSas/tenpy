@@ -4,7 +4,7 @@ import scipy
 import matplotlib.pyplot as plt
 import os
 import sys
-sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
+sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
 np.set_printoptions(precision=5, suppress=True, linewidth=100)
 plt.rcParams['figure.dpi'] = 150
 
@@ -485,23 +485,23 @@ psi_halfinf = mps2.copy()
 psi_halfinf.canonical_form_finite(cutoff=0.0)
 print(psi_halfinf)
 
-psi_halfinf=project_and_find_segment_mps(mps,last)
+#psi_halfinf=project_and_find_segment_mps(mps,last)
 init_env_data_halfinf={}
 #initialize right enviroment
 #INSTEAD OF 44 SHOULD JUST BE A LAST ELEMENT?
 #what is the second parameter???
 #print(psi_halfinf._B[0])
 #quit()
-#age=50
+age=50
 
-#init_env_data_halfinf['init_LP']= MPOEnvironment(mps, M_i.H_MPO, mps).init_LP(0, 0)#set_left_environment(mps,init_env_data_halfinf,M_i.H_MPO)
+init_env_data_halfinf['init_LP']= MPOEnvironment(mps, M_i.H_MPO, mps).init_LP(0, 0)#set_left_environment(mps,init_env_data_halfinf,M_i.H_MPO)
 
 
 #print(init_env_data_halfinf['init_LP'])
 #quit()
 init_env_data_halfinf['init_RP'] = right_env   #DEFINE RIGHT ENVIROMENT
-init_env_data_halfinf=set_left_environment_projected(mps,init_env_data_halfinf,M_i.H_MPO)
-#init_env_data_halfinf['init_RP'] = MPOEnvironment(mps, M_i.H_MPO, mps).init_RP(last, age)    #DEFINE RIGHT ENVIROMENT
+#init_env_data_halfinf=set_left_environment_projected(mps,init_env_data_halfinf,M_i.H_MPO)
+init_env_data_halfinf['init_RP'] = MPOEnvironment(mps, M_i.H_MPO, mps).init_RP(last, age)    #DEFINE RIGHT ENVIROMENT
 
 print(init_env_data_halfinf['init_RP'])
 init_env_data_halfinf['age_RP'] =0
@@ -532,12 +532,25 @@ dmrg_params = {
 #OK DOESNT WORK FOR PROJECTED
 #WORKS FOR UNPROJECTED WF
 
+for i in range(1):
+    x=psi_halfinf._B[i].qtotal
+    print(x)
+    b=M_i.H_MPO._W[i].qtotal
+    print(b)
+    a=right_env.qtotal
+    print(a)
+    c=init_env_data_halfinf['init_LP'].qtotal
+    print(c)
+
+quit()
+
 eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M_s, dmrg_params,
                                      resume_data={'init_env_data': init_env_data_halfinf})
 
 
 print("enviroment works")
 print("running DMRG")
+#quit()
 E,psi=eng_halfinf.run()
 filling=psi.expectation_value("nOp")
 print(filling)

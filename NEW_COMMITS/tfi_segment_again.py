@@ -5,7 +5,9 @@ np.set_printoptions(precision=5, suppress=True, linewidth=100)
 plt.rcParams['figure.dpi'] = 150
 import os
 import sys
-sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
+
+sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
+#sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
 import tenpy
 import tenpy.linalg.np_conserved as npc
 from tenpy.algorithms import dmrg
@@ -40,16 +42,17 @@ dmrg_params = {
     'mixer': True,
     'max_E_err': 1.e-10,
     'trunc_params': {
-        'chi_max': 100,
+        'chi_max': 300,
         'svd_min': 1.e-10,
     },
 }
 
-print(psi0_i)
+#print(psi0_i)
 #x=psi0_i
-print(psi0_i.get_B(0)[0])
+#print(psi0_i.get_B(0)[0])
 #quit()
 eng0_i = dmrg.TwoSiteDMRGEngine(psi0_i, M_i, dmrg_params)
+quit()
 E0_i, _ = eng0_i.run()
 #print("rest")
 #print(a)
@@ -78,7 +81,7 @@ init_env_data = eng0_i.env.get_initialization_data(first, last)
 #print(M_i.H_MPO.__dict__)
 #quit()
 #quit()
-print(init_env_data['init_LP'][1])
+#print(init_env_data['init_LP'][1])
 
 #psi0_s.canonical_form_finite()
 
@@ -96,7 +99,7 @@ psi_halfinf.set_B(0, B, form='B')
 psi_halfinf.set_SL(0, np.ones(1, float))
 
 
-print(psi_halfinf.get_SL(1))
+#print(psi_halfinf.get_SL(1))
 #quit()
 
 #a,b=psi_halfinf.segment_boundaries
@@ -107,8 +110,8 @@ psi_halfinf.canonical_form_finite(cutoff=0.0)
 psi_halfinf.test_sanity()
 #print(psi_halfinf)
 
-print(psi_halfinf._B[0])
-quit()
+#print(psi_halfinf._B[0])
+#quit()
 print('START ZERO')
 B = psi_halfinf.get_B(0, form='B')
 #print(B)
@@ -172,8 +175,8 @@ array_defined=Array.from_ndarray( data_flat,
 #quit()
 init_env_data_halfinf['init_LP'] =array_defined#Array(legcharges, dtype=np.float64, qtotal=None, labels=labels)
 print('defined')
-print(array_defined)
-quit()
+#print(array_defined)
+#quit()
 #npc.array()shape=1,3,1
 #quit()
 #quit()
@@ -183,19 +186,19 @@ init_env_data_halfinf['age_LP'] = 0
 
 #quit()
 
-print("START"*100)
-print(init_env_data_halfinf['age_LP'])
-print(init_env_data_halfinf['init_LP'][0])
-print(a[0])
+#print("START"*100)
+#print(init_env_data_halfinf['age_LP'])
+#print(init_env_data_halfinf['init_LP'][0])
+#print(a[0])
 
-print("STOP"*100)
+#print("STOP"*100)
 #quit()
 #print()
-print("START"*100)
-print(init_env_data_halfinf['init_RP'])
+#print("START"*100)
+#print(init_env_data_halfinf['init_RP'])
 a=init_env_data_halfinf['init_RP']
-print(init_env_data_halfinf['age_RP'])
-print("STOP"*100)
+#print(init_env_data_halfinf['age_RP'])
+#print("STOP"*100)
 
 
 
@@ -203,14 +206,14 @@ init_env_data_halfinf['init_RP'] = MPOEnvironment(psi0_i, M_i.H_MPO, psi0_i).ini
 
 
 #init_env_data_halfinf['age_RP']=0 
-print("START"*100)
-print(init_env_data_halfinf['age_RP'])
-print(init_env_data_halfinf['init_RP'][3])
+#print("START"*100)
+#print(init_env_data_halfinf['age_RP'])
+#print(init_env_data_halfinf['init_RP'][3])
 
-quit()
-print(a[0])
+#quit()
+#print(a[0])
 
-print("STOP"*100)
+#print("STOP"*100)
 """
 [0.      0.13332 0.14834 0.15192 0.15297 0.15331 0.15343 0.15347 0.15348 0.15349 0.15349 0.15349
  0.15349 0.15349 0.15349 0.15349 0.15349 0.15349 0.15349 0.15349 0.15349]
@@ -239,13 +242,13 @@ eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M_s, dmrg_params,
 
 
 print("enviroment works")
-#quit()
+quit()
 eng_halfinf.run()
 
 
-print(psi_halfinf.entanglement_entropy())
-print(psi_halfinf.expectation_value("Sigmaz"))
-quit()
+#print(psi_halfinf.entanglement_entropy())
+#print(psi_halfinf.expectation_value("Sigmaz"))
+#quit()
 model_params_defect = {
     'J': 1. , 'g': [0.] + [model_params['g']] * (psi_halfinf.L-1),
     'L': psi_halfinf.L,

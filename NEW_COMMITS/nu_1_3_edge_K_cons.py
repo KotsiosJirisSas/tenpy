@@ -4,7 +4,7 @@ import scipy
 import matplotlib.pyplot as plt
 import os
 import sys
-sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
+sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
 np.set_printoptions(precision=5, suppress=True, linewidth=100)
 plt.rcParams['figure.dpi'] = 150
 
@@ -421,13 +421,24 @@ def load_right_environment(name,num_site):
     #rule is simple. K= \sum_i N_i i, so shift of each K value is just N_i*(num_sites-2)
     #first column in qflat has information on K charges, and second on N charges
 
+    suma_1=0
     for i in range(len(qflat_list[0])):
         qflat_list[0][i][0]+=qflat_list[0][i][1]*(num_site-2)
-    for i in range(len(qflat_list[2])):
-        qflat_list[2][i][0]+=qflat_list[2][i][1]*(num_site-2)
+        suma_1+=qflat_list[0][i][1]
+
+    suma_2=0
     for i in range(len(qflat_list[1])):
         qflat_list[1][i][0]+=qflat_list[1][i][1]*(num_site-2)
-
+        suma_2+=qflat_list[1][i][1]
+    
+    suma_3=0
+    for i in range(len(qflat_list[2])):
+        qflat_list[2][i][0]+=qflat_list[2][i][1]*(num_site-2)
+        suma_3+=qflat_list[2][i][1]
+    print(suma_1,suma_2,suma_3)
+    print('charge')
+    print(conj_q[0]*suma_1+conj_q[1]*suma_2+conj_q[2]*suma_3)
+    #quit()
     #creates all three legs of MPO
     for i in range(len(qflat_list)):
         legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i]).bunch()[1]
@@ -446,12 +457,15 @@ def load_right_environment(name,num_site):
                         warn_wrong_sector=True)
     print(environment)
     print("environment is loaded",'..'*20)
-  
+    x=environment.qtotal
+    print(x)
+    #quit()
     return environment
 
 
 
 def load_left_environment(name,location=-1,vacuum=True):
+  
     """
     loads environment on the right hand side from old tenpy2 code
     name:   Str, the file name in which the environment is saved
@@ -464,10 +478,10 @@ def load_left_environment(name,location=-1,vacuum=True):
         loaded_xxxx = pickle.load(f, encoding='latin1')
     print(loaded_xxxx.keys())
   
-    Bflat=loaded_xxxx['LP1_B']
-    qflat_list_c=loaded_xxxx['LP1_q']
+    Bflat=loaded_xxxx['LP2_B']
+    qflat_list_c=loaded_xxxx['LP2_q']
    
-    
+    #print(qflat_list_c)
     #transpose bflat and qflat to make legs consistent with TeNpy3
     Bflat=np.transpose(Bflat, (1, 0, 2))
     qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
@@ -492,23 +506,42 @@ def load_left_environment(name,location=-1,vacuum=True):
     
     #sets labels
     labels=['vR*', 'wR', 'vR']
-    conj_q=[1,1,-1]
+    conj_q=[1,-1,-1]
 
     #shift K accordingly by 1 site
+    suma_1=0
     for i in range(len(qflat_list[0])):
-        qflat_list[0][i][0]+=qflat_list[0][i][1]*location
-    for i in range(len(qflat_list[2])):
-        qflat_list[2][i][0]+=qflat_list[2][i][1]*location
+        qflat_list[0][i][0]+=qflat_list[0][i][1]*(location-2)
+        suma_1+=qflat_list[0][i][1]
+
+    suma_2=0
     for i in range(len(qflat_list[1])):
-        qflat_list[1][i][0]+=qflat_list[1][i][1]*location
+        qflat_list[1][i][0]+=qflat_list[1][i][1]*(location-2)
+        suma_2+=qflat_list[1][i][1]
     
+    suma_3=0
+    for i in range(len(qflat_list[2])):
+        qflat_list[2][i][0]+=qflat_list[2][i][1]*(location-2)
+        suma_3+=qflat_list[2][i][1]
+    print(suma_1,suma_2,suma_3)
+    print(conj_q[0]*suma_1+conj_q[1]*suma_2+conj_q[2]*suma_3)
+
+    print('HOW IS THIS NOT ZERO')
+    #quit()
 
     #define all threee legs
     for i in range(len(qflat_list)):
         legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i]).bunch()[1]
+
+        #print(legcharge.qtotal)
+        #tot_charge=0
+        #for k in range(len(qflat_list[i])):
+        #    print(k)
+        #    tot_charge+=legcharge.get_charge(k)
+        #print(tot_charge)
         legcharges.append(legcharge)
 
-
+    #quit()
     
     #define left environment
     environment=Array.from_ndarray( Bflat,
@@ -521,7 +554,78 @@ def load_left_environment(name,location=-1,vacuum=True):
                         warn_wrong_sector=True)
     print(environment)
     print("left environment is loaded",'..'*20)
+
+    #print(environment.detect_legcharge())
+    print(environment.qtotal)
+    quit()
+    return environment
+
+
+
+def load_left_environment_new(leg1,leg2):
   
+    """
+    loads environment on the right hand side from old tenpy2 code
+    name:   Str, the file name in which the environment is saved
+    vacuum: Bool, decides if left edge is trivial vacuum, if not environment is loaded 
+    location: Int, sets the location of the left edge
+    """
+    #LOAD ENVIRONMENT
+    print("loading left environment",'..'*20)
+    with open(name+'.pkl', 'rb') as f:
+        loaded_xxxx = pickle.load(f, encoding='latin1')
+    print(loaded_xxxx.keys())
+  
+    Bflat=loaded_xxxx['LP2_B']
+    #qflat_list_c=loaded_xxxx['LP2_q']
+   
+    #print(qflat_list_c)
+    #transpose bflat and qflat to make legs consistent with TeNpy3
+    Bflat=np.transpose(Bflat, (1, 0, 2))
+    #qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
+    
+    if True:
+        #set Bflat to trivial identity so that left side is just vacuum
+        #else just uses preloaded environment
+        a,b,c=Bflat.shape
+        Bflat=0*Bflat
+        for i in range(a):
+            Bflat[i,-1,i]=1
+    #Bflat=Bflat+1
+  
+
+
+   
+    
+    
+    #sets labels
+    labels=['vR*', 'wR', 'vR']
+    conj_q=[1,1,-1]
+    #print(leg1.q_conj)
+
+    #leg1_copy=leg1.flip_charges_qconj()
+    leg1_copy=leg1.conj()
+    leg2=leg2.conj()
+    #print(leg1.conj())
+    print("dadadaddadads")
+    #print(leg2)
+    legcharges=[leg1_copy,leg2,leg1]
+    #define all threee legs
+    #print(legcharges)
+    print(leg1)
+    #define left environment
+    environment=Array.from_ndarray( Bflat,
+                        legcharges,
+                        dtype=np.float64,
+                        qtotal=None,
+                        cutoff=None,
+                        labels=labels,
+                        raise_wrong_sector=True,
+                        warn_wrong_sector=True)
+    print(environment)
+    print("left environment is loaded",'..'*20)
+    print(environment.qtotal)
+    quit()
     return environment
 
 L=14
@@ -545,18 +649,45 @@ right_env=load_right_environment(name,len(sites))
 #print(right_env)
 #print(M.H_MPO._W[-1])
 #quit()
+psi_halfinf.canonical_form_finite(cutoff=0.0)
 left_environment=load_left_environment(name)
 print('bababbab')
-print(psi_halfinf._B[0])
-print(left_environment)
-print(M.H_MPO._W[0])
+#quit()
+leg1=psi_halfinf._B[0].get_leg('vL')
+
+leg2=M.H_MPO._W[0].get_leg('wR')
+#print()
+#print()
+
+#left_environment=load_left_environment_new(leg1,leg2)
+#print(left_environment)
+
+
+#quit()
+#print(M.H_MPO._W[0])
 #quit()
 
-psi_halfinf.canonical_form_finite(cutoff=0.0)
-print(psi_halfinf)
+
+#print(psi_halfinf)
 #print(a)
 #print(b)
+print('STARTTTT'*100)
+print(left_environment)
+
+for i in range(1):
+    x=psi_halfinf._B[i].qtotal
+    print(x)
+    b=M.H_MPO._W[i].qtotal
+    print(b)
+    a=right_env.qtotal
+    print(a)
+
+    a=left_environment.qtotal
+    print(a)
 #quit()
+#quit()
+
+#isort_qdata
 #psi_halfinf=project_and_find_segment_mps(mps,last)
 init_env_data_halfinf={}
 #initialize right enviroment
@@ -576,15 +707,20 @@ dmrg_params = {
     'mixer': True,
     'max_E_err': 1.e-10,
     'trunc_params': {
-        'chi_max': 400,
+        'chi_max': 1300,
         'svd_min': 1.e-10,
     },
 }
 
+print(psi_halfinf._B[0])
 eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M, dmrg_params,
                                      resume_data={'init_env_data': init_env_data_halfinf})
-
+#print(eng_halfinf.chi_max)
+#quit()
 print("enviroment works")
 print("running DMRG")
+quit()
+#print("MPS qtotal:", M.qtotal)
+#print("MPO qtotal:", psi_halfinf.qtotal)
 eng_halfinf.run()
 
