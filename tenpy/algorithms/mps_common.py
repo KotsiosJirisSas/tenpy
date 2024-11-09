@@ -385,8 +385,18 @@ class Sweep(Algorithm):
             logger.debug("in sweep: i0 =%d", i0)
             # --------- the main work --------------
             theta = self.prepare_update_local()
+            #print(i0)
+            #print(theta)
+            #print(optimize)
+            #print(update_data)
+            #quit()
+            #optimize=False
+            
             update_data = self.update_local(theta, optimize=optimize)
+          
             self.update_env(**update_data)
+            #print(update_data)
+            #quit()
             self.post_update_local(**update_data)
             self.free_no_longer_needed_envs()
 
@@ -1975,7 +1985,7 @@ class DensityMatrixMixer(Mixer):
         
         val_L, U = npc.eigh(rho_L)
 
-        print(val_L)
+        #print(val_L)
         U.iset_leg_labels(['(vL.p0)', 'vR'])
         val_L[val_L < 0.] = 0.  # for stability reasons
         val_L /= np.sum(val_L)

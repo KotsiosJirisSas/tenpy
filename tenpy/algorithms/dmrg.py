@@ -266,7 +266,7 @@ class DMRGEngine(IterativeSweeps):
         #print(options)
         #quit()
         # parameters for lanczos
-        print("INN"*100)
+        #print("INN"*100)
         #print(options)
         p_tol_to_trunc = options.get('P_tol_to_trunc', 0.05, 'real')
         if p_tol_to_trunc is not None:
@@ -554,11 +554,15 @@ class DMRGEngine(IterativeSweeps):
                 Change in the wave function ``1. - abs(<theta_guess|theta>)``
                 induced by :meth:`diag`, *not* including the truncation!
         """
+        #print('bababab'*40)
         i0 = self.i0
         n_opt = self.n_optimize
         age = self.env.get_LP_age(i0) + n_opt + self.env.get_RP_age(i0 + n_opt - 1)
         if optimize:
+
+            print('in')
             E0, theta, N, ov_change = self.diag(theta)
+            print('out')
         else:
             E0, N, ov_change = None, 0, 0.
         theta = self.prepare_svd(theta)
@@ -610,6 +614,8 @@ class DMRGEngine(IterativeSweeps):
         #print("BC"*100)
         #print(self.psi.bc)
         if self.psi.bc == 'segment':
+
+            #print()
             self.update_segment_boundaries()
 
     def update_segment_boundaries(self):
@@ -736,6 +742,8 @@ class DMRGEngine(IterativeSweeps):
         ov_change : float
             Change in the wave function ``1. - abs(<theta_guess|theta_diag>)``
         """
+
+        #print('ENTER'*100)
         N = -1  # (unknown)
         #print(self.lanczos_params)
         #quit()
@@ -746,6 +754,8 @@ class DMRGEngine(IterativeSweeps):
                 E, theta = full_diag_effH(self.eff_H, theta_guess, keep_sector=True)
             else:
                 E, theta, N = LanczosGroundState(self.eff_H, theta_guess, self.lanczos_params).run()
+
+                
         elif self.diag_method == 'lanczos':
             E, theta, N = LanczosGroundState(self.eff_H, theta_guess, self.lanczos_params).run()
         elif self.diag_method == 'arpack':

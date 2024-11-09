@@ -746,8 +746,19 @@ def iscale_prefactor(w, scale):
             a.iscale_prefactor(scale)
 
 def iadd_prefactor_other(w, alpha, v):
+
+    #print('AAAAA'*100)
+    #print(w[0,0,0,0])
+    #print(alpha)
+    #print(v[0,0,0,0])
+    #print(w.qtotal)
+    #print(v.qtotal)
+    #quit()
+    #quit()
     if not isinstance(w, list):
+        #print('what'*10)
         w.iadd_prefactor_other(alpha, v)
+
     else:
         for a, b in zip(w, v):
             a.iadd_prefactor_other(alpha, b)

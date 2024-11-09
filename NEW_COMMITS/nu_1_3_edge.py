@@ -310,6 +310,9 @@ def project_and_find_segment_mps(mps,N):
 
 def set_left_environment_projected(psi0_i,init_env_data,H_MPO,leg):
 
+    #THIS ASSUMES ENVIRONMENT HAS TOTAL CHARGE OF 0!!
+
+
     print('setting left environment',".."*30)
     #starting from infinite MPS and its enviroment and MPO define enviroment for segment DMRG
     init_env_data_halfinf = init_env_data.copy()
@@ -317,10 +320,10 @@ def set_left_environment_projected(psi0_i,init_env_data,H_MPO,leg):
 
     #unprojected vacuum environment
     init_env_data_halfinf['init_LP'] = MPOEnvironment(psi0_i, H_MPO, psi0_i).init_LP(0, 0)#[4,:,4]
-    
+    Bflat_big=init_env_data_halfinf['init_LP'].to_ndarray()
     #CALCULATES NON-ZERO INDICES
-    indexi_non_zero=np.array(np.where(init_env_data_halfinf['init_LP']==1))
-    
+    indexi_non_zero=np.array(np.where( Bflat_big==1))
+    #print(indexi_non_zero)
     #since it is projected onto single state, we take 0,0 legs
     #keep track of legs with charges 1
     #keep only 0,0 on leftmost, right most leg, and all indices at MPO leg
