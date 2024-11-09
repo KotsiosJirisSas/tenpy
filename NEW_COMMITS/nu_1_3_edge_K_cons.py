@@ -173,6 +173,11 @@ def create_segment_DMRG_model(L):
     #create model from lattice and MPO
     model=MPOModel(lattice, H)
     print("created model",".."*30)
+
+    assert model.H_MPO.is_equal(model.H_MPO.dagger())
+
+    print('asserted')
+    #quit()
     return model,sites
 
 def load_data(name,sites):
@@ -472,6 +477,7 @@ def load_left_environment(name,location=-1,vacuum=True):
     vacuum: Bool, decides if left edge is trivial vacuum, if not environment is loaded 
     location: Int, sets the location of the left edge
     """
+    
     #LOAD ENVIRONMENT
     print("loading left environment",'..'*20)
     with open(name+'.pkl', 'rb') as f:
@@ -482,20 +488,21 @@ def load_left_environment(name,location=-1,vacuum=True):
     qflat_list_c=loaded_xxxx['LP2_q']
    
     #print(qflat_list_c)
+    print(Bflat.shape)
     #transpose bflat and qflat to make legs consistent with TeNpy3
-    Bflat=np.transpose(Bflat, (1, 0, 2))
-    qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
-    
+    Bflat=np.transpose(Bflat, (2, 0, 1))
+    qflat_list=[qflat_list_c[2],qflat_list_c[0],qflat_list_c[1]]
+    vacuum=False
     if vacuum:
         #set Bflat to trivial identity so that left side is just vacuum
         #else just uses preloaded environment
         a,b,c=Bflat.shape
         Bflat=0*Bflat
         for i in range(a):
-            Bflat[i,-1,i]=1
+            Bflat[i,0,i]=1
   
 
-
+    print(Bflat.shape)
    
     #define Hilbert space for the left environment
     root_config_ = np.array([0,1,0])
@@ -525,7 +532,7 @@ def load_left_environment(name,location=-1,vacuum=True):
         suma_3+=qflat_list[2][i][1]
     print(suma_1,suma_2,suma_3)
     print(conj_q[0]*suma_1+conj_q[1]*suma_2+conj_q[2]*suma_3)
-
+    #quit()
     print('HOW IS THIS NOT ZERO')
     #quit()
 
@@ -557,7 +564,8 @@ def load_left_environment(name,location=-1,vacuum=True):
 
     #print(environment.detect_legcharge())
     print(environment.qtotal)
-    quit()
+    environment.qtotal=[0,0]
+    #quit()
     return environment
 
 
@@ -658,6 +666,7 @@ leg1=psi_halfinf._B[0].get_leg('vL')
 leg2=M.H_MPO._W[0].get_leg('wR')
 #print()
 #print()
+print("final environments:")
 
 #left_environment=load_left_environment_new(leg1,leg2)
 #print(left_environment)
@@ -707,7 +716,7 @@ dmrg_params = {
     'mixer': True,
     'max_E_err': 1.e-10,
     'trunc_params': {
-        'chi_max': 1300,
+        'chi_max': 1900,
         'svd_min': 1.e-10,
     },
 }
@@ -719,7 +728,7 @@ eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M, dmrg_params,
 #quit()
 print("enviroment works")
 print("running DMRG")
-quit()
+#quit()
 #print("MPS qtotal:", M.qtotal)
 #print("MPO qtotal:", psi_halfinf.qtotal)
 eng_halfinf.run()

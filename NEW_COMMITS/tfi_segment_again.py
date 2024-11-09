@@ -52,7 +52,7 @@ dmrg_params = {
 #print(psi0_i.get_B(0)[0])
 #quit()
 eng0_i = dmrg.TwoSiteDMRGEngine(psi0_i, M_i, dmrg_params)
-quit()
+#quit()
 E0_i, _ = eng0_i.run()
 #print("rest")
 #print(a)
@@ -161,8 +161,7 @@ labels=['vR*', 'wR', 'vR']
 
 data_flat=[1,0,0]
 data_flat=np.reshape(data_flat,(1,3,1))
-#print(data_flat)
-#quit()
+
 array_defined=Array.from_ndarray( data_flat,
                      legcharges,
                      dtype=np.float64,
@@ -171,6 +170,10 @@ array_defined=Array.from_ndarray( data_flat,
                      labels=labels,
                      raise_wrong_sector=True,
                      warn_wrong_sector=True)
+
+print(array_defined)
+print(array_defined.qtotal)
+quit()
 #print(array_defined)
 #quit()
 init_env_data_halfinf['init_LP'] =array_defined#Array(legcharges, dtype=np.float64, qtotal=None, labels=labels)

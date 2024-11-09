@@ -308,88 +308,65 @@ def project_and_find_segment_mps(mps,N):
 
 
 
-def set_left_environment_projected(psi0_i,init_env_data,H_MPO):
+def set_left_environment_projected(psi0_i,init_env_data,H_MPO,leg):
 
     print('setting left environment',".."*30)
     #starting from infinite MPS and its enviroment and MPO define enviroment for segment DMRG
     init_env_data_halfinf = init_env_data.copy()
    
+
+    #unprojected vacuum environment
     init_env_data_halfinf['init_LP'] = MPOEnvironment(psi0_i, H_MPO, psi0_i).init_LP(0, 0)#[4,:,4]
-   
+    
+    #CALCULATES NON-ZERO INDICES
+    indexi_non_zero=np.array(np.where(init_env_data_halfinf['init_LP']==1))
+    
+    #since it is projected onto single state, we take 0,0 legs
+    #keep track of legs with charges 1
+    #keep only 0,0 on leftmost, right most leg, and all indices at MPO leg
+    #it turns out that typically in Bflat only one index is occupied,
+    #and that is first index with zero charge
+    keep_only_one_index_left_leg=np.where(indexi_non_zero[0]==0)[0]
+    keep_only_one_index_right_one=np.where(indexi_non_zero[2]==0)[0]
+    intersection = np.intersect1d( keep_only_one_index_left_leg, keep_only_one_index_right_one)
+  
+    indexi_non_zero_new=[]
+    for i in range(3):
+        legara=[]
+        for element in intersection:
+            legara.append(indexi_non_zero[i,element])
+        indexi_non_zero_new.append(legara)
+    indexi_non_zero_new=tuple(indexi_non_zero_new)
+    
+    print(indexi_non_zero_new)
     print("left environment")
     print(init_env_data_halfinf['init_LP'])
-    #quit()
-    #print("IN"*100)
-    #quit()
-    #label='vL'
-    #print(psi_halfinf.get_leg( label))
-    #quit()
+
+    middle_leg=init_env_data_halfinf['init_LP'].get_leg('wR')
+    duljina_MPS=len(leg.to_qflat())
+    duljina=len(middle_leg.to_qflat())
+
+
     labels=['vR*', 'wR', 'vR']
 
 
-    #obtain qflat of nontrivial stuff
-    
-    #fix charges on left leg
-    label='wR'
-    a=np.array(init_env_data_halfinf['init_LP'].get_leg( label))
-    a=str(a)
-    print(a)
-    words =a.split('\n')
-    #STRIP TO GET QFLAT
-    words.pop(0)
-    kopy=[]
-    for i in words:
-        kopy.append(i[:-2])
-    #print(kopy)
-    kopy2=[]
-    for i in kopy:
-        kopy2.append(i.split(' '))
-    #print(kopy2)
-    kopy2.pop(-1)
-    
-    kopy3=[]
-    for i in kopy2:
-        kopy3.append(int(i[-1].strip('[')))
-    print(kopy3)
-    kopy3=[]
-    for i in range(12):
-        kopy3.append(-3)
-    for i in range(48-12):
-        kopy3.append(0)
-    for i in range(60-48):
-        kopy3.append(3)
     
     #gives qflat for non-trivial leg    
-    chargeinfo=init_env_data_halfinf['init_LP'].legs[0].chinfo
-    
-
     legcharges=[]
-    #define 3 legs
-    qflat=[0]
-    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=1).bunch()[1]
-    legcharges.append(legcharge)
-    #READ OFF FROM [:]
-    qflat=kopy3
-    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=-1).bunch()[1]
+    legcharges.append(leg)
+    legcharges.append(middle_leg)
+    legcharges.append(leg.conj())
+  
 
-    legcharges.append(legcharge)
-    qflat=[0]
-    legcharge=LegCharge.from_qflat(chargeinfo,qflat,qconj=-1).bunch()[1]
-    legcharges.append(legcharge)
-    #print(legcharges[1])
-    #print('charges fine')
-    #quit()
-    #quit()
+    #set data flat
+    data_flat=np.zeros(duljina*duljina_MPS*duljina_MPS)
+    data_flat=np.reshape(data_flat,(duljina_MPS,duljina,duljina_MPS))
 
-    #labels=['vR*', 'wR', 'vR']
-
-    #HOW DO YOU GET DATA_FLAT (WHERE DO YOU GET IT FROM???)
-    data_flat=np.zeros(len(kopy3))
-    data_flat[0]=1
-    data_flat=np.reshape(data_flat,(1,len(kopy3),1))
-    #print(data_flat)
-    #quit()
-    
+    #set relevant indices to non zero values
+    print(indexi_non_zero_new)
+    data_flat[indexi_non_zero_new]=1
+   
+        
     array_defined=Array.from_ndarray( data_flat,
                         legcharges,
                         dtype=np.float64,
@@ -400,17 +377,17 @@ def set_left_environment_projected(psi0_i,init_env_data,H_MPO):
                         warn_wrong_sector=True)
     
     
-    #print(array_defined)
+    
     init_env_data_halfinf['init_LP'] =array_defined
     init_env_data_halfinf['age_LP'] = 0
 
 
     print('setleft environment',".."*30)
-    #print(H_MPO._W[0])
-    #print(array_defined)
-    
-    #TODO: CHECK WHY PROJECTED STUFF DOES NOT WORK!!!
-    #quit()
+   
+    print(array_defined)
+    print(array_defined.qtotal)
+  
+    #TODO: SET THAT PROJECTED STUFF IS INDEED VACUUM
     return init_env_data_halfinf
 
 def set_infinite_like_segment(mps,M_i,last):
@@ -482,26 +459,37 @@ first, last = M_s.lat.segment_first_last
 
 mps2=mps.extract_segment(0,last)
 psi_halfinf = mps2.copy() 
-psi_halfinf.canonical_form_finite(cutoff=0.0)
+
 print(psi_halfinf)
 
-#psi_halfinf=project_and_find_segment_mps(mps,last)
+psi_halfinf=project_and_find_segment_mps(mps,last)
+psi_halfinf.canonical_form_finite(cutoff=0.0)
 init_env_data_halfinf={}
 #initialize right enviroment
 #INSTEAD OF 44 SHOULD JUST BE A LAST ELEMENT?
 #what is the second parameter???
-#print(psi_halfinf._B[0])
+print('projected charge')
+print(psi_halfinf._B[0].qtotal)
+print(M_s.H_MPO._W[0].qtotal)
 #quit()
 age=50
 
-init_env_data_halfinf['init_LP']= MPOEnvironment(mps, M_i.H_MPO, mps).init_LP(0, 0)#set_left_environment(mps,init_env_data_halfinf,M_i.H_MPO)
+#init_env_data_halfinf['init_LP']= MPOEnvironment(mps, M_i.H_MPO, mps).init_LP(0, 0)#set_left_environment(mps,init_env_data_halfinf,M_i.H_MPO)
 
 
 #print(init_env_data_halfinf['init_LP'])
 #quit()
 init_env_data_halfinf['init_RP'] = right_env   #DEFINE RIGHT ENVIROMENT
-#init_env_data_halfinf=set_left_environment_projected(mps,init_env_data_halfinf,M_i.H_MPO)
+
+#print(right_env)
+#quit()
+leg=psi_halfinf._B[0].get_leg('vL')
+init_env_data_halfinf=set_left_environment_projected(mps,init_env_data_halfinf,M_i.H_MPO,leg)
 init_env_data_halfinf['init_RP'] = MPOEnvironment(mps, M_i.H_MPO, mps).init_RP(last, age)    #DEFINE RIGHT ENVIROMENT
+print("bababa")
+print(right_env)
+
+#quit()
 
 print(init_env_data_halfinf['init_RP'])
 init_env_data_halfinf['age_RP'] =0
@@ -542,7 +530,7 @@ for i in range(1):
     c=init_env_data_halfinf['init_LP'].qtotal
     print(c)
 
-quit()
+#quit()
 
 eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M_s, dmrg_params,
                                      resume_data={'init_env_data': init_env_data_halfinf})
