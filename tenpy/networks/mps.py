@@ -4097,7 +4097,10 @@ class MPS(BaseMPSExpectationValue):
                     env._update_gauge_LP(0, U, update_bra, update_ket)
                     env._update_gauge_RP(env.L - 1, VR_segment, update_bra, update_ket)
         if self.bc == 'segment':
+            #print('unidi'*100)
+            #print(envs_to_update)
             old_UL, old_VR = self.segment_boundaries
+           
             if old_UL is not None:
                 new_UL = npc.tensordot(old_UL, U, axes=['vR', 'vL'])
                 new_VR = npc.tensordot(VR_segment, old_VR, axes=['vR', 'vL'])

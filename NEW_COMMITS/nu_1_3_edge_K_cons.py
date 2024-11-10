@@ -244,25 +244,30 @@ def load_data(name,sites):
     return mps
 
 
-def project_and_find_segment_mps(mps,N):
+def project_and_find_segment_mps( psi_halfinf):
 
     print('projecting MPS',".."*30)
-    mps2=mps.extract_segment(0, N)
-    psi_halfinf = mps2.copy()  # the oringinal MPS
-
+    print(psi_halfinf.segment_boundaries)
+    #delete environments so that they get reset after the projection
+    psi_halfinf.segment_boundaries=(None,None)
+    #quit()
     #EXTRACT A SEGMENT
-    S = mps2.get_SL(0)
+    S =  psi_halfinf.get_SL(0)
     proj = np.zeros(len(S), bool)
     proj[np.argmax(S)] = True
     B = psi_halfinf.get_B(0, form='B')
     B.iproject(proj, 'vL')
     psi_halfinf.set_B(0, B, form='B')
     psi_halfinf.set_SL(0, np.ones(1, float))
-    psi_halfinf.canonical_form_finite()
+
+    #print(psi_halfinf._B[0])
+    #print(psi_halfinf._B[1])
+    #print(psi_halfinf._B[2])
+    psi_halfinf.canonical_form_finite(cutoff=0.0)
     psi_halfinf.test_sanity()
 
     print('projected MPS',".."*30)
-    B=psi_halfinf.get_B(0)
+    #B=psi_halfinf.get_B(0)
     #print(B)
     #quit()
     return psi_halfinf
@@ -564,7 +569,175 @@ def load_left_environment(name,location=-1,vacuum=True):
 
     #print(environment.detect_legcharge())
     print(environment.qtotal)
-    environment.qtotal=[0,0]
+    
+    #quit()
+    return environment
+
+
+
+def load_left_environment_simplest(name,location=-1,vacuum=True):
+  
+    """
+    loads environment on the right hand side from old tenpy2 code
+    name:   Str, the file name in which the environment is saved
+    vacuum: Bool, decides if left edge is trivial vacuum, if not environment is loaded 
+    location: Int, sets the location of the left edge
+    """
+    
+    #LOAD ENVIRONMENT
+    print("loading left environment",'..'*20)
+    with open(name+'.pkl', 'rb') as f:
+        loaded_xxxx = pickle.load(f, encoding='latin1')
+    print(loaded_xxxx.keys())
+  
+    Bflat=loaded_xxxx['LP2_B']
+    qflat_list_c=loaded_xxxx['LP2_q']
+   
+    #print(qflat_list_c)
+    print(Bflat.shape)
+    #transpose bflat and qflat to make legs consistent with TeNpy3
+    Bflat=np.transpose(Bflat, (1, 0, 2))
+    qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
+    vacuum=True
+  
+
+    print(Bflat.shape)
+   
+    #define Hilbert space for the left environment
+    root_config_ = np.array([0,1,0])
+    root_config_ = root_config_.reshape(3,1)
+    site=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=location)
+    chargeinfo=site.leg.chinfo
+    legcharges=[]
+    
+    #sets labels
+    labels=['vR*', 'wR', 'vR']
+    conj_q=[1,-1,-1]
+
+    #shift K accordingly by 1 site
+    suma_1=0
+    for i in range(len(qflat_list[0])):
+        qflat_list[0][i][0]+=qflat_list[0][i][1]*(location-2)
+        suma_1+=qflat_list[0][i][1]
+
+    suma_2=0
+    for i in range(len(qflat_list[1])):
+        qflat_list[1][i][0]+=qflat_list[1][i][1]*(location-2)
+        suma_2+=qflat_list[1][i][1]
+    
+    suma_3=0
+    for i in range(len(qflat_list[2])):
+        qflat_list[2][i][0]+=qflat_list[2][i][1]*(location-2)
+        suma_3+=qflat_list[2][i][1]
+    print(suma_1,suma_2,suma_3)
+    print(conj_q[0]*suma_1+conj_q[1]*suma_2+conj_q[2]*suma_3)
+    
+    if vacuum:
+        #set Bflat to trivial identity so that left side is just vacuum
+        #else just uses preloaded environment
+        a,b,c=Bflat.shape
+        Bflat=0*Bflat
+        for i in range(a):
+            Bflat[i,27,i]=1
+  
+    #quit()
+    print('HOW IS THIS NOT ZERO')
+    #quit()
+
+    #define all threee legs
+    for i in range(len(qflat_list)):
+        legcharge=LegCharge.from_qflat(chargeinfo,qflat_list[i],qconj=conj_q[i]).bunch()[1]
+
+        #print(legcharge.qtotal)
+        #tot_charge=0
+        #for k in range(len(qflat_list[i])):
+        #    print(k)
+        #    tot_charge+=legcharge.get_charge(k)
+        #print(tot_charge)
+        legcharges.append(legcharge)
+
+    #quit()
+    
+    #define left environment
+    environment=Array.from_ndarray( Bflat,
+                        legcharges,
+                        dtype=np.float64,
+                        qtotal=None,
+                        cutoff=None,
+                        labels=labels,
+                        raise_wrong_sector=True,
+                        warn_wrong_sector=True)
+    print(environment)
+    print("left environment is loaded",'..'*20)
+    print(environment.qtotal)
+    #quit()
+    #print(environment.detect_legcharge())
+    
+    
+    #quit()
+    return environment
+
+
+def set_projected_left_environment(leg_HMPO,leg_MPS,location=-1):
+  
+    """
+    loads environment on the right hand side from old tenpy2 code
+    name:   Str, the file name in which the environment is saved
+    vacuum: Bool, decides if left edge is trivial vacuum, if not environment is loaded 
+    location: Int, sets the location of the left edge
+    """
+    duljina_MPS=len(leg_MPS.to_qflat())
+    duljina=len(leg_HMPO.to_qflat())
+
+
+    labels=['vR*', 'wR', 'vR']
+
+
+    
+    #gives qflat for non-trivial leg    
+    legcharges=[]
+    legcharges.append(leg_MPS)
+    legcharges.append(leg_HMPO.conj())
+    legcharges.append(leg_MPS.conj())
+  
+
+    #set data flat
+    Bflat=np.zeros(duljina*duljina_MPS*duljina_MPS)
+    
+    Bflat=np.reshape(Bflat,(duljina_MPS,duljina,duljina_MPS))
+   
+    
+
+
+ 
+    
+    #sets labels
+    #labels=['vR*', 'wR', 'vR']
+    #conj_q=[1,-1,-1]
+
+    a,b,c=Bflat.shape
+    Bflat=0*Bflat
+    for i in range(a):
+        Bflat[i,27,i]=1
+  
+  
+    
+    #define left environment
+    environment=Array.from_ndarray( Bflat,
+                        legcharges,
+                        dtype=np.float64,
+                        qtotal=None,
+                        cutoff=None,
+                        labels=labels,
+                        raise_wrong_sector=True,
+                        warn_wrong_sector=True)
+    print(environment)
+    print("left environment is loaded",'..'*20)
+    print(environment.qtotal)
+    #quit()
+    #print(environment.detect_legcharge())
+    
+    
     #quit()
     return environment
 
@@ -644,6 +817,12 @@ M,sites=create_segment_DMRG_model(L)
 #THIS ONE HAS BOTH N,K conservation
 name='qflat_QH_1_3_K_cons'
 psi_halfinf=load_data(name,sites)
+
+#psi_halfinf.left_environment(0)
+psi_halfinf=project_and_find_segment_mps(psi_halfinf)
+#psi_halfinf.canonical_form_finite()
+#print('done')
+#quit()
 #print(psi_halfinf._B[0])
 #quit()
 #quit()
@@ -657,13 +836,11 @@ right_env=load_right_environment(name,len(sites))
 #print(right_env)
 #print(M.H_MPO._W[-1])
 #quit()
-psi_halfinf.canonical_form_finite(cutoff=0.0)
-left_environment=load_left_environment(name)
+#psi_halfinf.canonical_form_finite(cutoff=0.0)
+left_environment=load_left_environment_simplest(name)
 print('bababbab')
 #quit()
-leg1=psi_halfinf._B[0].get_leg('vL')
 
-leg2=M.H_MPO._W[0].get_leg('wR')
 #print()
 #print()
 print("final environments:")
@@ -681,26 +858,35 @@ print("final environments:")
 #print(a)
 #print(b)
 print('STARTTTT'*100)
-print(left_environment)
+#print(left_environment)
 
+
+leg_MPS=psi_halfinf._B[0].get_leg('vL')
+
+leg_MPO=M.H_MPO._W[0].get_leg('wL')
+#leg_MPS
+left_environment=set_projected_left_environment(leg_MPO,leg_MPS)
 for i in range(1):
-    x=psi_halfinf._B[i].qtotal
+    x=psi_halfinf._B[i]#.qtotal
     print(x)
-    b=M.H_MPO._W[i].qtotal
+    b=M.H_MPO._W[i]#.qtotal
     print(b)
-    a=right_env.qtotal
+    a=right_env#.qtotal
+    #print(a)
+
+    a=left_environment#.qtotal
     print(a)
 
-    a=left_environment.qtotal
-    print(a)
+#quit()
 #quit()
 #quit()
 
 #isort_qdata
-#psi_halfinf=project_and_find_segment_mps(mps,last)
+
 init_env_data_halfinf={}
 #initialize right enviroment
 #INSTEAD OF 44 SHOULD JUST BE A LAST ELEMENT?
+
 #what is the second parameter???
 
 init_env_data_halfinf['init_LP'] = left_environment    #DEFINE RIGHT ENVIROMENT

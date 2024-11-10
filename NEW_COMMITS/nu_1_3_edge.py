@@ -286,9 +286,10 @@ def project_and_find_segment_mps(mps,N):
     print('projecting MPS',".."*30)
     mps2=mps.extract_segment(0, N)
     psi_halfinf = mps2.copy()  # the oringinal MPS
-
+    print(psi_halfinf.segment_boundaries)
+    #quit()
     #EXTRACT A SEGMENT
-    S = mps2.get_SL(0)
+    S = psi_halfinf.get_SL(0)
     proj = np.zeros(len(S), bool)
     proj[np.argmax(S)] = True
     B = psi_halfinf.get_B(0, form='B')
@@ -389,7 +390,7 @@ def set_left_environment_projected(psi0_i,init_env_data,H_MPO,leg):
    
     print(array_defined)
     print(array_defined.qtotal)
-  
+    quit()
     #TODO: SET THAT PROJECTED STUFF IS INDEED VACUUM
     return init_env_data_halfinf
 
