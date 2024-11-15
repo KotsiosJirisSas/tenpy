@@ -302,7 +302,7 @@ class QH_model(model): #CHANGED model to Model
 			self.print_MPOgraph()
 
 		print("MPO GRAPH IS CONSTRUCTED, SO NEED TO CONSTRUCT HMPO FROM MPOGRAPH....")
-		
+		#quit()
 		#BUILD H_MPO USING NPC ARRAYS - THIS IS THE ONLY BIT I MODIFIED IN model_old_tenpy2 - rest is untouched
 		self.build_H_mpo_from_MPOgraph(self.MPOgraph, verbose=verbose)
 		
@@ -2445,7 +2445,8 @@ class QH_model(model): #CHANGED model to Model
 			print( '\tProcessed %s Vmk terms.', len(self.splitV_list))
 			if self.ignore_herm_conj: print( '\tAvoiding Hermitian conjugate terms.')
 		Opkey_str = lambda tupla: tupla[0] + str(tupla[1]) + '_' + str(tupla[2]) + '_' + tupla[3] + str(tupla[4])
-		
+		#print(Opkey_str)
+		print('XX'*20)
 		#Opkey_str = lambda (OO1,ll1,mm,OO2,ll2): OO1+str(ll1)+'_'+str(mm)+'_'+OO2+str(ll2)
 		#Opkey_Herm = lambda (OO1,ll1,mm,OO2,ll2): ('a' if OO1=='A' else 'A', ll1, mm, 'a' if OO2=='A' else 'A', ll2)
 		MS.check_sanity()
@@ -2508,11 +2509,20 @@ class QH_model(model): #CHANGED model to Model
 	##	Sources
 		create_nodes_in_list = []
 		for Op01key,D in MS.Din.items():
+			#print(Op01key)
 			if MS.io[D['index'][0]]['N'] == 0: continue		# ignore string belonging in blocks with 0 nodes
 			(Op0,ly0,m1,Op1,ly1) = Op01key
+			#print(ly0)
+			#quit()
 			if m1 > 0:		# String coming out of 'R' with operator Op0
 				if Op0 == 'a' or Op0 == 'A':
+					#print(ly0,m1,sOp)
+					
 					pre_Op1_ly, D['src'] = self.addNodes((Op0+'_',ly0), ly0, m1, 'R', (Op0+'Op',1.), sOp)
+					#print(pre_Op1_ly)
+					#quit()
+					#print(D['src'])
+					#quit()
 				else:
 					raise NotImplementedError( "Don't know what to do with Op0 '%s' in %s" % (Op0,Op01key))
 				D['Op'] = Op1 + 'Op'
@@ -2527,6 +2537,7 @@ class QH_model(model): #CHANGED model to Model
 		for Op23key,D in MS.Dout.items():
 			if MS.io[D['index'][0]]['N'] == 0: continue		# ignore string belonging in blocks with 0 nodes
 			Op2,ly2,m2,Op3,ly3 = Op23key
+			#print(Op23key)
 			if m2 > 0:		# The final string leading to 'F' (backwards) with Op3
 				if Op3 == 'a' or Op3 == 'A':
 					post_Op2_ly, D['dest'] = self.addNodesB(('_'+Op3,ly3), ly3, m2, 'F', (Op3+'Op',1.), sOp)
@@ -2544,10 +2555,12 @@ class QH_model(model): #CHANGED model to Model
 			io['StrOp'] = 'Id'		# operator between loop nodes
 			Op01key = io['in'][0]		# a sample input key, used to generate a name for the ioblock
 			io['name'] = Op01key[0] + str(self.layers[Op01key[1]][0]) + '-' + str((Op01key[2] - Op01key[4] + Op01key[1]) // N) + '-' + Op01key[3] + str(self.layers[Op01key[4]][0]) + '.' + str(bid)
-	
+			#print(io)
+		
 	##	5)	Create the nodes for the r = 0 cases
 		for r0Op,V in r0_list.items():
 			Op0,ly0,m1,Op12,ly12,m2,Op3,ly3 = r0Op		# guarentee that m1, m2 > 0
+			#print(r0Op)
 			if self.ignore_herm_conj:
 				if Op0 == 'A': continue
 				V = 2. * V
@@ -2555,6 +2568,7 @@ class QH_model(model): #CHANGED model to Model
 			post_Op2_ly, post_Op2_node = self.addNodesB(('_'+Op3,ly3), ly3, m2, 'F', (Op3+'Op',1.), sOp)
 			if (post_Op2_ly - pre_Op1_ly - 1) % N: raise RuntimeError((r0Op, pre_Op1_ly, post_Op2_ly, N))
 			XNode = MPOgraph1[pre_Op1_ly][pre_Op1_node].setdefault(post_Op2_node, [])
+		
 			XNode.append((Op12+'Op',V))
 			if verbose >= 5: print( "\t\tr = 0: (%s, %s, %s) -> (_%s, %s, %s-1), %sOp, ly=%s, V=%s" % (Op0+'_',ly0,m1,Op3,ly3,m2,Op12,ly12,V))
 		for r0Op,V in r0m0_list.items():
@@ -2564,7 +2578,8 @@ class QH_model(model): #CHANGED model to Model
 				if verbose >= 4: print( "\tAdding operator 'AAaa' R->F with V = {}".format(V))
 			else:
 				raise ValueError("don't know what to do with operators %s" % r0Op[0])
-		
+		#print(MPOgraph1[0].values())
+		#quit()
 	##	6) ........
 		if self.ignore_herm_conj:
 			io_create_nodes = np.zeros(len(MS.io), dtype=int)
@@ -2582,7 +2597,7 @@ class QH_model(model): #CHANGED model to Model
 				#if block['conj'][0] < j: continue		# Only print( one in a Hermitian conjugates pair
 				if len(block['A']) > 0 or verbose >= 4:
 					print( '\t\t%2d (%2d*): %2d nodes / %s, norm err: %.3e / %.5e,' % ( j, block['conj'][0], block['N'], block['num_above_tol'], block['norm_err'], block['2norm'] ))
-					print( ' [%s]  %s  ->  %s' % ( block['name'], ', '.join(map(Opkey_str, block['in'])), ', '.join(map(Opkey_str, block['out'])) ))
+					#print( ' [%s]  %s  ->  %s' % ( block['name'], ', '.join(map(Opkey_str, block['in'])), ', '.join(map(Opkey_str, block['out'])) ))
 					#graph_err = np.array([ MS.calc_MPOgraph_err(MPOgraph1, i) for i in block['in'] ])
 					#if len(block['A']) > 0: print( joinstr(['\t\t\t', np.linalg.norm(graph_err.reshape(-1)), graph_err])
 					#print( '\t\t\t', block['conj']
@@ -2602,6 +2617,8 @@ class QH_model(model): #CHANGED model to Model
 		
 	##	8) Wrap-up
 		self.MPOgraph1 = MPOgraph1
+		#print(MPOgraph1)
+		#quit()
 		del self.MPOgraph		# Undo the hack earlier
 		#print(MS)
 		self.Vmk_MS = {'version':1.2, 'Nlayer':self.Nlayer, 'MS':MS, 'r0_list':r0_list, 'r0m0_list':r0m0_list,

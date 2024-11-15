@@ -59,7 +59,7 @@ def obtain_states_from_graphs(G_new,L, bc="infinite"):
 				states = states_from_rows & states_from_columns #take intersection - MAYBE NEED UNION INTEAD??
 
 				states2=states_from_rows | states_from_columns
-
+				
 				#ADD NEW ZERO ELEMENTS TO THE GRAPH SO THAT IT CAN CALCULATE CHARGES
 				row=[]
 				non_included=states2-states
@@ -104,8 +104,11 @@ def obtain_states_from_graphs(G_new,L, bc="infinite"):
 			#same procedure in finite DMRG, but have yet to implement it fully
 			states = states_from_rows & states_from_columns #take intersection - MAYBE NEED UNION INTEAD??
 			
+			states = states_from_rows & states_from_columns
 			#LOOK AT UNION
 			states2=states_from_rows | states_from_columns
+			#print(len(states))
+			#quit()
 
 			row=[]
 			#look at elements which are not in row and columns

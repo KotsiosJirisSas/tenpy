@@ -113,6 +113,49 @@ def G2G_map(G):
             #new_data = list(new_data) # i think that's right, keep it a tuple.
             G_new[key_L_new][key_R_new].append(new_data)
     return G_new
+def basis_map(basis):
+    '''
+    Provides a mapping from tenpy2 to tenpy3 Graph dictionaries. Helpful for building MPO in TenPy3 using Markov Processes from Tenpy2.
+    The main difference between the two graphs is the mapping 'R'(ready) <-----> 'IdL' (identities to the left) and 'F'(finished) <-----> 'IdR' (identities to the right)
+    Another thing i did is, the more complicated systems has nodes labelled by ('str1','str2',#) eg ('Mk','zz',0) and i turned them into just strings by doing ('str1','str2',#)----> '('str1','str2',#)'.
+        ultimately the labels shouldn't matter at all after creating the Graph
+    Another thing is the floats for the strength of the operators. While going from tenpy2 (and python2) to tenpy3 (and python3) and pickling the dictionary, the floats et a weird np.float64(float) thing in front of them that i deal with.
+        code should work fine even if the pickling works 'correctly'
+    
+    Input: The Graph at site i
+    Output: The mapped Graph at site i
+    '''
+    #print(len(G))
+    #print(G[0])
+    #quit()
+    basis_new= []
+    for key_L in basis:
+        if key_L == 'R': key_L_new = 'IdL'
+        elif key_L == 'F': key_L_new = 'IdR'
+        else:
+            if isinstance(key_L,tuple): 
+                #print(key_L)
+                keyara=[]
+                for i in range(len(key_L)):
+                    if isinstance(key_L[i], str):
+                        keyara.append(key_L[i])
+                    elif isinstance(key_L[i], np.int64):
+                        keyara.append(int(key_L[i]))
+                    elif isinstance(key_L[i], np.float64):
+                        keyara.append(float(key_L[i]))
+                    else:
+                        keyara.append(key_L[i])
+                
+                keyara=tuple(keyara)
+                #print(keyara)
+                key_L_new = str(keyara) #dumb way of turning all node labels to strings
+             
+            else: key_L_new = key_L
+        basis_new.append(key_L_new)
+        
+    return basis_new
+
+
 def get_opnames(G):
     '''
     Given the graph, go through all nodes and prints out the physical operators.

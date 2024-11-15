@@ -1380,6 +1380,12 @@ class Array:
                     p_qind = inverse_permutation(pipe._perm)
                     perms[ax] = self.legs[ax].perm_flat_from_perm_qind(p_qind)
                 cp.legs[ax] = pipe.to_LegCharge()
+        #print(list(perms[0]))
+        #quit()
+        #self.perms=perms
+        #print(self.perms)
+        #print('INNNNNNNNNN')
+        #print(tuple(perms), cp)
         return tuple(perms), cp
 
     def isort_qdata(self):

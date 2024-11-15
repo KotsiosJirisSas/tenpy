@@ -13,7 +13,7 @@ from tenpy.algorithms import dmrg
 from tenpy.networks.mps import MPS
 from tenpy.models.xxz_chain import XXZChain
 from tenpy.models.tf_ising import TFIChain
-
+import QH_G2MPO
 tenpy.tools.misc.setup_logging(to_stdout="INFO")
 
 
@@ -59,6 +59,102 @@ import QH_Graph_final
 
 
 np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
+
+def trim_down_the_MPO(G):
+    extra_keys=[]
+    for n in range(len(G)):
+        extra_keys_row=[]
+        for key in G[n].keys():
+            #print(key)
+            
+            #print(G[n][key].keys())
+            if list(G[n][key].keys())==[]:
+                print('**'*100)
+                print('what what')
+                print(key)
+                extra_keys_row.append(key)
+        extra_keys.append(extra_keys_row)
+        for k in extra_keys_row:
+            #pass
+            G[n].pop(k, None)
+    #print(extra_keys)
+    #quit()
+    return G, extra_keys
+
+def eliminate_elements_from_the_graph(G,not_included_couplings):
+    L=len(G)
+    for i in range(L):
+       
+        for element in not_included_couplings[i]:
+            if element[1]=='row':
+                G[i].pop(element[0],None)
+                print(element[0])
+            else:
+                for key in G[i].keys():
+                    try:
+                        G[i][key].pop(element[0],None)
+                    except:
+                        pass
+    return G
+
+def get_old_basis(G_old,basis_old,permutation_old):
+    """
+    Creates TeNpy2 loaded basis
+
+    G_old: gives the MPOgraph, used to eliminate basis
+    basis_old: gives the old basis which is untrimmed and unpermuted before 
+    permutation_old: gives the permutation of old basis before and after sorting the charges
+    returns:
+    ordered_old_basis
+
+    """
+    #print(G_old[0][1])
+   
+    G_old, extra_keys=trim_down_the_MPO(G_old)
+    print(extra_keys)
+    
+    States,not_included_couplings=QH_Graph_final.obtain_states_from_graphs(G_old,len(G_old))
+    for i in range(len(list(States[0]))):
+        print(list(States[0])[i])
+    print(len(States[0]))
+    #quit()
+   
+    #print(not_included_couplings)
+    #states should give the correct values on G_old
+    States=QH_G2MPO.basis_map(States[0])
+    
+    #print(basis_old)
+    removed_total= set(basis_old)- set(States)
+    #print(removed_total)
+    #quit()
+    #print(States[0])
+    for m in removed_total:
+        basis_old.remove(m)
+    #print(permutation_old)
+    #quit()
+    #this gives us appropriate basis
+    #now calculate:
+    #print(basis_old)
+    #print(permutation_old)
+    #permutation_old=np.arange(62)
+    ordered_old_basis=list(np.array(basis_old)[permutation_old])
+    ordered_old_basis=[str(x) for x in ordered_old_basis]
+
+    #print(ordered_old_basis[0])
+    #print(ordered_old_basis[1])
+    #print(ordered_old_basis[2])
+    #print(ordered_old_basis[3])
+    #print(ordered_old_basis[4])
+    #quit()
+    #print( np.array(ordered_old_basis)==np.array(basis_old))
+    #quit()
+    #print(ordered_old_basis)
+    #quit()
+    #print(len(ordered_old_basis))
+    #quit()
+    return ordered_old_basis
+
+
 def create_segment_DMRG_model(model_par,L,root_config_,conserve):
 
     """
@@ -68,9 +164,8 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve):
     L: int, number of sites on chain
     root_config_: root configuration
     conserve: gives tuple of conserved quantities
-
+   
     returns:
-
     MPOModel
     Sites - list of sites 
     """
@@ -88,13 +183,25 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve):
     M = mod.QH_model(model_par)
     print("Old code finished producing MPO graph",".."*10)
 
-
+    #quit()
     #load tenpy2 graph into tenpy3 graph
     G=M.MPOgraph
+
+    G=[loaded_xxxx['graph'][0]]*L
+    #print(lenG)
+    #quit()
+    G, extra_keys=trim_down_the_MPO(G)
+    #trim down the MPO
+  
+
     G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
+    #print(len(G_new[0].keys()))
+    #quit()
     
+    cell=len(root_config_)
 
-
+    print('asserting that the size is compatible with enivornment.....')
+    assert L%cell==cell-1
     #root_config_ = np.array([0,1,0])
   
 
@@ -118,20 +225,18 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve):
     '''
 
     States,not_included_couplings=QH_Graph_final.obtain_states_from_graphs(G_new,L)
+    #quit()
     print("Ordering states",".."*10)
 
     M.states = States #: Initialize aux. states in model
     M._ordered_states = QH_G2MPO.set_ordered_states(States) #: sort these states(assign an index to each one)
     print("Finished",".."*10 )
-
-
+    #print(M.states[0] )
+    
     print(not_included_couplings)
-    for i in range(L):
-       
-        for element in not_included_couplings[i]:
-            
-            G_new[i].pop(element[0],None)
-            print(element[0])
+    G_new=eliminate_elements_from_the_graph(G_new,not_included_couplings)
+    
+    
 
 
     print("Test sanity"+".."*10)
@@ -147,8 +252,32 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve):
 
 
     #sort leg charges to make DMRG algortihm quicker
-    H.sort_legcharges()
+    perms2=H.sort_legcharges()
+    #print(len(States[0]))
+    #quit()
+    #print(perms2)
+    #print(M.states[0] )
+    #quit()
+    #orderes the state according to the charges
+    #MAKES SOME REDUNDANT COPIES
+    ordered_states=[]
+    for k in range(len(M._ordered_states)):
+        ordered_states_=[]
+        for i in range(len(M._ordered_states[k])):
+            b=[key for key, value in  M._ordered_states[k].items() if value == i]
+            ordered_states_.append(b[0])
+        ordered_states.append(ordered_states_)
+    #ordered_states=M._ordered_states
+    #print(perms2[0])
+    #print(len(ordered_states[k]))
+    #quit()
+    #perms2=np.arange(len())
     
+    for k in range(len(M._ordered_states)):
+        ordered_states[k]=np.array(ordered_states[k])[perms2[k]]
+        ordered_states[k]=list(ordered_states[k])
+    
+    #quit()
     #Define lattice on which MPO is defined
     pos= [[i] for i in range(L)]
     lattice = Lattice([1], sites,positions=pos, bc="periodic", bc_MPS="segment")
@@ -160,21 +289,37 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve):
 
     assert model.H_MPO.is_equal(model.H_MPO.dagger())
     print('asserted')
+   
     
-    return model,sites
+    return model,sites, ordered_states
 
-def load_data(name,sites):
+def load_data(loaded_xxxx,sites):
     """
     loads MPS as segment mps of length len(sites)
     name: Str, name of the .pkl file from which we import
     sites: list of class:Sites, list of hilbert spaces corresponding to each site
     """
     L=len(sites)
-    with open(name+'.pkl', 'rb') as f:
-        loaded_xxxx = pickle.load(f, encoding='latin1')
-    
     #finds length of an infinite unit cell
-    Bflat0=loaded_xxxx['Bs']
+    Bflat0=loaded_xxxx['MPS_Bs']
+    #load singular values
+    Ss=loaded_xxxx['MPS_Ss']
+    #print(loaded_xxxx.keys())
+    #quit()
+    #print(Bflat0[3].shape)
+    #load charge infromation
+    
+    qflat2=loaded_xxxx['MPS_qflat']
+    #print(qflat2)
+    print(qflat2[0].shape)
+    #print(len(qflat2[0][0][0]))
+   
+    
+   
+    
+
+        
+
     infinite_unit_cell=len(Bflat0)
 
     number=len(sites)//infinite_unit_cell+1
@@ -183,11 +328,6 @@ def load_data(name,sites):
     #TODO: MAKE THIS PROCESS QUICKER
     Bflat=Bflat0*number
 
-    #load singular values
-    Ss=loaded_xxxx['Ss']
-    
-    #load charge infromation
-    qflat2=loaded_xxxx['qflat']
 
     #change qflat into representation consistent with Tenpy3
     #this is just charges of the leftmost leg
@@ -247,7 +387,7 @@ def project_left_side_of_mps( psi_halfinf):
     return psi_halfinf
 
 
-def load_environment(name,location,root_config_,conserve, side='right'):
+def load_environment(loaded_xxxx,location,root_config_,conserve,permute, side='right'):
 
     #TODO: GENERALIZE TO ALL CONSERVATION LAWS SO THAT IT IS LOADED MORE SMOOTHLY
     """
@@ -255,15 +395,21 @@ def load_environment(name,location,root_config_,conserve, side='right'):
     name:   Str, the file name in which the environment is saved
     location: Int, sets location of the site at which environment is located (-1 for left and len(sites) for right usually) 
     side: Str, if right loads right side, otherwise loads left side
+
+
+    TODO: NEED TO ENSURE WE HAVE THE CORRECT NUMBER OF SITE
     """
     print("loading "+side+ " environment",'..'*20)
-    with open(name+'.pkl', 'rb') as f:
-        loaded_xxxx = pickle.load(f, encoding='latin1')
+ 
     if side =='right':
         Bflat=loaded_xxxx['RP_B']
         qflat_list_c=loaded_xxxx['RP_q']
         #change the shape of Bflat and qflat so that it is consistent with new tenpy
         Bflat=np.transpose(Bflat, (1, 0, 2))
+
+        #permute to be consistent with MPO
+        Bflat=Bflat[:,permute,:]
+        qflat_list_c[0]=qflat_list_c[0][permute]
         qflat_list=[qflat_list_c[1],qflat_list_c[0],qflat_list_c[2]]
         labels=['vL', 'wL', 'vL*']
         conj_q=[1,1,-1]
@@ -273,6 +419,9 @@ def load_environment(name,location,root_config_,conserve, side='right'):
         qflat_list_c=loaded_xxxx['LP2_q']
         #transpose bflat and qflat to make legs consistent with TeNpy3
         Bflat=np.transpose(Bflat, (2, 0, 1))
+        #permute to be consistent with MPO
+        Bflat=Bflat[:,permute,:]
+        qflat_list_c[0]=qflat_list_c[0][permute]
         qflat_list=[qflat_list_c[2],qflat_list_c[0],qflat_list_c[1]]
 
         labels=['vR*', 'wR', 'vR']
@@ -398,12 +547,20 @@ def load_param(name):
 
     with open(name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
-    model_par = loaded_xxxx['model_par']
+    print(loaded_xxxx.keys())
+    #print(loaded_xxxx['graph'][0])
+    #quit()
+    #keys=[ 'exp_approx',  'cons_K',  'MPS_Ss', 'cons_C', 'Lx', 'root_config', 'LL', 'Vs']
+    #model_par={}
+    #for k in keys:
+    #    model_par[k]=loaded_xxxx[k]
+    model_par = loaded_xxxx['Model']
+    #print(model_par)
 
     root_config_ = model_par['root_config'].reshape(len(model_par['root_config']),1)
 
     conserve=[]
-    if  model_par['cons_C']==total:
+    if  model_par['cons_C']=='total':
         conserve.append('N')
 
     if model_par['cons_K']:
@@ -413,48 +570,299 @@ def load_param(name):
         conserve=conserve[0]
     else:
         conserve=tuple(conserve)
-    return model_pat,conserve,root_config_
+    return model_par,conserve,root_config_,loaded_xxxx
+
+def find_permutation(source, target):
+    return [source.index(x) for x in target]
+
+def load_permutation_of_basis(loaded_xxxx,ordered_states,new_MPO):
+    print(loaded_xxxx.keys())
+    #quit()
+    G_old,basis_old,permutation_old=loaded_xxxx['graph'],loaded_xxxx['indices'],loaded_xxxx['permutations'] 
+    #print(G_old[0].keys())
+    #print(basis_old)
+    #quit()
+    
+    #print(basis_old)
+    #quit()
+    #quit()
+    
+    old_basis=get_old_basis(G_old,basis_old,permutation_old)
+    assert len(old_basis)==len(ordered_states[0])
+    print(len(basis_old))
+    print(len(old_basis))
+    #total_permutation=[]
+    #print()
+    #quit()
+    #print(old_basis)
+    print(old_basis)
+    print(ordered_states[0])
+    #quit()
+    #print(set(old_basis)-set(ordered_states[0]))
+    #print(set(ordered_states[0])-set(old_basis))
+    #quit()
+    permutation=find_permutation(old_basis,ordered_states[0])
+    print(permutation)
+    #asserts two bases are the same
+    assert np.all(ordered_states[0]==np.array(old_basis)[permutation])
+    
+    #print(ordered_states[0]==np.array(old_basis)[permutation])
+    #quit()
+    #print(loaded_xxxx.keys())
+    #quit()
+    sanity_check_permutation(loaded_xxxx,new_MPO, permutation)
+    #GIVES THE CORRECT PERMUTATION of old basis to get a new basis!!
+    return permutation
+def sanity_check_permutation(loaded_xxxx,new_MPO, permute):
+
+    print('checking sanity check of permutation...')
+    #permute old Bflat and check its the same as new Bflat for hamiltonian
+    print(loaded_xxxx.keys())
+   
+    Bflat_old=loaded_xxxx['MPO_B']
+    #print(Bflat_old.shape)
+
+    print(Bflat_old.shape)
+   
+    Bflat_old=Bflat_old[permute,:,:,:]
+    Bflat_old=Bflat_old[:,permute,:,:]
+    """
+    permute=np.arange(len(Bflat_old))
+    #permute[0]=0
+    permute[1]=2
+    permute[2]=1
+    Bflat_old=Bflat_old[permute,:,:,:]
+    Bflat_old=Bflat_old[:,permute,:,:]
+
+    permute=np.arange(len(Bflat_old))
+    #permute[0]=0
+    permute[1]=3
+    permute[3]=1
+    Bflat_old=Bflat_old[permute,:,:,:]
+    Bflat_old=Bflat_old[:,permute,:,:]
+    """
+    B_new=new_MPO.to_ndarray()
+    print(B_new.shape)
+    #quit()
+    er=np.sum(( Bflat_old-B_new)**2)
+    er2=np.sum(( Bflat_old+B_new)**2)
+    print(er)
+    print(er2)
+    thresh=10**(-8)
+    print(er/er2)
+    #quit()
+    
+    for i in range(len(Bflat_old)):
+        
+        for j in range(len(Bflat_old)):
+            if np.sum((Bflat_old[j,i]-B_new[j,i])**2)>0.0001:
+                print('x'*50)
+                print(j,i)
+                print(Bflat_old[j,i])
+            
+                print(B_new[j,i])
+    
+    if er/er2<thresh:
+        print('permutation is consistent')
+    else:
+        raise ValueError("inconsistent permutation") 
+    #quit()
+    return
+name='Data_QH_nu_1_3-8'
 
 
+model_par,conserve,root_config_,loaded_xxxx=load_param(name)
 
+
+#print(loaded_xxxx['graph'][0].keys())
+#quit()
+#print(model_par)
+#quit()
 L=14
 
-Lx = 14;            # circumference
-LL = 0;         # which Landau level to put in
-mixing_chi = 400; #Bond dimension in initial sweeps
-chi = 400;      #Bond dimension of MPS
-chi2 = 400
-chi3 = 400
-#chi4 = 4500
-xi = 1; #
-#xi = 1;            # The Gaussian falloff for the Coulomb potential
-Veps = 1e-4 # how accurate to approximate the MPO
-V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} }
-root_config = np.array([0, 1, 0])       # this is how the initial wavefunction looks
 
+#quit()
+model_par.pop('mpo_boundary_conditions')
 
-model_par = {
-    'verbose': 3,
-    'layers': [ ('L', LL) ],
-    'Lx': Lx,
-    'Vs': V,
-    'boundary_conditions': ('infinite', L),
-    'cons_C': 'total', #Conserve number for each species (only one here!)
-    'cons_K': False, #Conserve K
-    'root_config': root_config, #Uses this to figure out charge assignments
-    'exp_approx': '1in', #For multiple orbitals, 'slycot' is more efficient; but for 1 orbital, Roger's handmade code '1in' is slightly more efficient
-}
-root_config_ = np.array([0,1,0])
-root_config_ = root_config_.reshape(3,1)
-
-conserve=('N','K')
-
-
-#model_par,conserve,root_config_=load_param(name)
 
 model_par['boundary_conditions']= ('infinite', L)
-M,sites=create_segment_DMRG_model(model_par,L,root_config_,conserve)
+print('__'*100)
+print(model_par)
+
+#NEED TO IMPORT LAYERS TOO
+
+
+LL=0
+model_par['layers']=[ ('L', LL) ]
+#print(model_par)
+#quit()
+M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve)
+#quit()
+
+perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
+print('AAAAA')
+print(perm)
+#quit()
+psi_halfinf=load_data(loaded_xxxx,sites)
+
 #THIS ONE HAS BOTH N,K conservation
+psi_halfinf=project_left_side_of_mps(psi_halfinf)
+#psi_halfinf.canonical_form_finite()
+
+
+
+print(len(sites))
+
+right_env=load_environment(loaded_xxxx,len(sites),root_config_,conserve, perm,side='right')
+
+
+
+
+#leg_MPS
+leg_MPS=psi_halfinf._B[0].get_leg('vL')
+#leg_MPO
+leg_MPO=M.H_MPO._W[0].get_leg('wL')
+left_environment=set_left_environment_to_vacuum(leg_MPO,leg_MPS)
+
+
+init_env_data_halfinf={}
+
+
+init_env_data_halfinf['init_LP'] = left_environment    #DEFINE LEFT ENVIROMENT
+init_env_data_halfinf['age_LP'] =0
+
+init_env_data_halfinf['init_RP'] = right_env   #DEFINE RIGHT ENVIROMENT
+init_env_data_halfinf['age_RP'] =0
+
+
+
+
+dmrg_params = {
+    'mixer': True,
+    'max_E_err': 1.e-10,
+    'trunc_params': {
+        'chi_max': 1900,
+        'svd_min': 1.e-10,
+    },
+}
+
+eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M, dmrg_params,
+                                     resume_data={'init_env_data': init_env_data_halfinf})
+#print(eng_halfinf.chi_max)
+#
+print("enviroment works")
+print("running DMRG")
+#
+#print("MPS qtotal:", M.qtotal)
+#print("MPO qtotal:", psi_halfinf.qtotal)
+eng_halfinf.run()
+
+
+
+
+
+
+
+
+
+
+
+quit()
+x=M.H_MPO._W[0]
+print(x)
+#quit()
+#quit()
+name="MPO_QH_1_3"
+
+print(loaded_xxxx.keys())
+
+B_val=np.array(loaded_xxxx['B'])
+
+B_val=np.transpose(B_val,(0,1,2,3))
+val=x.to_ndarray()
+#matrix = B_val.transpose(0, 2, 1, 3).reshape(2*54, 2*54)
+def find_indices_in_other_array(single_m,B_val):
+    for z in range(54):
+        count=0
+        for n in range(54):
+            if np.sum((B_val[z,n]-single_m)**2)<0.000001:# or np.sum(B_val[k,i]**2)!=0:
+            
+                #print('x'*50)
+                print(B_val[z,n])
+                return True
+                count+=1;
+                break;
+        if count>0:
+            break;
+    
+    return False
+
+
+for k in range(54):
+    count=0    
+    for i in range(54):
+        if np.sum(val[k,i]**2)!=0:# or np.sum(B_val[k,i]**2)!=0:
+         
+            
+           
+            if np.sum((val[k,i]-B_val[k,i])**2)>0.00001:
+                print('x'*50)
+                print(val[k,i])
+                boolara=find_indices_in_other_array(val[k,i],B_val)
+                print(boolara)
+                if not boolara:
+                    print('WRONG'*100)
+                    quit()
+                    count+=1
+                    break;
+    if count>0:
+        break;
+print('one is permutation of the other')
+quit()
+matrix=np.zeros((2*54,2*54))
+matrix2=np.zeros((2*54,2*54))
+for i in range(54):
+    
+    for j in range(54):
+        for z in range(2):
+            for m in range(2):
+                matrix[2*i+z,2*j+m]=val[i,j,z,m]
+                matrix2[2*i+z,2*j+m]=B_val[i,j,z,m]
+
+
+lambd,s=np.linalg.eigh(matrix)
+lambd2,s=np.linalg.eigh(matrix2)
+print(lambd2-lambd)
+print(np.sum((lambd)**2))
+print(np.sum((lambd-lambd2)**2))
+#HMMMMM
+#OK EIGENVALUES ARE THE SAME
+quit()    
+for k in range(54):
+    
+    for i in range(54):
+        if np.sum(val[k,i]**2)!=0 or np.sum(B_val[k,i]**2)!=0:
+            pass
+            #print('x'*50)
+            #print(val[k,i])
+            #print(val[0,i])
+            #print(B_val[k,i])
+        if np.sum((val[k,i]-B_val[k,i])**2)>0.0001:
+            print('x'*50)
+            #print(k,i)
+            #print(val[k,i])
+            #print(val[0,i])
+            #print(B_val[k,i])
+#quit()   
+#print(MPO_old==MPO_old2)
+er=np.sum((val)**2)
+print(er)
+print(np.sum((B_val)**2))
+er=np.sum((val-B_val)**2)
+er2=np.sum((val+B_val)**2)
+print(er/er2)
+
+quit()
 name='qflat_QH_1_3_K_cons'
 psi_halfinf=load_data(name,sites)
 

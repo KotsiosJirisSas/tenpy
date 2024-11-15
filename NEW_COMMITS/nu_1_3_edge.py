@@ -56,19 +56,23 @@ from tenpy.networks.mpo import MPO
 import QH_G2MPO
 import QH_Graph_final
 
+def find_permutation(source, target):
+    return [source.index(x) for x in target]
+
 
 def create_infinite_DMRG_model(N):
     np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=False)
     #########################
     #sort the problem and match values to konstantinos values
+    #########################
     Lx = 14;            # circumference
     LL = 0;         # which Landau level to put in
-    mixing_chi = 400; #Bond dimension in initial sweeps
-    chi = 400;      #Bond dimension of MPS
+    mixing_chi = 300; #Bond dimension in initial sweeps
+    chi = 340;      #Bond dimension of MPS
     chi2 = 400
     chi3 = 400
     #chi4 = 4500
-    xi = 1; #
+    xi = 6; #
     #xi = 1;            # The Gaussian falloff for the Coulomb potential
     Veps = 1e-4 # how accurate to approximate the MPO
     V = { 'eps':Veps, 'xiK':xi, 'GaussianCoulomb': {('L','L'):{'v':1, 'xi':xi}} }
@@ -82,11 +86,10 @@ def create_infinite_DMRG_model(N):
         'boundary_conditions': ('infinite', N),#????????????????????????
     #   'boundary_conditions': ('periodic', 1),
         'cons_C': 'total', #Conserve number for each species (only one here!)
-        'cons_K': False, #Conserve K
+        'cons_K': True, #Conserve K
         'root_config': root_config, #Uses this to figure out charge assignments
         'exp_approx': '1in', #For multiple orbitals, 'slycot' is more efficient; but for 1 orbital, Roger's handmade code '1in' is slightly more efficient
     }
-        
 
 
 
@@ -102,6 +105,49 @@ def create_infinite_DMRG_model(N):
 
 
     G=M.MPOgraph
+    name="ind_QH_1_3-2"
+
+    with open(name+'.pkl', 'rb') as f:
+        loaded_xxxx = pickle.load(f, encoding='latin1')
+
+    print()
+    imported_key_order=loaded_xxxx['ind']
+    print(imported_key_order)
+    #quit()
+    #G_imported=
+    #trim down the MPO
+    for n in range(len(G)):
+        extra_keys=[]
+        for key in G[n].keys():
+            #print(key)
+            print('**'*100)
+            print(G[n][key].keys())
+            if list(G[n][key].keys())==[]:
+                print('what what')
+                print(key)
+                extra_keys.append(key)
+        for k in extra_keys:
+            #pass
+            G[n].pop(k, None)
+            try:
+                imported_key_order.remove(k)
+            except:
+                pass
+    print(extra_keys)
+    print(imported_key_order)
+    imported_key_order.remove("('A_', 0, 6)")
+    imported_key_order.remove("('a_', 0, 6)")
+    lista=[26, 44, 16,  7,  9 ,48, 18,  1,  8, 41, 42, 12, 30, 29, 39,  6, 28, 37,  5, 15, 17, 25, 49, 13, 14, 24, 27, 31, 35, 36, 46, 20, 21, 32, 43, 52,  2, 23, 33,  3, 10, 11, 22, 47, 19, 50, 40, 45, 34, 51, 38,  4,  0, 53]
+    lista_ind=np.array(lista)
+    imported_key_order=np.array( imported_key_order)
+    imported_key_order= imported_key_order[lista_ind]
+    imported_key_order=list( imported_key_order)
+    #print(len(imported_key_order))
+    #quit()
+
+    #imported order:
+
+
     #import pickle
     #print(G)
     # Assuming 'data' is your object (like your transposed tensor) that you want to save
@@ -140,8 +186,16 @@ def create_infinite_DMRG_model(N):
 
     M.states = States #: Initialize aux. states in model
     M._ordered_states = QH_G2MPO.set_ordered_states(States) #: sort these states(assign an index to each one)
-    
    
+    ordered_states=[]
+    for i in range(len(M._ordered_states[0])):
+        b=[key for key, value in  M._ordered_states[0].items() if value == i]
+        ordered_states.append(b[0])
+    
+    #print(ordered_states)
+    #quit()
+   
+    #quit()
 
     #remove rows
     #yet to implement remove columns
@@ -149,11 +203,18 @@ def create_infinite_DMRG_model(N):
     for i in range(L):
        
         for element in not_included_couplings[i]:
-            
-            #G_new[i].pop(element[0],None)
-            print(element[0])
+            if element[1]=='row':
+                G_new[i].pop(element[0],None)
+                print(element[0])
+            else:
+                for key in G_new[i].keys():
+                    try:
+                        G_new[i][key].pop(element[0],None)
+                    except:
+                        pass
+
     
-   
+    #quit()
     print("Finished",".."*10 )
  
 
@@ -169,7 +230,22 @@ def create_infinite_DMRG_model(N):
     print("Built"+".."*10)
     
     #bunch_legs=1
-    H.sort_legcharges()
+    perms2=H.sort_legcharges()
+    print(perms2)
+    perms2=[np.int64(25), np.int64(26), np.int64(27), np.int64(28), np.int64(29), np.int64(48), np.int64(49), np.int64(50), np.int64(51), np.int64(52), np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(5), np.int64(6), np.int64(7), np.int64(8), np.int64(9), np.int64(10), np.int64(11), np.int64(12), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(17), np.int64(18), np.int64(19), np.int64(35), np.int64(36), np.int64(37), np.int64(38), np.int64(39), np.int64(40), np.int64(41), np.int64(42), np.int64(43), np.int64(44), np.int64(45), np.int64(46), np.int64(47), np.int64(53), np.int64(20), np.int64(21), np.int64(22), np.int64(23), np.int64(24), np.int64(30), np.int64(31), np.int64(32), np.int64(33), np.int64(34)]
+    perms2=np.array(perms2)
+    ordered_states=np.array(ordered_states)[perms2]
+    ordered_states=list(ordered_states)
+    permutation=find_permutation(imported_key_order,ordered_states)
+    #np.arrat(permutation
+    print(permutation)
+    imported_key_order=np.array(imported_key_order)
+    a=imported_key_order[np.array(permutation)]
+    #print(a)
+    #print
+    #print(a==np.array(ordered_states))
+    #print(perms2[0])
+    #quit()
     #print(H._W[0])
     #quit()
     #initialize wavefunction as MPS
@@ -181,7 +257,7 @@ def create_infinite_DMRG_model(N):
 
     print("created model",".."*30)
     #quit()
-    return model
+    return model, np.array(permutation)
 
 def load_data(name):
     #LOADS MPS
@@ -412,6 +488,86 @@ def set_infinite_like_segment(mps,M_i,last):
     init_env_data_halfinf['age_LP'] = 0
     return psi_halfinf,init_env_data_halfinf
 
+N=2
+model, permute=create_infinite_DMRG_model(N)
+#quit()
+name="MPO_QH_1_3"
+
+with open(name+'.pkl', 'rb') as f:
+    loaded_xxxx = pickle.load(f, encoding='latin1')
+print(loaded_xxxx.keys())
+
+B_val=np.array(loaded_xxxx['B'])
+print(B_val.shape)
+N=1
+
+"""
+G_old=loaded_xxxx['graph'][0]
+print(G_old)
+G=create_infinite_DMRG_model(N)[0]
+print(len(G))
+print(len(G_old))
+#x=M_i.H_MPO
+diff=0
+suma=0
+for key in G_old.keys():
+    #print(key)
+    print('**'*100)
+    print(G[key].keys())
+    if list(G[key].keys())==[]:
+        print('what what')
+        print(key)
+        quit()
+    for key2 in G[key].keys():
+        diff+=(G[key][key2][0][1]-G_old[key][key2][0][1])**2
+        suma+=(G[key][key2][0][1]+G_old[key][key2][0][1])**2
+        
+        print(G[key][key2][0][1])
+        print(G_old[key][key2][0][1])
+    #print(G[key])
+    #print(G_old[key])
+    #print(G[key]==G_old[key])
+print(diff/suma)
+quit()
+
+print(G==G_old)
+"""
+print(B_val.shape)
+B_val=B_val[permute,:,:,:]
+B_val=B_val[:,permute,:,:]
+print(B_val.shape)
+#quit()
+#x=create_infinite_DMRG_model(N).H_MPO
+x=model.H_MPO
+print(x._W[0])
+val=x._W[0].to_ndarray()
+print(val.shape)
+print(B_val.shape)
+print(x._W[0])
+#quit()
+print(val[0,0])
+print(B_val[0,0])
+#B_val=np.transpose(B_val,(0,1,2,3))
+#for i in range(54):
+#    print('x'*50)
+#    print(val[0,i])
+    #print(val[0,i])
+#    print(B_val[0,i])
+print("compare matrices")
+print(np.sum((val-B_val)**2))
+print(np.sum(val**2))
+
+print(np.sum(B_val**2))
+
+quit()
+#print(MPO_old==MPO_old2)
+er=np.sum((val)**2)
+#print(er)
+#print(np.sum((B_val)**2))
+er=np.sum((val-B_val)**2)
+er2=np.sum((val+B_val)**2)
+print(er/er2)
+quit()
 #name="qflat_QH_1_3-2"
 #load_data(name)
 #quit()

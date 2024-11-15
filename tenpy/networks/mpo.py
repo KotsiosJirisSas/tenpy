@@ -561,11 +561,14 @@ class MPO:
         for i, w in enumerate(self._W):
             w = w.transpose(['wL', 'wR', 'p', 'p*'])
             p, w = w.sort_legcharge([True, True, False, False], [True, True, False, False])
+          
+            #quit()
             if perms[i] is not None:
                 assert np.all(p[0] == perms[i])
             perms[i] = p[0]
             perms[i + 1] = p[1]
             new_W[i] = w
+        
         self._W = new_W
         chi = self.chi
         for b, p in enumerate(perms):
@@ -577,6 +580,8 @@ class MPO:
                 IdR = IdR % chi[b]
                 self.IdR[b] = np.nonzero(p == IdR)[0][0]
         # done
+        
+        return perms
 
     def make_U(self, dt, approximation='II'):
         r"""Creates the U_I or U_II propagator.

@@ -560,9 +560,9 @@ class DMRGEngine(IterativeSweeps):
         age = self.env.get_LP_age(i0) + n_opt + self.env.get_RP_age(i0 + n_opt - 1)
         if optimize:
 
-            print('in')
+            
             E0, theta, N, ov_change = self.diag(theta)
-            print('out')
+           
         else:
             E0, N, ov_change = None, 0, 0.
         theta = self.prepare_svd(theta)
