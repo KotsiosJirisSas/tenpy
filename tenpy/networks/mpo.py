@@ -2201,14 +2201,14 @@ class MPOEnvironment(BaseEnvironment):
             try:
                 #print('WHY DO YOU BREAK :(')
                 i = -start_env_sites
-                print(i)
+                #print(i)
                 MPO_Bs=self.H.get_W(i).get_leg('wL')
                 mpo=self.H.get_W(i)
-                print("left side mpo")
+                #print("left side mpo")
                 #print(mpo.size)
-                print(MPO_Bs)
-                print("*"*10,"charges of enviroment")
-                print(init_LP.get_leg('wR'))
+                #print(MPO_Bs)
+                #print("*"*10,"charges of enviroment")
+                #print(init_LP.get_leg('wR'))
                 
                 init_LP.get_leg('wR').test_contractible(self.H.get_W(i).get_leg('wL'))
                 print("passes")
