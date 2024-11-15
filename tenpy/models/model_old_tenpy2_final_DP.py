@@ -1020,9 +1020,17 @@ class model(object):
 							KeyError
 		self.H_mpo = W
 
-		print('site_number=',self.L)
-		print('WORKS!')
-		
+		#print('site_number=',self.L)
+		#print(len(W))
+		#print(len(W[1]))
+		#print(len(W[1][1]))
+		#for i in range(len(W[1][1])):
+		#	print(W[1][1][i])
+		#quit()
+		#print(len(W[0][0][0]))
+		#print(len(W[0][0][0][0]))
+		#print('WORKS!')
+		#quit()
 		"""
 		DO NOT CONSERVE CHARGE HERE BECAUSE CANNOT LOAD OLD NPC ARRAY
 		if self.num_q:

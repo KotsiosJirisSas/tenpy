@@ -4,6 +4,7 @@ import scipy
 import matplotlib.pyplot as plt
 import os
 import sys
+sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
 sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
 np.set_printoptions(precision=5, suppress=True, linewidth=100)
 plt.rcParams['figure.dpi'] = 150
@@ -34,7 +35,7 @@ from tenpy.models.lattice import Lattice
 """Code for running DMRG """
 import sys
 import os
-sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
+
 import numpy as np
 from tenpy.linalg import np_conserved as npc
 from tenpy.models import multilayer_qh_DP_final as mod
@@ -55,7 +56,8 @@ from tenpy.networks.mpo import MPO
 import QH_G2MPO
 import QH_Graph_final
 
-
+import h5py
+from tenpy.tools import hdf5_io
 #SAVE THE DATA
 #import h5py
 #from tenpy.tools import hdf5_io
@@ -547,7 +549,7 @@ def set_left_environment_to_vacuum(leg_HMPO,leg_MPS):
 
 def load_param(name):
 
-    with open(name+'.pkl', 'rb') as f:
+    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/"+name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     print(loaded_xxxx.keys())
     #print(loaded_xxxx['graph'][0])
@@ -681,7 +683,7 @@ def run_vacuum_boundary_from_file(name_load,name_save):
     #print(model_par)
     #quit()
     L=3*15-1
-    L=14
+    #L=14
 
     #quit()
     model_par.pop('mpo_boundary_conditions')
@@ -744,7 +746,7 @@ def run_vacuum_boundary_from_file(name_load,name_save):
         'max_E_err': 1.e-10,
         'max_S_err': 1.e-5,
         'trunc_params': {
-            'chi_max': 900,
+            'chi_max': 1500,
             'svd_min': 1.e-10,
         },
     }
@@ -785,11 +787,15 @@ def run_vacuum_boundary_from_file(name_load,name_save):
             "dmrg_params":dmrg_params, "model_par":model_par, "model": M,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
 
    
-    with open(name_save+".pickle", 'wb') as f:
-        pickle.dump( data,f)
+    #with open("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".pickle", 'wb') as f:
+    #    pickle.dump( data,f)
+  
 
+   
+    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".h5", 'w') as f:
+        hdf5_io.save_to_hdf5(f, data)
 
 
 name_load='Data_QH_nu_1_3-8'
-name_save="nu=1_3_N_K_conservation"
+name_save='segment_'+name_load
 run_vacuum_boundary_from_file(name_load,name_save)
