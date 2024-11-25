@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import sys
 print('INNNNN')
-sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
+sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
 np.set_printoptions(precision=5, suppress=True, linewidth=100)
 plt.rcParams['figure.dpi'] = 150
 
@@ -106,6 +106,16 @@ model_par = {
 
 
 
+root_config=[1,0,1,0,0,0,0,0,0]
+root_config_ = np.array(root_config)
+root_config_ = root_config_.reshape(3,3)
+from tenpy.networks.site import QH_MultilayerFermionSite_final
+#spin=QH_MultilayerFermionSite(N=1)#,root_config=root_config_,conserve='N')
+print(root_config_ )
+L = 12
+for i in range(3,7):
+    spin=QH_MultilayerFermionSite_final(N=3,root_config=root_config_,conserve=('each','K'),site_loc=i)
+quit()
 
 
 
@@ -199,12 +209,15 @@ G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
 #print(G_new[0][('_a', 0, 9)])
 #print(G_new[0]["('_a', 0, 9)"])
 #quit()
+root_config=[0,0,1,1,0,0]
 root_config_ = np.array(root_config)
-root_config_ = root_config_.reshape(3,1)
+root_config_ = root_config_.reshape(6,1)
 #spin=QH_MultilayerFermionSite(N=1)#,root_config=root_config_,conserve='N')
 
-spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
 L = len(G_new)
+for i in range(L):
+    spin=QH_MultilayerFermionSite_3(N=2,root_config=root_config_,conserve='(N,K)',site_loc=i)
+quit()
 
 
 sites = [spin] * L 

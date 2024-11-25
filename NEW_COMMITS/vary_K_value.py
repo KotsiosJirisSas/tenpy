@@ -4,6 +4,8 @@ import scipy
 import matplotlib.pyplot as plt
 import os
 import sys
+
+print(sys.version)
 sys.path.append('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy') 
 sys.path.append('/Users/domagojperkovic/Desktop/git_konstantinos_project/tenpy') 
 np.set_printoptions(precision=5, suppress=True, linewidth=100)
@@ -710,266 +712,6 @@ def load_graph(name):
         loaded_xxxx = pickle.load(f, encoding='latin1')
     return loaded_xxxx
     
-def run_vacuum_boundary_from_file(name_load,name_save):
-    model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
-   
-    graph=load_graph(name_graph)
-    #print(loaded_xxxx['graph'][0].keys())
-    #quit()
-    #print(model_par)
-    #quit()
-    L=3*15-1
-    L=68
-    #L=14
-
-    #quit()
-    model_par.pop('mpo_boundary_conditions')
-
-
-    model_par['boundary_conditions']= ('infinite', L)
-    print('__'*100)
-    print(model_par)
-
-    #NEED TO IMPORT LAYERS TOO
-
-
-    LL=0
-    model_par['layers']=[ ('L', LL) ]
-    #print(model_par)
-    #quit()
-    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph)
-    #quit()
-
-    perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
-    print('AAAAA')
-    print(perm)
-    #quit()
-    psi_halfinf=load_data(loaded_xxxx,sites)
-  
-    #THIS ONE HAS BOTH N,K conservation
-    psi_halfinf=project_left_side_of_mps(psi_halfinf)
-    #psi_halfinf.canonical_form_finite()
-
-
-
-    print(len(sites))
-
-    right_env=load_environment(loaded_xxxx,len(sites),root_config_,conserve, perm,side='right',old=True)
-
-
-
-
-    #leg_MPS
-    leg_MPS=psi_halfinf._B[0].get_leg('vL')
-    #leg_MPO
-    leg_MPO=M.H_MPO._W[0].get_leg('wL')
-    left_environment=set_left_environment_to_vacuum(leg_MPO,leg_MPS)
-
-
-    init_env_data_halfinf={}
-
-
-    init_env_data_halfinf['init_LP'] = left_environment    #DEFINE LEFT ENVIROMENT
-    init_env_data_halfinf['age_LP'] =0
-
-    init_env_data_halfinf['init_RP'] = right_env   #DEFINE RIGHT ENVIROMENT
-    init_env_data_halfinf['age_RP'] =0
-
-
-
-
-    dmrg_params = {
-        'mixer': True,
-        'max_E_err': 1.e-10,
-        'max_S_err': 1.e-5,
-        'trunc_params': {
-            'chi_max': 8000,
-            'svd_min': 1.e-10,
-        },
-        'max_sweeps': 50
-    }
-
-    eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M, dmrg_params,
-                                        resume_data={'init_env_data': init_env_data_halfinf})
-    #print(eng_halfinf.chi_max)
-    #
-    print("enviroment works")
-    print("running DMRG")
-    #
-    #print("MPS qtotal:", M.qtotal)
-    #print("MPO qtotal:", psi_halfinf.qtotal)
-    E0, psi=eng_halfinf.run()
-
-
-
-    #calculate and store data
-
-
-    filling=psi.expectation_value("nOp")
-
-    print('Filling:',filling)
-
-
-    E_spec=psi.entanglement_spectrum()
-    #print('entanglement spectrum:',E_spec)
-
-
-
-    EE=psi.entanglement_entropy()
-    print('entanglement entropy:',EE)
-
-
-    
-
-    #data = {"psi": psi,  # e.g. an MPS
-    #        "dmrg_params":dmrg_params, "model_par":model_par, "model": M,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
-
-    data = { "dmrg_params":dmrg_params, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
-
-    #with open("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".pickle", 'wb') as f:
-    #    pickle.dump( data,f)
-  
-
-   
-    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".h5", 'w') as f:
-        hdf5_io.save_to_hdf5(f, data)
-
-def run_bulk_boundary_from_file(name_load,name_save,name_graph):
-    model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
-    #graph=loaded_xxxx
-    print('in')
-    graph=load_graph(name_graph)
-    print('out')
-    
-    #print(loaded_xxxx['graph'][0].keys())
-    #quit()
-    #print(model_par)
-    #quit()
-    L=3*15-1
-    L=len(graph)
-    print(L)
-    #print(len(graph))
-    #print(len(graph['graph']))
-    #quit()
-    #L=14
-   
-    model_par.pop('mpo_boundary_conditions')
-
-
-    model_par['boundary_conditions']= ('infinite', L)
-    print('__'*100)
-    print(model_par)
-
-    #NEED TO IMPORT LAYERS TOO
-
-
-    LL=0
-    model_par['layers']=[ ('L', LL) ]
-    #print(model_par)
-    #quit()
-    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph)
-    #quit()
-
-    perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
-    print('AAAAA')
-    print(perm)
-    #quit()
-    psi_halfinf=load_data(loaded_xxxx,sites)
-
-    #THIS ONE HAS BOTH N,K conservation
-    #psi_halfinf=project_left_side_of_mps(psi_halfinf)
-    psi_halfinf.canonical_form_finite()
-    #print(psi_halfinf._B[0])
-    #quit()
-
-
-
-    print(len(sites))
-
-    right_env=load_environment(loaded_xxxx,len(sites),root_config_,conserve, perm,side='right')
-
-
-
-
-    #leg_MPS
-    leg_MPS=psi_halfinf._B[0].get_leg('vL')
-    #leg_MPO
-    leg_MPO=M.H_MPO._W[0].get_leg('wL')
-    print(leg_MPO)
-    print(leg_MPS)
-    left_environment=load_environment(loaded_xxxx,-1,root_config_,conserve, perm,side='left')#set_left_environment_to_vacuum(leg_MPO,leg_MPS)
-
-
-    init_env_data_halfinf={}
-
-
-    init_env_data_halfinf['init_LP'] = left_environment    #DEFINE LEFT ENVIROMENT
-    init_env_data_halfinf['age_LP'] =0
-
-    init_env_data_halfinf['init_RP'] = right_env   #DEFINE RIGHT ENVIROMENT
-    init_env_data_halfinf['age_RP'] =0
-
-
-
-
-    dmrg_params = {
-        'mixer': True,
-        'max_E_err': 1.e-9,
-        'max_S_err': 1.e-5,
-        'trunc_params': {
-            'chi_max': 9000,
-            'svd_min': 1.e-10,
-        },
-        'max_sweeps': 50
-    }
-
-    eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M, dmrg_params,
-                                        resume_data={'init_env_data': init_env_data_halfinf})
-    #print(eng_halfinf.chi_max)
-    #
-    print("enviroment works")
-    print("running DMRG")
-    #
-    #print("MPS qtotal:", M.qtotal)
-    #print("MPO qtotal:", psi_halfinf.qtotal)
-    E0, psi=eng_halfinf.run()
-
-
-
-    #calculate and store data
-
-
-    filling=psi.expectation_value("nOp")
-
-    print('Filling:',filling)
-
-
-    #E_spec=psi.entanglement_spectrum()
-    #print('entanglement spectrum:',E_spec)
-
-
-
-    EE=psi.entanglement_entropy()
-    print('entanglement entropy:',EE)
-
-
-    
-
-    #data = {"psi": psi,  # e.g. an MPS
-    #        "dmrg_params":dmrg_params, "model_par":model_par, "model": M,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
-
-    data = { "dmrg_params":dmrg_params, "model_par":model_par,'density':filling,'entanglement_entropy': EE}# 'entanglement_spectrum':E_spec }
-
-    #with open("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".pickle", 'wb') as f:
-    #    pickle.dump( data,f)
-  
-
-   
-    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".h5", 'w') as f:
-        hdf5_io.save_to_hdf5(f, data)
-
-
-
 
 def add_cells_to_projected_wf(psi_halfinf,pstate,sites):
     """
@@ -1013,9 +755,17 @@ def add_cells_to_projected_wf(psi_halfinf,pstate,sites):
     #print(Ss[0])
    
     #print(len(Ss))
-
     #TODO: FIGURE OUT CHARGES ON THE LEFT LEG:
-    qflat=[[-6-len(pstate),0]]
+    add=0
+    for k,i in enumerate(pstate):
+        if i=='full':
+            add+=k%3+1
+    add=3
+    print(add)
+   
+    qflat=[[-6-len(pstate),0]] #if empty,empty,full
+    qflat=[[-6+len(pstate),0]] #if full,empty,empty
+    #qflat=[[-6,0]] #if 010
     chargeinfo=sites[0].leg.chinfo
     left_leg=LegCharge.from_qflat(chargeinfo,qflat,qconj=1).bunch()[1]
     
@@ -1033,7 +783,7 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
     model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
    
     #load_graph(name_graph)
-    #print(loaded_xxxx['graph'][0].keys())
+    #print(len(loaded_xxxx['graph']))
     #quit()
     #print(model_par)
     #quit()
@@ -1041,6 +791,7 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
     L=3*23-1
     graph=[loaded_xxxx['graph'][0]]*L
     L=len(graph)+len(pstate)
+   
     #adds extra sites to the graph
     for i in range(len(pstate)):
         graph.insert(0,graph[i])
@@ -1084,8 +835,8 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
 
     
 
-   
-    psi_halfinf=add_cells_to_projected_wf(psi_halfinf,pstate,sites)
+    if len(pstate)>0:
+        psi_halfinf=add_cells_to_projected_wf(psi_halfinf,pstate,sites)
     #psi_halfinf.add_B(-1,a._B[2])
     #psi_halfinf.add_B(-2,a._B[1])
     #psi_halfinf.add_B(-3,a._B[0])
@@ -1125,7 +876,7 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
 
     dmrg_params = {
         'mixer': True,
-        'max_E_err': 1.e-10,
+        'max_E_err': 1.e-9,
         'max_S_err': 1.e-5,
         'trunc_params': {
             'chi_max': 1500,
@@ -1169,7 +920,159 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
     #data = {"psi": psi,  # e.g. an MPS
     #        "dmrg_params":dmrg_params, "model_par":model_par, "model": M,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
 
-    data = { "dmrg_params":dmrg_params, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
+    data = { "dmrg_params":dmrg_params,"energy":E0, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
+
+    #with open("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".pickle", 'wb') as f:
+    #    pickle.dump( data,f)
+  
+
+   
+    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".h5", 'w') as f:
+        hdf5_io.save_to_hdf5(f, data)
+def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
+    model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
+   
+
+    
+    graph=load_graph(name_graph)
+    #print(len(loaded_xxxx['graph']))
+    #quit()
+    #print(model_par)
+    #quit()
+    
+    #L=3*23-1
+    #graph=[loaded_xxxx['graph'][0]]*L
+    L=len(graph)#+len(pstate)
+   
+    #adds extra sites to the graph
+    #for i in range(len(pstate)):
+    #    graph.insert(0,graph[i])
+   
+    #L=14
+
+    #quit()
+    model_par.pop('mpo_boundary_conditions')
+
+
+    model_par['boundary_conditions']= ('infinite', L)
+    print('__'*100)
+    print(model_par)
+
+    #NEED TO IMPORT LAYERS TOO
+
+
+    LL=0
+    model_par['layers']=[ ('L', LL) ]
+    #print(model_par)
+    #quit()
+
+    #INSERT UNIT CELL IN BETWEEN!
+   
+    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=len(pstate))
+    #quit()
+
+    perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
+    print('AAAAA')
+    print(perm)
+    #quit()
+    psi_halfinf=load_data(loaded_xxxx,sites[len(pstate):])
+  
+    #THIS ONE HAS BOTH N,K conservation
+    psi_halfinf=project_left_side_of_mps(psi_halfinf)
+    print('origig'*100)
+    print(psi_halfinf._B[-1])
+    #psi_halfinf.canonical_form_finite()
+    #print(psi_halfinf._B[0])
+
+
+    
+
+    if len(pstate)>0:
+        psi_halfinf=add_cells_to_projected_wf(psi_halfinf,pstate,sites)
+    #psi_halfinf.add_B(-1,a._B[2])
+    #psi_halfinf.add_B(-2,a._B[1])
+    #psi_halfinf.add_B(-3,a._B[0])
+    psi_halfinf.canonical_form_finite(cutoff=0.0)
+    #print(len(psi_halfinf._B))
+    #quit()
+
+    print('psi'*100)
+    print(psi_halfinf._B[-1])
+    print(len(sites))
+
+    right_env=load_environment(loaded_xxxx,len(sites)-len(pstate),root_config_,conserve, perm,side='right',old=True)
+    print('env'*100)
+    print(right_env)
+    #quit()
+
+
+
+    #leg_MPS
+    leg_MPS=psi_halfinf._B[0].get_leg('vL')
+    #leg_MPO
+    leg_MPO=M.H_MPO._W[0].get_leg('wL')
+    left_environment=set_left_environment_to_vacuum(leg_MPO,leg_MPS)
+
+
+    init_env_data_halfinf={}
+
+
+    init_env_data_halfinf['init_LP'] = left_environment    #DEFINE LEFT ENVIROMENT
+    init_env_data_halfinf['age_LP'] =0
+
+    init_env_data_halfinf['init_RP'] = right_env   #DEFINE RIGHT ENVIROMENT
+    init_env_data_halfinf['age_RP'] =0
+
+
+
+
+    dmrg_params = {
+        'mixer': True,
+        'max_E_err': 1.e-9,
+        'max_S_err': 1.e-5,
+        'trunc_params': {
+            'chi_max': 1500,
+            'svd_min': 1.e-10,
+        },
+        'max_sweeps': 50
+    }
+
+    eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf, M, dmrg_params,
+                                        resume_data={'init_env_data': init_env_data_halfinf})
+    #print(eng_halfinf.chi_max)
+    #
+    print("enviroment works")
+    print("running DMRG")
+    #
+    #print("MPS qtotal:", M.qtotal)
+    #print("MPO qtotal:", psi_halfinf.qtotal)
+    E0, psi=eng_halfinf.run()
+
+
+
+    #calculate and store data
+
+
+    filling=psi.expectation_value("nOp")
+
+    print('Filling:',filling)
+
+
+    E_spec=psi.entanglement_spectrum()
+    #print('entanglement spectrum:',E_spec)
+
+
+
+    EE=psi.entanglement_entropy()
+    print('entanglement entropy:',EE)
+
+
+    
+
+    #data = {"psi": psi,  # e.g. an MPS
+    #        "dmrg_params":dmrg_params, "model_par":model_par, "model": M,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
+
+    data = { "dmrg_params":dmrg_params,"energy":E0, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
 
     #with open("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".pickle", 'wb') as f:
     #    pickle.dump( data,f)
@@ -1179,28 +1082,24 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
     with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".h5", 'w') as f:
         hdf5_io.save_to_hdf5(f, data)
 
+
 name_graph=str(sys.argv[1])
 name_load=str(sys.argv[2])
 #print(name_graph)
-
-#name_load='fixedEnv_Lx_18_Haldane_mu_0.005_dmrg_data'
-#name_graph='fixedEnv_Lx_18_Haldane_Graph_mu_0.005_data'
-name_save='segment_'+name_graph
+pstate=str(sys.argv[3])
+if pstate=='[]':
+    pstate=[]
+else:
+    pstate=pstate.split(',')
+#print(pstate)
+#quit()
+#name_graph='Gs_18.0_Haldane_barrier_0.035_mu_1_3.data'
+name_load='Lx_18_Haldane_QH_nu_1_3'
+#name_load='Lx_16_QH_nu_1_3'
+name_save='no_mu_added_momentum_segment_'+name_load+'_'+str(pstate)
+run_vacuum_boundary_modified_K(name_load,name_save,pstate=pstate)
+quit()
 #name_load='DMRG_18_Coulomb_barrier_0.075_mu_1_3.data'
-#name_graph='Gs_18_Coulomb_barrier_0.075_mu_1_3.data'
-run_bulk_boundary_from_file(name_load,name_save,name_graph)
-
-
-quit()
-#name_load='Lx_18_Haldane_QH_nu_1_3'
-#name_load='Data_QH_nu_1_3-8'
-#run_bulk_boundary_from_file(name_load,name_save,name_graph)
-run_vacuum_boundary_from_file(name_load,name_save)
-
-#a=loaded_xxxx['Model']
-#print(a)
-quit()
-#run_vacuum_boundary_from_file(name_load,name_save)
-quit()
-#run_bulk_boundary_from_file(name_load,name_save,name_graph)
-#
+name_save='linear_potential_added_momentum_segment_'+name_graph+'_'+str(pstate)
+run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate)
+#run_vacuum_boundary_modified_K_2(name_load,name_save,pstate)

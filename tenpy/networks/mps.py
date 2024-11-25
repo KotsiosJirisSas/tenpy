@@ -1969,6 +1969,10 @@ class MPS(BaseMPSExpectationValue):
             dtype = np.dtype(np.common_type(*Bflat))
         for i, site in enumerate(sites):
             B = np.array(Bflat[i], dtype)
+
+            #print('IN'*20)
+            #print(site.perm)
+            #print(B.shape)
             if permute:
                 B = B[site.perm, :, :]
             # calculate the LegCharge of the right leg
