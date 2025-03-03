@@ -42,7 +42,7 @@ def plot_densities():
     dipoles=[]
     mus=[]
     for name in dir_list:
-        if 'linear_potential_added_' in name and "['empty'" not in name:#and 'Lx_16_QH_nu_1_3' in name:
+        if 'no_mu_added_momentum_segment_' in name:# and "['empty'" not in name:#and 'Lx_16_QH_nu_1_3' in name:
             name=name[:-3] 
             data=load_data(name)
             #ind1=name.index('mu_')+3
@@ -57,18 +57,19 @@ def plot_densities():
                 E=data['energy']
                 print(E)
                 dipole=np.sum((density-1/3)*np.arange(len(density)))*8*np.pi**2/18**2
+                K=np.sum((density-1/3)*np.arange(len(density)))*2*np.pi/18
                 #dipoles.append(dipole)
-                if E<0:
+                if E<110:
                     dipoles.append(E)
                     #print(name[ind1:ind2])
                 
-                    mus.append(mu)
+                    mus.append(K)
                 plt.figure()
                 plt.scatter(np.arange(len(data['density'])),data['density'])
                 plt.savefig('density_'+name+'.png')
     plt.figure()
     print(len(dipoles))
-    mus=-(len(dipoles)-1-np.arange(len(dipoles)))*2*np.pi/18
+    #mus=-(len(dipoles)-1-np.arange(len(dipoles)))*2*np.pi/18
     #mus=(4-np.arange(5))*2*np.pi/18
     #mus=np.array([3,0])*2*np.pi/16
     #mus=(5-np.arange(6))*2*np.pi/16

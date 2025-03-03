@@ -348,6 +348,9 @@ class DMRGEngine(IterativeSweeps):
         print("statistics of a run\n"+"####"*10)
         for key, value in self.sweep_stats.items():
             print(f"{key}: {value[-1]}")
+        #print(self.psi)
+        filling=self.psi.expectation_value("nOp")
+        print('Filling:',filling)
         print(self.psi)
         return E, self.psi
 

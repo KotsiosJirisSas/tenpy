@@ -1,0 +1,6 @@
+dipole:
+[array(1.49139413), array(1.47029917), array(1.48221876), array(1.49138842), array(1.46751824), array(1.49138993), array(1.48222563), array(1.48222659), array(1.49138959), array(1.48222715)]
+Energies:
+[array(1.49139413), array(1.47029917), array(1.48221876), array(1.49138842), array(1.46751824), array(1.49138993), array(1.48222563), array(1.48222659), array(1.49138959), array(1.48222715)]
+Ks:
+[np.int64(36), np.int64(37), np.int64(38), np.int64(39), np.int64(40), np.int64(41), np.int64(42), np.int64(43), np.int64(44), np.int64(45)]

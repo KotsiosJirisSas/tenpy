@@ -82,7 +82,7 @@ def trim_down_the_MPO(G):
             #pass
             G[n].pop(k, None)
     #print(extra_keys)
-    #quit()
+    #
     return G, extra_keys
 
 def eliminate_elements_from_the_graph(G,not_included_couplings):
@@ -121,21 +121,24 @@ def get_old_basis(G_old,basis_old,permutation_old):
     #for i in range(len(list(States[0]))):
     #    print(list(States[0])[i])
     #print(len(States[0]))
-    #quit()
+    #
    
     #print(not_included_couplings)
     #states should give the correct values on G_old
     States=QH_G2MPO.basis_map(States[0])
     
     #print(basis_old)
+    #print(States)
+    #print(basis_old)
+    
     removed_total= set(basis_old)- set(States)
     #print(removed_total)
-    #quit()
+    #
     #print(States[0])
     for m in removed_total:
         basis_old.remove(m)
     #print(permutation_old)
-    #quit()
+    #
     #this gives us appropriate basis
     #now calculate:
     #print(basis_old)
@@ -149,13 +152,13 @@ def get_old_basis(G_old,basis_old,permutation_old):
     #print(ordered_old_basis[2])
     #print(ordered_old_basis[3])
     #print(ordered_old_basis[4])
-    #quit()
+    #
     #print( np.array(ordered_old_basis)==np.array(basis_old))
-    #quit()
+    #
     #print(ordered_old_basis)
-    #quit()
+    #
     #print(len(ordered_old_basis))
-    #quit()
+    #
     return ordered_old_basis
 
 
@@ -187,26 +190,26 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx):
     M = mod.QH_model(model_par)
     print("Old code finished producing MPO graph",".."*10)
 
-    #quit()
+    #
     #load tenpy2 graph into tenpy3 graph
     G=M.MPOgraph
     G=loaded_xxxx
     #print()
     #G=[loaded_xxxx['graph'][0]]*L
     #print(lenG)
-    #quit()
+    #
     G, extra_keys=trim_down_the_MPO(G)
     #trim down the MPO
   
 
     G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
     #print(len(G_new[0].keys()))
-    #quit()
+    #
     
     cell=len(root_config_)
 
     print('asserting that the size is compatible with enivornment.....')
-    assert L%cell==cell-1
+    #assert L%cell==cell-1
     #root_config_ = np.array([0,1,0])
   
 
@@ -216,7 +219,7 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx):
       
         spin=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=conserve,site_loc=i)
         #print(spin.Id)
-        #quit()
+        #
         sites.append(spin)
 
 
@@ -230,7 +233,7 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx):
     '''
 
     States,not_included_couplings=QH_Graph_final.obtain_states_from_graphs(G_new,L)
-    #quit()
+    #
     print("Ordering states",".."*10)
 
     M.states = States #: Initialize aux. states in model
@@ -238,7 +241,7 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx):
     print("Finished",".."*10 )
     #print(M.states[0] )
     
-    print(not_included_couplings)
+    #print(not_included_couplings)
     G_new=eliminate_elements_from_the_graph(G_new,not_included_couplings)
     
     
@@ -259,10 +262,10 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx):
     #sort leg charges to make DMRG algortihm quicker
     perms2=H.sort_legcharges()
     #print(len(States[0]))
-    #quit()
+    #
     #print(perms2)
     #print(M.states[0] )
-    #quit()
+    #
     #orderes the state according to the charges
     #MAKES SOME REDUNDANT COPIES
     ordered_states=[]
@@ -275,14 +278,14 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx):
     #ordered_states=M._ordered_states
     #print(perms2[0])
     #print(len(ordered_states[k]))
-    #quit()
+    #
     #perms2=np.arange(len())
     
     for k in range(len(M._ordered_states)):
         ordered_states[k]=np.array(ordered_states[k])[perms2[k]]
         ordered_states[k]=list(ordered_states[k])
     
-    #quit()
+    #
     #Define lattice on which MPO is defined
     pos= [[i] for i in range(L)]
     lattice = Lattice([1], sites,positions=pos, bc="periodic", bc_MPS="finite")
@@ -310,13 +313,13 @@ def load_data(loaded_xxxx,sites):
     #load singular values
     Ss=loaded_xxxx['MPS_Ss']
     #print(loaded_xxxx.keys())
-    #quit()
+    #
     #print(Bflat0[3].shape)
     #load charge infromation
     
     qflat2=loaded_xxxx['MPS_qflat']
     #print(qflat2)
-    print(qflat2[0].shape)
+    #print(qflat2[0].shape)
     #print(len(qflat2[0][0][0]))
    
     
@@ -374,12 +377,12 @@ def load_data(loaded_xxxx,sites):
 
 def load_param(name):
 
-    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/"+name+'.pkl', 'rb') as f:
+    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/one_third_coulomb/"+name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
 
     print(loaded_xxxx.keys())
     #print(loaded_xxxx['graph'][0])
-    #quit()
+    #
     #keys=[ 'exp_approx',  'cons_K',  'MPS_Ss', 'cons_C', 'Lx', 'root_config', 'LL', 'Vs']
     #model_par={}
     #for k in keys:
@@ -407,15 +410,15 @@ def find_permutation(source, target):
 
 def load_permutation_of_basis(loaded_xxxx,ordered_states,new_MPO):
     print(loaded_xxxx.keys())
-    #quit()
-    G_old,basis_old,permutation_old=loaded_xxxx['graph'],loaded_xxxx['indices'],loaded_xxxx['permutations'] 
+    #
+    G_old,basis_old,permutation_old=loaded_xxxx['graph'],loaded_xxxx['indices'][0],loaded_xxxx['permutations'] 
     #print(G_old[0].keys())
     #print(basis_old)
-    #quit()
+    #
     
     #print(basis_old)
-    #quit()
-    #quit()
+    #
+    #
     
     old_basis=get_old_basis(G_old,basis_old,permutation_old)
     assert len(old_basis)==len(ordered_states[0])
@@ -423,23 +426,23 @@ def load_permutation_of_basis(loaded_xxxx,ordered_states,new_MPO):
     print(len(old_basis))
     #total_permutation=[]
     #print()
-    #quit()
+    #
     #print(old_basis)
-    print(old_basis)
-    print(ordered_states[0])
-    #quit()
+    #print(old_basis)
+    #print(ordered_states[0])
+    #
     #print(set(old_basis)-set(ordered_states[0]))
     #print(set(ordered_states[0])-set(old_basis))
-    #quit()
+    #
     permutation=find_permutation(old_basis,ordered_states[0])
-    print(permutation)
+    #print(permutation)
     #asserts two bases are the same
     assert np.all(ordered_states[0]==np.array(old_basis)[permutation])
     
     #print(ordered_states[0]==np.array(old_basis)[permutation])
-    #quit()
+    #
     #print(loaded_xxxx.keys())
-    #quit()
+    #
     sanity_check_permutation(loaded_xxxx,new_MPO, permutation)
     #GIVES THE CORRECT PERMUTATION of old basis to get a new basis!!
     return permutation
@@ -473,11 +476,11 @@ def sanity_check_permutation(loaded_xxxx,new_MPO, permute):
     """
     B_new=new_MPO.to_ndarray()
     print(B_new.shape)
-    #quit()
+    #
     er=np.sum(( Bflat_old-B_new)**2)
     er2=np.sum(( Bflat_old+B_new)**2)
-    print(er)
-    print(er2)
+    #print(er)
+    #print(er2)
     thresh=10**(-8)
     
     #consistent permutation but need to check differently
@@ -490,11 +493,11 @@ def sanity_check_permutation(loaded_xxxx,new_MPO, permute):
             crit=np.sum((Bflat_old[j,i]-B_new[j,i])**2)
             if crit>0.00001:
                 counter+=1
-                print('x'*50)
-                print(j,i)
-                print(Bflat_old[j,i])
+                #print('x'*50)
+                #print(j,i)
+                #print(Bflat_old[j,i])
             
-                print(B_new[j,i])
+                #print(B_new[j,i])
                 #remove chemical potential difference
                 if counter==1:
                     er-=crit
@@ -508,26 +511,28 @@ def sanity_check_permutation(loaded_xxxx,new_MPO, permute):
 
 def load_graph(name):
 
-    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/"+name+'.pkl', 'rb') as f:
+    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/one_third_coulomb/"+name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     return loaded_xxxx
  
-def run_finite_dmrg_from_file(name_load,name_save,name_graph):
+def run_finite_dmrg_from_file(name_load,name_save,name_graph,num):
     model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
     #graph=loaded_xxxx
     graph=load_graph(name_graph)
 
     #print(loaded_xxxx['graph'][0].keys())
-    #quit()
+    #
     #print(model_par)
-    #quit()
-    L=3*15-1
-    print(graph.keys())
-    L=len(graph['graph'])
+    #
+    
+
+    #
+    #print(graph.keys())
+    L=len(graph)
     print(L)
     #L=14
 
-    #quit()
+    #
     model_par.pop('mpo_boundary_conditions')
 
 
@@ -541,29 +546,57 @@ def run_finite_dmrg_from_file(name_load,name_save,name_graph):
     LL=0
     model_par['layers']=[ ('L', LL) ]
     #print(model_par)
-    #quit()
+    #
     M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph)
-    #quit()
+    #
 
     perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
     print('AAAAA')
     print(perm)
-    #quit()
+    #
     state=[]
-    for i in range(L//(len(root_config_))+1):
+    print(L)
+    print(np.abs(num))
+    for i in range(np.abs(num)):
+        if num>0:
+            #print('in'*100)
+
+            state.append('empty')
+            state.append('empty')
+            state.append('full')
+        else:
+            state.append('full')
+            state.append('empty')
+            state.append('empty')
+    for i in range((L)//(len(root_config_))-2*(np.abs(num))):
         state.append('empty')
         state.append('full')
         state.append('empty')
+
+    for i in range(np.abs(num)):
+        if num<0:
+            state.append('empty')
+            state.append('empty')
+            state.append('full')
+        else:
+            state.append('full')
+            state.append('empty')
+            state.append('empty')
+
+    print(state)
+    print(len(state))
+    
     state=state[:L]
     print(M.lat.bc_MPS)
-    #quit()
     print(state)
+    #quit()
+    #print(state)
     psi=MPS.from_product_state(M.lat.mps_sites(),state,"finite")
     #THIS ONE HAS BOTH N,K conservation
     #psi_halfinf=project_left_side_of_mps(psi_halfinf)
     #psi_halfinf.canonical_form_finite()
     #print(psi_halfinf._B[0])
-    #quit()
+    #
 
 
 
@@ -575,12 +608,13 @@ def run_finite_dmrg_from_file(name_load,name_save,name_graph):
 
     dmrg_params = {
         'mixer': True,
-        'max_E_err': 1.e-9,
+        'max_E_err': 1.e-7,
         'max_S_err': 1.e-5,
         'trunc_params': {
-            'chi_max': 8000,
-            'svd_min': 1.e-10,
+            'chi_max': 2500,
+            'svd_min': 1.e-9,
         },
+        'max_sweeps': 100
     }
 
     eng_halfinf = dmrg.TwoSiteDMRGEngine(psi, M, dmrg_params)
@@ -617,27 +651,31 @@ def run_finite_dmrg_from_file(name_load,name_save,name_graph):
     #data = {"psi": psi,  # e.g. an MPS
     #        "dmrg_params":dmrg_params, "model_par":model_par, "model": M,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
 
-    data = { "dmrg_params":dmrg_params, "model_par":model_par,'density':filling,'entanglement_entropy': EE}# 'entanglement_spectrum':E_spec }
+    data = { "dmrg_params":dmrg_params, "model_par":model_par,'density':filling,'entanglement_entropy': EE,"energy":E0}# 'entanglement_spectrum':E_spec }
 
     #with open("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".pickle", 'wb') as f:
     #    pickle.dump( data,f)
   
 
    
-    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".h5", 'w') as f:
+    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/one_third_coloumb/"+name_save+".h5", 'w') as f:
         hdf5_io.save_to_hdf5(f, data)
 
 
 name_graph=str(sys.argv[1])
-print(name_graph)
-name_save='finite_'+name_graph
 
-name_load='finite_Lx_18_Haldane_dmrg_data'
+num=int(sys.argv[2])
+print(name_graph)
+name_save='finite_Coulumb_'+name_graph+'num='+str(num)
+#name_load='DMRG_18.0_Haldane_barrier_0.1_mu_1_3_'
+name_load='DMRG_18.0_Coulomb_barrier_0.2_mu_1_3_'
+#name_graph='finite_Gs18.0_Haldane_barrier_-0.1_mu_1_3_'
+#name_load='finite_Lx_18_Haldane_dmrg_data'
 #name_load='Data_QH_nu_1_3-8'
-run_finite_dmrg_from_file(name_load,name_save,name_graph)
+run_finite_dmrg_from_file(name_load,name_save,name_graph,num)
 #run_bulk_boundary_from_file(name_load,name_save,name_graph)
-#quit()
+#
 #run_vacuum_boundary_from_file(name_load,name_save)
-#quit()
+#
 #run_bulk_boundary_from_file(name_load,name_save,name_graph)
 #

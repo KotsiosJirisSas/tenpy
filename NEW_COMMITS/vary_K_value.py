@@ -84,7 +84,7 @@ def trim_down_the_MPO(G):
             #pass
             G[n].pop(k, None)
     #print(extra_keys)
-    #quit()
+    
     return G, extra_keys
 
 def eliminate_elements_from_the_graph(G,not_included_couplings):
@@ -123,26 +123,30 @@ def get_old_basis(G_old,basis_old,permutation_old):
     #for i in range(len(list(States[0]))):
     #    print(list(States[0])[i])
     #print(len(States[0]))
-    #quit()
+    
    
     #print(not_included_couplings)
+    #print(len(States[0]))
     #states should give the correct values on G_old
     States=QH_G2MPO.basis_map(States[0])
-    
+    #print(States)
     #print(basis_old)
     removed_total= set(basis_old)- set(States)
     #print(removed_total)
-    #quit()
-    #print(States[0])
+    #£()
+    #print(States)
     for m in removed_total:
         basis_old.remove(m)
+    
     #print(permutation_old)
-    #quit()
+    
     #this gives us appropriate basis
     #now calculate:
     #print(basis_old)
     #print(permutation_old)
     #permutation_old=np.arange(62)
+    #print(basis_old)
+    
     ordered_old_basis=list(np.array(basis_old)[permutation_old])
     ordered_old_basis=[str(x) for x in ordered_old_basis]
 
@@ -151,13 +155,13 @@ def get_old_basis(G_old,basis_old,permutation_old):
     #print(ordered_old_basis[2])
     #print(ordered_old_basis[3])
     #print(ordered_old_basis[4])
-    #quit()
+    
     #print( np.array(ordered_old_basis)==np.array(basis_old))
-    #quit()
+    
     #print(ordered_old_basis)
-    #quit()
+    
     #print(len(ordered_old_basis))
-    #quit()
+    
     return ordered_old_basis
 
 
@@ -186,32 +190,32 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx,add=
 
     # construct MPO Model from the Graph using the tenpy2 code
     print("Start model in Old Tenpy",".."*10)
-    M = mod.QH_model(model_par)
+    #M = mod.QH_model(model_par)
     print("Old code finished producing MPO graph",".."*10)
 
-    #quit()
+    
     #load tenpy2 graph into tenpy3 graph
-    G=M.MPOgraph
+    #G=M.MPOgraph
     G=loaded_xxxx
     #print()
     #G=[loaded_xxxx['graph'][0]]*L
     #print(lenG)
-    #quit()
+    
     G, extra_keys=trim_down_the_MPO(G)
     #trim down the MPO
   
 
     G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
     #print(len(G_new[0].keys()))
-    #quit()
+    
     
     cell=len(root_config_)
 
     print('asserting that the size is compatible with enivornment.....')
-    assert L%cell==cell-1
+    #assert L%cell==cell-1
     #root_config_ = np.array([0,1,0])
   
-
+    conserve=('N','K')
     #define Hilbert spaces for each site with appropriate conservation laws
     if not add:
         sites=[]
@@ -219,10 +223,10 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx,add=
         
             spin=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=conserve,site_loc=i)
             #print(spin.Id)
-            #quit()
+            
             sites.append(spin)
     else:
-        print('in')
+        #print('in')
         
         sites=[]
         for i in range(-add,L-add):
@@ -243,15 +247,15 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx,add=
     '''
 
     States,not_included_couplings=QH_Graph_final.obtain_states_from_graphs(G_new,L)
-    #quit()
+    
     print("Ordering states",".."*10)
 
     M.states = States #: Initialize aux. states in model
     M._ordered_states = QH_G2MPO.set_ordered_states(States) #: sort these states(assign an index to each one)
     print("Finished",".."*10 )
     #print(M.states[0] )
-    
-    print(not_included_couplings)
+  
+    #print(not_included_couplings)
     G_new=eliminate_elements_from_the_graph(G_new,not_included_couplings)
     
     
@@ -272,10 +276,10 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx,add=
     #sort leg charges to make DMRG algortihm quicker
     perms2=H.sort_legcharges()
     #print(len(States[0]))
-    #quit()
+    
     #print(perms2)
     #print(M.states[0] )
-    #quit()
+    
     #orderes the state according to the charges
     #MAKES SOME REDUNDANT COPIES
     ordered_states=[]
@@ -288,14 +292,14 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx,add=
     #ordered_states=M._ordered_states
     #print(perms2[0])
     #print(len(ordered_states[k]))
-    #quit()
+    
     #perms2=np.arange(len())
     
     for k in range(len(M._ordered_states)):
         ordered_states[k]=np.array(ordered_states[k])[perms2[k]]
         ordered_states[k]=list(ordered_states[k])
     
-    #quit()
+    
     #Define lattice on which MPO is defined
     pos= [[i] for i in range(L)]
     lattice = Lattice([1], sites,positions=pos, bc="periodic", bc_MPS="segment")
@@ -311,29 +315,32 @@ def create_segment_DMRG_model(model_par,L,root_config_,conserve,loaded_xxxx,add=
     
     return model,sites, ordered_states
 
-def load_data(loaded_xxxx,sites):
+def load_data(loaded_xxxx,sites,shift=0,charge_shift=[0,0]):
     """
     loads MPS as segment mps of length len(sites)
     name: Str, name of the .pkl file from which we import
     sites: list of class:Sites, list of hilbert spaces corresponding to each site
     """
-    L=len(sites)
+    L2=len(sites)
+    print(L2)
     #finds length of an infinite unit cell
     Bflat0=loaded_xxxx['MPS_Bs']
     #load singular values
     Ss=loaded_xxxx['MPS_Ss']
     #print(loaded_xxxx.keys())
-    #quit()
+    
     #print(Bflat0[3].shape)
     #load charge infromation
-    
-    qflat2=loaded_xxxx['MPS_qflat']
-    #print(qflat2)
-    print(qflat2[0].shape)
+    try:
+        qflat2=loaded_xxxx['MPS_qflat']
+        print(qflat2.shape)
+    except:
+        qflat2=loaded_xxxx['MPS_qflat'][0]
+    #print(qflat2[0].shape)
     #print(len(qflat2[0][0][0]))
-   
+    #quit()
     
-   
+    #print(qflat2)
     
 
         
@@ -353,11 +360,17 @@ def load_data(loaded_xxxx,sites):
     for i in range(len(qflat2)):
         kopy=[]
         for m in range(len(qflat2[i])):
-            kopy.append(qflat2[i][m])
+            if m==0:
+                kopy.append(qflat2[i][m]+shift*qflat2[i][1])
+            else:
+                kopy.append(qflat2[i][m])
         qflat.append(kopy)
+    
     qflat=np.array(qflat)
-  
-
+    print("smece JEDNO")
+    for i in range(len(qflat)):
+        qflat[i][0]+=charge_shift[0]
+        qflat[i][1]+=charge_shift[1]
     #PERMUTE Ss values
     last_ss=Ss[-1]
     Ss.pop(-1)
@@ -368,13 +381,15 @@ def load_data(loaded_xxxx,sites):
     
 
     #cut the mps into mps of wanted size
-    Bflat=Bflat[:L]
-    Ss=Ss[:L+1]
-    
+    Bflat=Bflat[:L2]
+    Ss=Ss[:L2+1]
+    print(len(Ss))
+    print(len(Bflat))
     #define left most leg of charges
     chargeinfo=sites[0].leg.chinfo
-    left_leg=LegCharge.from_qflat(chargeinfo,qflat,qconj=1).bunch()[1]
     
+    left_leg=LegCharge.from_qflat(chargeinfo,qflat,qconj=1).bunch()[1]
+    print(kopy)
     #create MPS,
     #charges are calculated from the left leg
     mps=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
@@ -393,16 +408,23 @@ def project_left_side_of_mps( psi_halfinf):
     S =  psi_halfinf.get_SL(0)
     proj = np.zeros(len(S), bool)
     proj[np.argmax(S)] = True
+
+
+    leg=psi_halfinf._B[0].get_leg('vL')
+    c=leg.get_qindex(np.argmax(S))
+    charge=leg.charges[c[0]]
+
     B = psi_halfinf.get_B(0, form='B')
     B.iproject(proj, 'vL')
     psi_halfinf.set_B(0, B, form='B')
     psi_halfinf.set_SL(0, np.ones(1, float))
     psi_halfinf.canonical_form_finite(cutoff=0.0)
     psi_halfinf.test_sanity()
+    
 
     print('projected MPS',".."*30)
  
-    return psi_halfinf
+    return psi_halfinf,charge
 
 
 def load_environment(loaded_xxxx,location,root_config_,conserve,permute, side='right',old=False):
@@ -441,7 +463,7 @@ def load_environment(loaded_xxxx,location,root_config_,conserve,permute, side='r
         shift=2
     else:
         print(loaded_xxxx.keys())
-        #quit()
+        
         Bflat=loaded_xxxx['LP1_B2']
         qflat_list_c=loaded_xxxx['LP2_q']
         #transpose bflat and qflat to make legs consistent with TeNpy3
@@ -502,10 +524,10 @@ def load_environment(loaded_xxxx,location,root_config_,conserve,permute, side='r
                         labels=labels,
                         raise_wrong_sector=True,
                         warn_wrong_sector=True)
-    print(environment)
+    #print(environment)
     print("environment is loaded",'..'*20)
     x=environment.qtotal
-    print(x)
+    #print(x)
     
     return environment
 
@@ -566,27 +588,28 @@ def set_left_environment_to_vacuum(leg_HMPO,leg_MPS):
                         labels=labels,
                         raise_wrong_sector=True,
                         warn_wrong_sector=True)
-    print(environment)
+    #print(environment)
     print("vacuum left environment is loaded",'..'*20)
-    print(environment.qtotal)
+    #print(environment.qtotal)
     
     return environment
 
 def load_param(name):
-
-    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/"+name+'.pkl', 'rb') as f:
+    print(name)
+    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/2_3_single_layer/"+name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
 
     print(loaded_xxxx.keys())
     #print(loaded_xxxx['graph'][0])
-    #quit()
+    
     #keys=[ 'exp_approx',  'cons_K',  'MPS_Ss', 'cons_C', 'Lx', 'root_config', 'LL', 'Vs']
     #model_par={}
     #for k in keys:
     #    model_par[k]=loaded_xxxx[k]
     model_par = loaded_xxxx['Model']
     #print(model_par)
-
+    print(model_par['root_config'])
+    #quit()
     root_config_ = model_par['root_config'].reshape(len(model_par['root_config']),1)
 
     conserve=[]
@@ -607,39 +630,27 @@ def find_permutation(source, target):
 
 def load_permutation_of_basis(loaded_xxxx,ordered_states,new_MPO):
     print(loaded_xxxx.keys())
-    #quit()
-    G_old,basis_old,permutation_old=loaded_xxxx['graph'],loaded_xxxx['indices'],loaded_xxxx['permutations'] 
+    
+    G_old,basis_old,permutation_old=loaded_xxxx['graph'],loaded_xxxx['indices'][0],loaded_xxxx['permutations'] 
     #print(G_old[0].keys())
     #print(basis_old)
-    #quit()
+    
     
     #print(basis_old)
-    #quit()
-    #quit()
+    
+    
     
     old_basis=get_old_basis(G_old,basis_old,permutation_old)
     assert len(old_basis)==len(ordered_states[0])
-    print(len(basis_old))
-    print(len(old_basis))
-    #total_permutation=[]
-    #print()
-    #quit()
-    #print(old_basis)
-    print(old_basis)
-    print(ordered_states[0])
-    #quit()
-    #print(set(old_basis)-set(ordered_states[0]))
-    #print(set(ordered_states[0])-set(old_basis))
-    #quit()
+  
+    
     permutation=find_permutation(old_basis,ordered_states[0])
-    print(permutation)
+   
     #asserts two bases are the same
     assert np.all(ordered_states[0]==np.array(old_basis)[permutation])
     
-    #print(ordered_states[0]==np.array(old_basis)[permutation])
-    #quit()
-    #print(loaded_xxxx.keys())
-    #quit()
+ 
+    
     sanity_check_permutation(loaded_xxxx,new_MPO, permutation)
     #GIVES THE CORRECT PERMUTATION of old basis to get a new basis!!
     return permutation
@@ -648,8 +659,16 @@ def sanity_check_permutation(loaded_xxxx,new_MPO, permute):
     print('checking sanity check of permutation...')
     #permute old Bflat and check its the same as new Bflat for hamiltonian
     print(loaded_xxxx.keys())
-   
-    Bflat_old=loaded_xxxx['MPO_B']
+    try:
+        Bflat_old=loaded_xxxx['MPO_B']
+        print(Bflat_old.shape)
+    except:
+        Bflat_old=loaded_xxxx['MPO_B'][0]
+    #print(len(Bflat_old))
+    #print(len(Bflat_old[0]))
+    #print(len(Bflat_old[0][0]))
+    #print(len(Bflat_old[0][0][0]))
+    #print(len(Bflat_old[0][0][0][0]))
     #print(Bflat_old.shape)
 
     print(Bflat_old.shape)
@@ -673,7 +692,7 @@ def sanity_check_permutation(loaded_xxxx,new_MPO, permute):
     """
     B_new=new_MPO.to_ndarray()
     print(B_new.shape)
-    #quit()
+    
     er=np.sum(( Bflat_old-B_new)**2)
     er2=np.sum(( Bflat_old+B_new)**2)
     print(er)
@@ -690,11 +709,7 @@ def sanity_check_permutation(loaded_xxxx,new_MPO, permute):
             crit=np.sum((Bflat_old[j,i]-B_new[j,i])**2)
             if crit>0.00001:
                 counter+=1
-                print('x'*50)
-                print(j,i)
-                print(Bflat_old[j,i])
-            
-                print(B_new[j,i])
+               
                 #remove chemical potential difference
                 if counter==1:
                     er-=crit
@@ -708,12 +723,12 @@ def sanity_check_permutation(loaded_xxxx,new_MPO, permute):
 
 def load_graph(name):
 
-    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/"+name+'.pkl', 'rb') as f:
+    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/2_3_single_layer/"+name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     return loaded_xxxx
     
 
-def add_cells_to_projected_wf(psi_halfinf,pstate,sites):
+def add_cells_to_projected_wf(psi_halfinf,pstate,sites,charge):
     """
     adds pstate left to the projected WF
     psi_halfinf:
@@ -723,7 +738,7 @@ def add_cells_to_projected_wf(psi_halfinf,pstate,sites):
     #adds extra sites again
     a=MPS.from_product_state(sites[:len(pstate)],pstate,'finite')
     print(a._B[0])
-    #quit()
+    
     #print(a._B[1])
     #print(a._B[2])
     #print(psi_halfinf._B[0])
@@ -740,19 +755,10 @@ def add_cells_to_projected_wf(psi_halfinf,pstate,sites):
     for i in range(len(pstate)):
         Bflat.insert(0,np.transpose(a._B[len(pstate)-i-1].to_ndarray(),(1,0,2)))
         Ss.insert(0,[1.])
-    #Ss.insert(0,[2.])
-    #print(Ss[0])
-    #print(len(Bflat))
-    #print(Bflat[0].shape)
-    #print(Bflat[1].shape)
-    #print(Bflat[2].shape)
-    #print(psi_halfinf._B[0])
-    #print()
-    #quit()
+   
     
-    #print(a._S)
-    #print(len(Ss))
-    #print(Ss[0])
+    
+   
    
     #print(len(Ss))
     #TODO: FIGURE OUT CHARGES ON THE LEFT LEG:
@@ -761,32 +767,77 @@ def add_cells_to_projected_wf(psi_halfinf,pstate,sites):
         if i=='full':
             add+=k%3+1
     add=3
-    print(add)
-   
-    qflat=[[-6-len(pstate),0]] #if empty,empty,full
-    qflat=[[-6+len(pstate),0]] #if full,empty,empty
+    #print(add)
+    #print(pstate)
+    
+    """
+    FOR HALDANE POTENTIAL
+    if pstate[0]=='empty':
+        qflat=[[-6-len(pstate),0]] #if empty,empty,full
+    else:
+        qflat=[[-6+len(pstate),0]]
+    """
+
+    if pstate[0]=='empty':
+        qflat=[charge]
+        #FOR 1/3 AND 2/3
+        qflat[0][0]= qflat[0][0]-len(pstate)
+        
+    else:
+        qflat=[charge]
+        #FOR 1/3
+        qflat[0][0]= qflat[0][0]+len(pstate)
+    print(qflat)
+    #qflat=[[-6+len(pstate),0]] #if full,empty,empty
     #qflat=[[-6,0]] #if 010
+    #qflat=[[-6-len(pstate),0]]
     chargeinfo=sites[0].leg.chinfo
     left_leg=LegCharge.from_qflat(chargeinfo,qflat,qconj=1).bunch()[1]
     
     #left_leg=a._B[0].get_leg('vL')
-    print(psi_halfinf._B[0])
+    #print(psi_halfinf._B[0])
 
 
     #left_leg=psi_halfinf._B[0].get_leg('vL')
     #print(len(sites))
     psi=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
-    print(psi._B[0])
-    #quit()
+    #print(psi._B[0])
+    
     return psi
+
+
+def load_environments_from_file(name,name_load,side='right'):
+    file_path="/mnt/users/dperkovic/quantum_hall_dmrg/data_load/2_3_single_layer/"+name+'.npz'
+    data =np.load(file_path,allow_pickle=True)
+    
+    file_path="/mnt/users/dperkovic/quantum_hall_dmrg/data_load/2_3_single_layer/"+name_load+'.pkl'
+    with open(file_path, 'rb') as f:
+        loaded_qs= pickle.load(f, encoding='latin1')
+    
+    if side=='right':
+        dictionary={}
+        dictionary['RP_B']=data['RP']
+        #print(data['RP_q'])
+
+        
+        dictionary['RP_q']=loaded_qs['RP_q']
+        
+        
+    else:
+        dictionary={}
+        dictionary['LP']=data['LP']
+        dictionary['LP_q']=loaded_qs['LP_q']
+   
+    return dictionary
+
 def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
     model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
    
     #load_graph(name_graph)
     #print(len(loaded_xxxx['graph']))
-    #quit()
+    
     #print(model_par)
-    #quit()
+    
     
     L=3*23-1
     graph=[loaded_xxxx['graph'][0]]*L
@@ -798,8 +849,8 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
    
     #L=14
 
-    #quit()
-    model_par.pop('mpo_boundary_conditions')
+    
+    #model_par.pop('mpo_boundary_conditions')
 
 
     model_par['boundary_conditions']= ('infinite', L)
@@ -812,23 +863,26 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
     LL=0
     model_par['layers']=[ ('L', LL) ]
     #print(model_par)
-    #quit()
+    
 
     #INSERT UNIT CELL IN BETWEEN!
    
-    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=len(pstate))
-    #quit()
+    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=False)#len(pstate))
+    
 
     perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
     print('AAAAA')
     print(perm)
-    #quit()
-    psi_halfinf=load_data(loaded_xxxx,sites[len(pstate):])
+    
+    psi_halfinf=load_data(loaded_xxxx,sites[len(pstate):],shift=len(pstate))
   
     #THIS ONE HAS BOTH N,K conservation
-    psi_halfinf=project_left_side_of_mps(psi_halfinf)
-    print('origig'*100)
-    print(psi_halfinf._B[-1])
+    psi_halfinf,charge=project_left_side_of_mps(psi_halfinf)
+    print(psi_halfinf._B[0])
+    print(charge)
+    
+    #print('origig'*100)
+    #print(psi_halfinf._B[-1])
     #psi_halfinf.canonical_form_finite()
     #print(psi_halfinf._B[0])
 
@@ -836,22 +890,23 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
     
 
     if len(pstate)>0:
-        psi_halfinf=add_cells_to_projected_wf(psi_halfinf,pstate,sites)
+  
+        psi_halfinf=add_cells_to_projected_wf(psi_halfinf,pstate,sites,charge)
     #psi_halfinf.add_B(-1,a._B[2])
     #psi_halfinf.add_B(-2,a._B[1])
     #psi_halfinf.add_B(-3,a._B[0])
     psi_halfinf.canonical_form_finite(cutoff=0.0)
     #print(len(psi_halfinf._B))
-    #quit()
+    
 
     print('psi'*100)
-    print(psi_halfinf._B[-1])
-    print(len(sites))
-
-    right_env=load_environment(loaded_xxxx,len(sites)-len(pstate),root_config_,conserve, perm,side='right',old=True)
+    #print(psi_halfinf._B[-1])
+    #print(len(sites))
+    
+    right_env=load_environment(loaded_xxxx,len(sites),root_config_,conserve, perm,side='right',old=True)
     print('env'*100)
     print(right_env)
-    #quit()
+    
 
 
 
@@ -879,8 +934,8 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
         'max_E_err': 1.e-9,
         'max_S_err': 1.e-5,
         'trunc_params': {
-            'chi_max': 1500,
-            'svd_min': 1.e-10,
+            'chi_max': 2000,
+            'svd_min': 1.e-9,
         },
         'max_sweeps': 50
     }
@@ -906,7 +961,7 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
     print('Filling:',filling)
 
 
-    E_spec=psi.entanglement_spectrum()
+    E_spec=psi.entanglement_spectrum(by_charge=True)
     #print('entanglement spectrum:',E_spec)
 
 
@@ -922,36 +977,230 @@ def run_vacuum_boundary_modified_K(name_load,name_save,pstate=[]):
 
     data = { "dmrg_params":dmrg_params,"energy":E0, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
 
-    #with open("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".pickle", 'wb') as f:
-    #    pickle.dump( data,f)
+   
   
 
    
-    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".h5", 'w') as f:
+    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/one_third_coloumb_xi=1/"+name_save+".h5", 'w') as f:
         hdf5_io.save_to_hdf5(f, data)
+
+def patch_WF_together(psi1,psi2,sites):
+
+    """
+    patches psi1 and psi2 together
+    """
+    #ADD THREE SITES WITH DIFFERENT K
+    #adds extra sites again
+   
+    
+    
+    Bflat=[]
+    Ss=[]
+    Ss1=psi1._S
+    Ss2=psi2._S
+    print(psi1._B[0])
+    #print(psi1._B[0])
+
+    #constructs total Bflat by appending psis
+    #same for Ss
+
+    for i in range(len(psi1._B)):
+    
+        Ss.append(Ss1[i])
+        Bflat.append(np.transpose(psi1._B[i].to_ndarray(),(1,0,2)))
+   
+    duljina_l=psi1._B[-1].shape[-1]
+
+    legL=psi1._B[-1].get_leg('vR')
+    print(legL)
+ 
+    legR=psi2._B[0].get_leg('vL')
+    print(legR)
+
+  
+    leg_physical=sites[len(psi1._B)].leg
+    print(leg_physical)
+    #quit()
+    #print(duljina_l,duljina_r)
+    #duljina_r=psi2._B[0].shape[0]
+    #print(psi1._B[-1].shape)
+    #print(np.transpose(psi1._B[-1].to_ndarray(),(1,0,2)).shape)
+    #print(psi2._B[0].shape)
+    B_new=set_MPS_boundary(legL,leg_physical,legR)
+
+    #print(B_new.shape)
+    #quit()
+
+    #Ss.append(Ss1[-1])
+    Ss.append(np.random.random(Ss1[-1].shape))
+    Bflat.append(np.transpose(B_new,(1,0,2)))
+    #Ss.append(Ss2[0])
+
+    for i in range(len(psi2._B)):
+      
+        Ss.append(Ss2[i])
+        Bflat.append(np.transpose(psi2._B[i].to_ndarray(),(1,0,2)))
+    Ss.append(Ss2[-1])
+   
+
+    #reads charges off the left leg of MPS
+    left_leg=psi1._B[0].get_leg('vL')
+    print("start shit")
+
+    print('TRY TRY SHORTER')
+    print(len(Bflat))
+    print(len(Ss))
+    psi=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
+    psi.canonical_form_finite()
+    print(len(Ss))
+    print(len(sites))
+    netq=[]
+    for i in range(len(sites)-1):
+        #print(i)
+        B_i = psi.get_B(i)  # Get MPS tensor at site i
+        S_i = np.array(psi.get_SL(i))
+        #print(B_i)
+        legL=B_i.get_leg('vL')
+        #qflat_L=legL.to_qflat()
+       
+        #qflat_R=legR.to_qflat()
+       
+        leg_physical=sites[i].leg
+        q_net=np.array([0.0,0.0])
+        for m in range(len(S_i)):
+            c=legL.get_qindex(m)
+            chargeL=legL.charges[c[0]]
+            #print(c)
+            #print(chargeL)
+           
+            #print(c)
+            #print(chargeR)
+            q_net+=(np.abs(S_i[m])**2)*(chargeL)
+        q_net1=q_net#/np.sum(np.abs(S_i)**2)
+
+        B_i = psi.get_B(i+1)  # Get MPS tensor at site i
+        S_i = np.array(psi.get_SL(i+1))
+
+        legL=B_i.get_leg('vL')
+        #qflat_L=legL.to_qflat()
+       
+        #qflat_R=legR.to_qflat()
+       
+     
+        q_net=np.array([0.0,0.0])
+        for m in range(len(S_i)):
+            c=legL.get_qindex(m)
+            #print(c)
+            chargeL=legL.charges[c[0]]
+            
+            q_net+=(np.abs(S_i[m])**2)*(chargeL)
+        q_net2=q_net#/np.sum(np.abs(S_i)**2)
+    
+        
+        #qphys=q_net/np.abs(np.sum(S_i**2))
+        qphys=q_net1-q_net2
+        netq.append((-qphys[1]+2)/3)
+        #print('NET CHARGE')
+        #print((qphys[1]+2)/3)
+        #print(np.sum(np.abs(S_i)**2))
+    #psi=MPS.from_Bflat(sites[:len(Bflat)],Bflat, bc='segment',legL=left_leg)
+    filling= psi.expectation_value("nOp")
+    netq=np.array(netq)
+    print(filling[:60]-netq[:60])
+    #print(netq[:60])
+    print(filling[len(psi1._B)])
+    print(filling[len(psi1._B)])
+    #print(filling[1:]-netq)
+    print(len(psi._B)*2/3)
+    print(np.sum(filling))
+    print(np.sum(netq))
+    print('Patched two wavefunctions together sucessfully')
+    quit()
+    return psi
+
+def set_MPS_boundary(legL,leg_physical, legR):
+  
+    """
+    produces left/right environment which corresponds to vacuum
+    so far works only it total charge is zero
+    leg_HMPO,leg_MPS: give the legs of MPO and MPS
+
+    """
+    duljina_LMPS=len(legL.to_qflat())
+    duljina_RMPS=len(legR.to_qflat())
+    duljina_physical=len(leg_physical.to_qflat())
+    #gives corresponding labels to the environment
+   
+   
+    L=legL.to_qflat()
+    R=legR.to_qflat()
+    ch_physical=leg_physical.to_qflat()[0]
+ 
+   
+    #WILL NEED TO CREATE THIS POOPOO AGAIN
+    #CAN FILL ONLY SOME CHARGE SECTORS
+    #set data flat
+    Bflat=np.zeros(duljina_LMPS*duljina_physical*duljina_RMPS)
+    
+    Bflat=np.reshape(Bflat,(duljina_LMPS,duljina_physical,duljina_RMPS))
+  
+    for i,charge in enumerate(L):
+        charge_2=charge+ch_physical
+        ind=np.where((R==charge_2).all(axis=1))[0]
+        Bflat[i,0,ind]+=np.random.random(len(ind))
+        #print(np.random.random(len(ind)))
+   
+    ch_physical=leg_physical.to_qflat()[1]
+    for i,charge in enumerate(L):
+        charge_2=charge+ch_physical
+        ind=np.where((R==charge_2).all(axis=1))[0]
+        Bflat[i,1,ind]+=np.random.random(len(ind))
+    
+    #Bflat+=np.random.random((duljina_LMPS,duljina_physical,duljina_RMPS))
+    print('average weight')
+    print(np.sum(Bflat**2))
+    print("OK filled")
+ 
+  
+    
+    return Bflat
+
+
+
+
+
 def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
    
 
-    
-    graph=load_graph(name_graph)
+    #print(loaded_xxxx.keys())
     #print(len(loaded_xxxx['graph']))
-    #quit()
+    
+    L=200
+    L=101
+    L=150
+    L=199
+    #L=35
+    graph=[loaded_xxxx['graph'][0]]*L
+    #graph=load_graph(name_graph)
+    print(len(loaded_xxxx['graph']))
+    
     #print(model_par)
-    #quit()
+    
     
     #L=3*23-1
     #graph=[loaded_xxxx['graph'][0]]*L
     L=len(graph)#+len(pstate)
-   
+    print('Length of chain:',L)
     #adds extra sites to the graph
     #for i in range(len(pstate)):
     #    graph.insert(0,graph[i])
    
     #L=14
-
-    #quit()
-    model_par.pop('mpo_boundary_conditions')
+    name_load2='DMRG_19.0_Haldane_barrier_0.0_mu_1_3_x2_'
+    model_par,conserve,root_config_,loaded_xxxx2=load_param(name_load2)
+    
+    #model_par.pop('mpo_boundary_conditions')
 
 
     model_par['boundary_conditions']= ('infinite', L)
@@ -964,46 +1213,94 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     LL=0
     model_par['layers']=[ ('L', LL) ]
     #print(model_par)
-    #quit()
+    
 
     #INSERT UNIT CELL IN BETWEEN!
-   
-    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=len(pstate))
-    #quit()
+    
+    #M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=False)
+    
 
-    perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
-    print('AAAAA')
-    print(perm)
+    #perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
+    sites=[]
+    add=0
+    conserve=('N','K')
+    for i in range(-add,L-add):
+        spin=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=conserve,site_loc=i)
+        
+        sites.append(spin)
+    psi2=load_data(loaded_xxxx,sites[51:],shift=51)
+   
+
+ 
+    psi1=load_data(loaded_xxxx2,sites[:50],shift=len(pstate),charge_shift=[3,0])
+    #psi2=load_data(loaded_xxxx,sites[:50],shift=len(pstate))
+    #filling= psi1.expectation_value("nOp")
+    #print(filling)
     #quit()
-    psi_halfinf=load_data(loaded_xxxx,sites[len(pstate):])
-  
+    
+    print(psi1._B[0])
+    print(psi2)
+   
+    patch_WF_together(psi1,psi2,sites)
+    quit()
+    filling= psi_halfinf.expectation_value("nOp")
+    N_bfr=np.sum(filling)
+    A=L
+    #A=3
+    #print()
+    print(filling)
+    #deviation=np.sum(filling[:A]-1/3)
+    #print(deviation)
+    #quit()
+    p_bfr=np.sum((filling[:A]-2/3)*np.arange(len(filling[:A])))
+    
+
+
+
     #THIS ONE HAS BOTH N,K conservation
-    psi_halfinf=project_left_side_of_mps(psi_halfinf)
+    psi_halfinf,charge=project_left_side_of_mps(psi_halfinf)
     print('origig'*100)
-    print(psi_halfinf._B[-1])
+    #charge=[0,0]
+    #print(charge)
+    #print(psi_halfinf._B[-1])
+    print(psi_halfinf._B[0])
+    
     #psi_halfinf.canonical_form_finite()
     #print(psi_halfinf._B[0])
 
 
     
-
+    
     if len(pstate)>0:
-        psi_halfinf=add_cells_to_projected_wf(psi_halfinf,pstate,sites)
+        print('ADDED CELLS')
+        psi_halfinf=add_cells_to_projected_wf(psi_halfinf,pstate,sites,charge)
     #psi_halfinf.add_B(-1,a._B[2])
     #psi_halfinf.add_B(-2,a._B[1])
     #psi_halfinf.add_B(-3,a._B[0])
     psi_halfinf.canonical_form_finite(cutoff=0.0)
     #print(len(psi_halfinf._B))
+    
+
+    filling= psi_halfinf.expectation_value("nOp")
+    p_after=np.sum((filling[:A]-2/3)*np.arange(len(filling[:A])))
+    N_aft=np.sum(filling)
+    print('number of electrons')
+    print(N_bfr,N_aft)
+    print('dipole')
+    print(p_bfr,p_after)
+    print()
+    
     #quit()
-
     print('psi'*100)
-    print(psi_halfinf._B[-1])
-    print(len(sites))
-
-    right_env=load_environment(loaded_xxxx,len(sites)-len(pstate),root_config_,conserve, perm,side='right',old=True)
+    #print(psi_halfinf._B[-1])
+    #print(len(sites))
+    name='Environment_R_'+num
+    data=load_environments_from_file(name,name_load,side='right')
+    conserve=('N','K')
+    right_env=load_environment(data,len(sites),root_config_,conserve, perm,side='right',old=True)
     print('env'*100)
     print(right_env)
-    #quit()
+    
 
 
 
@@ -1029,10 +1326,10 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     dmrg_params = {
         'mixer': True,
         'max_E_err': 1.e-9,
-        'max_S_err': 1.e-5,
+        'max_S_err': 1.e-6,
         'trunc_params': {
-            'chi_max': 1500,
-            'svd_min': 1.e-10,
+            'chi_max': 2500,
+            'svd_min': 1.e-7,
         },
         'max_sweeps': 50
     }
@@ -1058,8 +1355,9 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     print('Filling:',filling)
 
 
-    E_spec=psi.entanglement_spectrum()
-    #print('entanglement spectrum:',E_spec)
+
+    E_spec=psi.entanglement_spectrum(by_charge=True)
+    print('entanglement spectrum:',E_spec)
 
 
 
@@ -1074,16 +1372,16 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
 
     data = { "dmrg_params":dmrg_params,"energy":E0, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
 
-    #with open("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".pickle", 'wb') as f:
-    #    pickle.dump( data,f)
+  
   
 
    
-    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/"+name_save+".h5", 'w') as f:
+    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/single_layer_laughlin_2_3/"+name_save+".h5", 'w') as f:
         hdf5_io.save_to_hdf5(f, data)
 
 
 name_graph=str(sys.argv[1])
+num=str(sys.argv[1])
 name_load=str(sys.argv[2])
 #print(name_graph)
 pstate=str(sys.argv[3])
@@ -1092,14 +1390,25 @@ if pstate=='[]':
 else:
     pstate=pstate.split(',')
 #print(pstate)
-#quit()
+
 #name_graph='Gs_18.0_Haldane_barrier_0.035_mu_1_3.data'
-name_load='Lx_18_Haldane_QH_nu_1_3'
+#name_graph='Gs18.0_Haldane_barrier_0.1_mu_1_3_'
+#name_load='DMRG_18.0_Haldane_barrier_0.1_mu_1_3_'
 #name_load='Lx_16_QH_nu_1_3'
-name_save='no_mu_added_momentum_segment_'+name_load+'_'+str(pstate)
-run_vacuum_boundary_modified_K(name_load,name_save,pstate=pstate)
-quit()
+#name_save='no_mu_added_momentum_segment_'+name_load+'_'+str(pstate)
+#run_vacuum_boundary_modified_K(name_load,name_save,pstate=pstate)
+print(name_load)
+print(name_graph)
 #name_load='DMRG_18_Coulomb_barrier_0.075_mu_1_3.data'
-name_save='linear_potential_added_momentum_segment_'+name_graph+'_'+str(pstate)
+name_save='L_y='+str(num)+'_infinite_well_L=125_nu=2_3_single_layer_'+name_graph+'_'+str(pstate[:3])+'_num='+str(len(pstate))
+
+name_load='DMRG_'+num+'_Haldane_barrier_0.0_mu_1_3_x2_'
+name_load='DMRG_18.0_Haldane_barrier_single_layer_mu_2_3'
+#name_load='DMRG_18.0_Coulomb_barrier_-0.2_mu_1_3_'
+#name_save='xi=1_L=200_'+'Coulumb_infinite_well'+'_'+str(pstate[:3])+'_num='+str(len(pstate))
+print('***'*30)
+print("file name:")
+print(name_save)
+print('***'*30)
 run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate)
 #run_vacuum_boundary_modified_K_2(name_load,name_save,pstate)

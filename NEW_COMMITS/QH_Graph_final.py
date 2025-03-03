@@ -70,7 +70,7 @@ def obtain_states_from_graphs(G_new,L, bc="infinite"):
 
 						row.append([el,"column"])
 					else:
-						print("row")
+						#print("row")
 						row.append([el,"row"])
 				not_included_couplings.append(row)
 				#print(non_included)
@@ -118,7 +118,7 @@ def obtain_states_from_graphs(G_new,L, bc="infinite"):
 				if el in list(states_from_columns):
 					row.append([el,"column"])
 				else:
-					print("row")
+					#print("row")
 					row.append([el,"row"])
 			not_included_couplings.append(row)
 			

@@ -1939,6 +1939,8 @@ class MPOGraph:
     def _build_grids(self):
         """translate the graph dictionaries into grids for the `Ws`."""
         states = self._ordered_states
+        print(len(states[0]))
+        
         assert (states is not None)  # make sure that _set_ordered_states was called
         grids = []
         for i in range(self.L):
@@ -1948,10 +1950,12 @@ class MPOGraph:
             for keyL, a in stL.items():
                 row = [None] * len(stR)
                 for keyR, lst in graph[keyL].items():
+                   
                     b = stR[keyR]
                     row[b] = lst
                 grid[a] = row
             grids.append(grid)
+        
         return grids
 
     def _calc_legcharges(self, Ws_qtotal):
