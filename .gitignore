@@ -32,3 +32,5 @@ coverage.*
 .ipynb_checkpoints
 *.ipynb
 *.pkl
+NEW_COMMITS/0_test.py
+
