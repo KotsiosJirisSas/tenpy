@@ -2329,8 +2329,8 @@ class QH_MultilayerFermionSite_3(Site):
         Outputs:
         1) Creates operators and charge info for a *single* site
         '''
-        if N != 1:
-            raise NotImplementedError
+        #if N != 1:
+        #    raise NotImplementedError
         if not conserve:
             conserve = 'None'
             raise NotImplementedError
@@ -2374,6 +2374,7 @@ class QH_MultilayerFermionSite_3(Site):
      
             chinfo = npc.ChargeInfo([1,1], ['N','K'])
             leg = npc.LegCharge.from_qflat(chinfo, Qp_flat) #Qp_flat[:,0] = (-1,2)
+          
             #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW is constructed
 
 
@@ -2413,3 +2414,306 @@ class QH_MultilayerFermionSite_3(Site):
         """Debug representation of self."""
         return "FermionSite({c!r}, {f:f})".format(c=self.conserve, f=self.filling)
 
+
+class QH_MultilayerFermionSite_final(Site):
+    def __init__(self,root_config,N=1,conserve='N',sort_charge=True,site_loc = 0):
+        '''
+        22 Oct 2024 KV
+        Notes:
+        1)Here I am using a single layer N = 1. To go beyond we'd need some changes as the operators cannot appear in a list as they do in old tenpy.
+        2) To accounnt for momentum conservation, we also introduce some translation properties and a static function that defines the translation. 
+            The idea I see is that to make the correct  lattice, you start off with this instance where the site is located at index = 0, and you buid up the lattice with 
+            multiple copies. Then, going through each site instance, you read off its location and appropriately translate its charges.
+        3) To do: Multiple components. Probably just build it up from multiple sites. 
+        4) To do: Allow more than one N conservation
+
+        -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        Inputs:
+        1) root_config: root_config is a 2-array shaped (#, N)  (# is not L/N, where L is total sites in unit cell and N is layers(QH components), but it has to be a multiple of that)
+        2) N = # of components/layers
+        3) conserve = ['N','K',('N','K')]
+        Outputs:
+        1) Creates operators and charge info for a *single* site
+        '''
+    
+        if not conserve:
+            conserve = 'None'
+            raise NotImplementedError
+        if conserve not in ['N',('N','K'),'each',('each','K')]:
+            raise ValueError("invalid `conserve`: " + repr(conserve))
+        '''
+        Step1:
+        define states in Hilbert space
+        '''
+        state_labels = ['empty','full']
+        d=2 #dimension of local hilbet space
+        '''
+        Step1:
+        define shifted charges
+        '''
+
+        #N
+        Qmat = np.ones((1,N),dtype=int) # Qmat is an num_cons_q x N matrix, where [Qmat]_ij = charge of j'th layer under i'th symmetry. In simplest case of one layer, one charge, Qmat = [1]
+        
+        
+        ps = np.sum(np.tensordot(Qmat, root_config, axes = [[1], [1]]), axis = 1) #ith total charge in root_config
+        q = root_config.reshape(-1).shape[0]
+        filling = [ (ps[i], q) for i in range(len(ps)) ]		#p/q for each charge
+        filling_fractions =[num*1.0/denom for num, denom in filling]
+        ps0r=np.copy(ps)
+        ##################################################################################################
+        #edit
+        ##################################################################################################
+        if conserve == 'N':
+            Qp_flat = np.zeros((d,len(ps)),dtype=int) # The shifted charges associated with a physical leg
+            for n in range(d): # runs over the hilber space
+                for i in range(len(ps)): #runs over the conserved charges
+                    Qp_flat[n, i] = n*q*Qmat[i,0] - ps[i] #C = q N - p
+        
+            chinfo = npc.ChargeInfo([1], ['N'])
+            leg = npc.LegCharge.from_qflat(chinfo, Qp_flat[:,0]) #Qp_flat[:,0] = (-1,2)
+            #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW is constructed
+        if conserve == ('N','K'):
+            Kvec = np.array([1])
+            #! 
+            Qp_flat = np.zeros((d,len(ps)+1),dtype=int) # The shifted charges associated with a physical leg
+            for n in range(d): # runs over the hilber space
+                for i in range(len(ps)): #runs over the conserved charges
+                    Qp_flat[n, 1+i] = n*q*Qmat[i,0] - ps[i] #C = q N - p
+                Qp_flat[n,0] = (site_loc//N) * np.dot(Kvec, Qp_flat[n,1:])
+     
+            chinfo = npc.ChargeInfo([1,1], ['N','K'])
+            leg = npc.LegCharge.from_qflat(chinfo, Qp_flat) #Qp_flat[:,0] = (-1,2)
+            #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW is constructed 
+        if conserve == ('each','K'):
+            Kvec = np.ones(N)
+            #!
+            Qmat = np.eye(N,dtype=int)
+            #print(filling_fractions) 
+            #print(ps)
+            #print(Qmat)
+           
+            ps=np.zeros(N)
+            ps[site_loc%N]= ps0r
+            Qp_flat = np.zeros((d,len(ps)+1),dtype=int) # The shifted charges associated with a physical leg
+            #print(Qp_flat)
+            #quit()
+            for n in range(d): # runs over the hilber space
+                #print(n)
+                for i in range(len(ps)): #runs over the conserved charges
+                    #print(i)
+                    Qp_flat[n, 1+i] = n*q*Qmat[i,site_loc%N] - ps[i] #C = q N - p
+                Qp_flat[n,0] = (site_loc//N) * np.dot(Kvec, Qp_flat[n,1:])
+         
+            labels=[]
+            vals=[]
+            for i in range(N):
+                labels.append('N'+str(i+1))
+                vals.append(1)
+            labels.append('K')
+            vals.append(1)
+            
+            chinfo = npc.ChargeInfo(vals, labels)
+            leg = npc.LegCharge.from_qflat(chinfo, Qp_flat) #Qp_flat[:,0] = (-1,2)
+            #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW 
+            #print(leg)
+           
+
+
+        ########
+        #example usage: 
+        #root_config = np.array([[0,0,1]])
+        #Qmat = [1]
+        #Output; ---> ps = i'th total charge in root config = [1] (the only conserved quantity has total charge 1 in root_config)
+        #        ---> filling = p/q for each layer in system. For single layer, filling = [(1,3)] so 1/3 rd.
+        #        ---> Qp_flat = [[-1,2]] meaning local basis state 0 ('empty') has N charge -1, while local basis state 1 ('full') has N charge 2
+        ######################
+        
+        '''
+        step 3:
+        Define operators and put them in dictionary. At this point operators are still np. and not npc.
+        '''
+        Id = np.eye(2)
+        StrOp = np.diag([1., -1])
+        nOp = np.diag([0., 1])
+        nOp_shift= nOp-0.5*Id #shifted density so that I can easily calculate particle-hole symmetric things using your correlation functions, SG
+        AOp = np.diag([1.], -1)		# creation
+        aOp = np.diag([1.], 1) 	# annihilation
+        invnOp = np.diag([1., 0])
+        JW=StrOp#??? not sure even if correct.
+        ops = dict( JW=JW,StrOp=StrOp, nOp=nOp,nOp_shift=nOp_shift,AOp=AOp,aOp=aOp,invnOp=invnOp) #dictionary of site ops
+        '''
+        step 4:
+        Initialize site instance
+        '''
+        self.conserve = conserve
+        self.filling = filling_fractions[0]
+        Site.__init__(self, leg, state_labels=state_labels, sort_charge=sort_charge, **ops)
+        # specify fermionic operators
+        self.need_JW_string |= set(['AOp', 'aOp','StrOp', 'JW']) #????
+
+    def __repr__(self):
+        """Debug representation of self."""
+        return "FermionSite({c!r}, {f:f})".format(c=self.conserve, f=self.filling)
+    
+
+class QH_MultilayerFermionSite_final_2_3(Site):
+    def __init__(self,root_config,N=1,conserve='N',sort_charge=True,site_loc = 0):
+        '''
+        22 Oct 2024 KV
+        Notes:
+        1)Here I am using a single layer N = 1. To go beyond we'd need some changes as the operators cannot appear in a list as they do in old tenpy.
+        2) To accounnt for momentum conservation, we also introduce some translation properties and a static function that defines the translation. 
+            The idea I see is that to make the correct  lattice, you start off with this instance where the site is located at index = 0, and you buid up the lattice with 
+            multiple copies. Then, going through each site instance, you read off its location and appropriately translate its charges.
+        3) To do: Multiple components. Probably just build it up from multiple sites. 
+        4) To do: Allow more than one N conservation
+
+        -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        Inputs:
+        1) root_config: root_config is a 2-array shaped (#, N)  (# is not L/N, where L is total sites in unit cell and N is layers(QH components), but it has to be a multiple of that)
+        2) N = # of components/layers
+        3) conserve = ['N','K',('N','K')]
+        Outputs:
+        1) Creates operators and charge info for a *single* site
+        '''
+    
+        if not conserve:
+            conserve = 'None'
+            raise NotImplementedError
+        if conserve not in ['N',('N','K'),'each',('each','K')]:
+            raise ValueError("invalid `conserve`: " + repr(conserve))
+        '''
+        Step1:
+        define states in Hilbert space
+        '''
+        state_labels = ['empty','full']
+        d=2 #dimension of local hilbet space
+        '''
+        Step1:
+        define shifted charges
+        '''
+
+        #N
+        Qmat = np.ones((1,N),dtype=int) # Qmat is an num_cons_q x N matrix, where [Qmat]_ij = charge of j'th layer under i'th symmetry. In simplest case of one layer, one charge, Qmat = [1]
+        
+        
+        ps = np.sum(np.tensordot(Qmat, root_config, axes = [[1], [1]]), axis = 1) #ith total charge in root_config
+        q = root_config.reshape(-1).shape[0]
+        filling = [ (ps[i], q) for i in range(len(ps)) ]		#p/q for each charge
+        filling_fractions =[num*1.0/denom for num, denom in filling]
+        ps0r=np.copy(ps)
+        ##################################################################################################
+        #edit
+        ##################################################################################################
+        if conserve == 'N':
+            Qp_flat = np.zeros((d,len(ps)),dtype=int) # The shifted charges associated with a physical leg
+            for n in range(d): # runs over the hilber space
+                for i in range(len(ps)): #runs over the conserved charges
+                    Qp_flat[n, i] = n*q*Qmat[i,0] - ps[i] #C = q N - p
+        
+            chinfo = npc.ChargeInfo([1], ['N'])
+            leg = npc.LegCharge.from_qflat(chinfo, Qp_flat[:,0]) #Qp_flat[:,0] = (-1,2)
+            #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW is constructed
+        if conserve == ('N','K'):
+            Kvec = np.array([1])
+            #! 
+            Qp_flat = np.zeros((d,len(ps)+1),dtype=int) # The shifted charges associated with a physical leg
+            for n in range(d): # runs over the hilber space
+                for i in range(len(ps)): #runs over the conserved charges
+                    Qp_flat[n, 1+i] = n*q*Qmat[i,0] - ps[i] #C = q N - p
+                Qp_flat[n,0] = (site_loc//N) * np.dot(Kvec, Qp_flat[n,1:])
+     
+            chinfo = npc.ChargeInfo([1,1], ['N','K'])
+            leg = npc.LegCharge.from_qflat(chinfo, Qp_flat) #Qp_flat[:,0] = (-1,2)
+            #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW is constructed 
+        if conserve == ('each','K'):
+            Kvec = np.ones(N)
+            #!
+            Qmat = np.eye(N,dtype=int)
+            #print(filling_fractions) 
+            #print(ps)
+            #print(Qmat)
+           
+            ps=np.zeros(N)
+            ps[site_loc%N]= ps0r
+            Qp_flat = np.zeros((d,len(ps)+1),dtype=int) # The shifted charges associated with a physical leg
+            #print(Qp_flat)
+            #quit()
+            for n in range(d): # runs over the hilber space
+                #print(n)
+                for i in range(len(ps)): #runs over the conserved charges
+                    #print(i)
+                    Qp_flat[n, 1+i] = n*q*Qmat[i,site_loc%N] - ps[i] #C = q N - p
+                Qp_flat[n,0] = (site_loc//N) * np.dot(Kvec, Qp_flat[n,1:])
+         
+            labels=[]
+            vals=[]
+            for i in range(N):
+                labels.append('N'+str(i+1))
+                vals.append(1)
+            labels.append('K')
+            vals.append(1)
+            
+            #print(Qp_flat[0])
+            """
+            if site_loc%2==1:
+                Qp_flat[0][1]=-2
+                Qp_flat[1][1]=-2
+       
+                Qp_flat[1][2]=6
+                Qp_flat[0][2]=0
+               
+                Qp_flat[0][0]= Qp_flat[0][1]*(site_loc//2)
+                Qp_flat[1][0]= Qp_flat[1][1]*(site_loc//2)+Qp_flat[1][2]*(site_loc//2)
+                print(site_loc)
+                print(Qp_flat)
+            else:
+                print(site_loc)
+                print(Qp_flat)
+            #if site_loc==15:
+            #    quit()
+            """
+            chinfo = npc.ChargeInfo(vals, labels)
+            leg = npc.LegCharge.from_qflat(chinfo, Qp_flat) #Qp_flat[:,0] = (-1,2)
+            #self.charge_to_JW_parity = np.array([1]) #? Something wrong with the way JW 
+            #print(leg)
+
+           
+
+
+        ########
+        #example usage: 
+        #root_config = np.array([[0,0,1]])
+        #Qmat = [1]
+        #Output; ---> ps = i'th total charge in root config = [1] (the only conserved quantity has total charge 1 in root_config)
+        #        ---> filling = p/q for each layer in system. For single layer, filling = [(1,3)] so 1/3 rd.
+        #        ---> Qp_flat = [[-1,2]] meaning local basis state 0 ('empty') has N charge -1, while local basis state 1 ('full') has N charge 2
+        ######################
+        
+        '''
+        step 3:
+        Define operators and put them in dictionary. At this point operators are still np. and not npc.
+        '''
+        Id = np.eye(2)
+        StrOp = np.diag([1., -1])
+        nOp = np.diag([0., 1])
+        nOp_shift= nOp-0.5*Id #shifted density so that I can easily calculate particle-hole symmetric things using your correlation functions, SG
+        AOp = np.diag([1.], -1)		# creation
+        aOp = np.diag([1.], 1) 	# annihilation
+        invnOp = np.diag([1., 0])
+        JW=StrOp#??? not sure even if correct.
+        ops = dict( JW=JW,StrOp=StrOp, nOp=nOp,nOp_shift=nOp_shift,AOp=AOp,aOp=aOp,invnOp=invnOp) #dictionary of site ops
+        '''
+        step 4:
+        Initialize site instance
+        '''
+        self.conserve = conserve
+        self.filling = filling_fractions[0]
+        Site.__init__(self, leg, state_labels=state_labels, sort_charge=sort_charge, **ops)
+        # specify fermionic operators
+        self.need_JW_string |= set(['AOp', 'aOp','StrOp', 'JW']) #????
+
+    def __repr__(self):
+        """Debug representation of self."""
+        return "FermionSite({c!r}, {f:f})".format(c=self.conserve, f=self.filling)

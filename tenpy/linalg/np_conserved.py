@@ -408,7 +408,7 @@ class Array:
                      qtotal=None,
                      cutoff=None,
                      labels=None,
-                     raise_wrong_sector=True,
+                     raise_wrong_sector=False,
                      warn_wrong_sector=True):
         """convert a flat (numpy) ndarray to an Array.
 
@@ -3262,6 +3262,8 @@ def detect_legcharge(flat_array, chargeinfo, legcharges, qtotal=None, qconj=+1, 
     legs = list(legcharges)
     if cutoff is None:
         cutoff = QCUTOFF
+        #print("default cutoff:")
+        #print(cutoff)
     if flat_array.ndim != len(legs):
         raise ValueError("wrong number of grid_legs")
     if any([s != l.ind_len for s, l in zip(flat_array.shape, legs) if l is not None]):

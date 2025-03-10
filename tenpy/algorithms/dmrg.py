@@ -348,6 +348,10 @@ class DMRGEngine(IterativeSweeps):
         print("statistics of a run\n"+"####"*10)
         for key, value in self.sweep_stats.items():
             print(f"{key}: {value[-1]}")
+        #print(self.psi)
+        filling=self.psi.expectation_value("nOp")
+        print('Filling:',filling)
+        print(self.psi)
         return E, self.psi
 
     def status_update(self, iteration_start_time: float):
@@ -946,6 +950,7 @@ class TwoSiteDMRGEngine(DMRGEngine):
         return U, S, VH, err, S_a
 
     def set_B(self, U, S, VH):
+        
         """Update the MPS with the ``U, S, VH`` returned by `self.mixed_svd`.
 
         Parameters
