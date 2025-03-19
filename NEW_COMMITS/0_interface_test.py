@@ -98,12 +98,13 @@ class QH_system():
         self.system_length = params['sys length']#what Dom calls L in his code
         self.verbose = params['verbose']
         self.unit_cell = params['unit cell']
-        self.pstate = params['sites added']
+        self.pstate = []#params['sites added']
         self.load_model_params()
         self.graph = [self.graph[0]]*self.system_length #total graph is graph x sys length
         #Q: for multicomponent systems have to change this no? ie --> self.graph[:#_of_components]
         self.model_par['boundary_conditions']= ('infinite', self.system_length)
         self.model_par['layers'] = [('L',self.LL)]
+        self.sides_added = params['sites added']
 
         #TODO LOAD ENCIRONMNENTS AT THIS POINT BUT ONLY MATCH THEM LATER
         
@@ -151,7 +152,7 @@ class QH_system():
             print('='*100)
             print("GETTING RIGHT WAVEFUNCTION")
             print('='*100)
-        self.load_data(side='right',MPSshift=2)
+        self.load_data(side='right',MPSshift=self.sides_added)
         time4 = time.time()
         if self.verbose>0:
             print('='*100)
@@ -312,11 +313,12 @@ class QH_system():
         self.ordered_states = ordered_states
         return 
 
-    def add_sides_to_Left_MPS(self,num=1):
+    def add_sides_to_Left_MPS(self):
         '''
         adds *num* sites to the left MPS.
         do we get charge mismatch error?
         '''
+        num = self.sides_added
         if self.verbose>0:
             print('='*100)
             print('ADDING ',str(num),' sites to the right of LHS MPS')
@@ -337,8 +339,9 @@ class QH_system():
         for i in range(num):
             leg_physical.append(self.sites[len(self.psi_halfinf_L._B)+i].leg)
 
-        left_leg=self.psi_halfinf_L._B[-1].get_leg('vR')
-        Bs_added,Ss_added = self.add_sites_to_L(legL = left_leg,leg_physical = leg_physical,numsites=num)
+        left_leg = self.psi_halfinf_L._B[-1].get_leg('vR')
+        left_Ss = self.psi_halfinf_L._S[-1]
+        Bs_added,Ss_added = self.add_sites_to_L(legL = left_leg,Sleft=left_Ss,leg_physical = leg_physical,numsites=num)
         #append extra Bs and Ss into total list
         Ss.append(Ss1[len(self.psi_halfinf_L._B)]) #add one more pair of SVs #TODO Am i adding it in wrong place?
         for i in range(num):
@@ -355,7 +358,6 @@ class QH_system():
         quit()
         #psi=MPS.from_Bflat(self.sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
         return
-    
     
     def patch_WFs_trivial(self):
         '''
@@ -410,7 +412,9 @@ class QH_system():
         for sslice in self.psi._B[-2].get_leg('vR').slices:
             print(self.psi._B[-2].get_leg('vR').charges[sslice])
         return
-    def patch_WFs(self,num=1):
+    def patch_WFs(self):
+        from collections import Counter
+        from collections import defaultdict
         '''
         Given the half-inf left and right MPSs, patch them together.
         Can insert cells to move us to different (N,K) sectors
@@ -425,6 +429,7 @@ class QH_system():
             THIS WILL REQUIRE ERASING SOME BFLATs AND Ss OF BOTH THE LHS AND RHS. ACTUALLY USE Ss OF 
             KEEP LHS LEG W CHARGE Q AND RHS LEG W CHARG Q' IF Q = Q' + Qphys FOR ANY OF THE TWO POSSIBLE QPHYS
         '''
+        num = self.sides_added
         if self.verbose>0:
             print('='*100)
             print('ADDING ',str(num),' sites to the right of LHS MPS')
@@ -435,6 +440,8 @@ class QH_system():
         Ss = []
         Ss1 = self.psi_halfinf_L._S
         Bs1 = self.psi_halfinf_L._B
+        Ss2 = self.psi_halfinf_R._S
+        #Bs2 = self.psi_halfinf_R._B
         ###
         # PART 1: CONSTRUCT LHS OF MPS
         for i in range(len(self.psi_halfinf_L._B)):
@@ -446,12 +453,89 @@ class QH_system():
             leg_physical.append(self.sites[len(self.psi_halfinf_L._B)+i].leg)
 
         left_leg=self.psi_halfinf_L._B[-1].get_leg('vR')
-        Bs_added,Ss_added = self.add_sites_to_L(legL = left_leg,leg_physical = leg_physical,numsites=num)
+        left_Ss = self.psi_halfinf_L._S[-1]
+        Bs_added,Ss_added = self.add_sites_to_L(legL = left_leg,Sleft=left_Ss,leg_physical = leg_physical,numsites=num)
         #append extra Bs and Ss into total list
         Ss.append(Ss1[len(self.psi_halfinf_L._B)]) #add one more pair of SVs #TODO Am i adding it in wrong place?
         for i in range(num):
             Ss.append(Ss_added[i])
             Bflat.append(np.transpose(Bs_added[i],(1,0,2)))
+        #create MPS of LHS+ADDED_SITES
+        new_length = len(self.psi_halfinf_L._B) + num
+        psi=MPS.from_Bflat(self.sites[:new_length],Bflat[:new_length],SVs=Ss[:new_length+1], bc='segment',legL=self.psi_halfinf_L._B[0].get_leg('vL'))
+        #PART 3: CONNECT TO RHS
+        #first: how many charges agree?
+        charges_LHS = psi._B[-1].get_leg('vR').to_qflat()
+        charges_RHS = self.psi_halfinf_R._B[0].get_leg('vL').to_qflat()
+        largest_charge_LHS = charges_LHS[np.argmin(np.array(Ss[-1]))]
+        largest_charge_RHS = charges_RHS[np.argmin(np.array(Ss2[0]))]
+        #print(isinstance(largest_charge_LHS,list))
+        #print(isinstance(largest_charge_LHS,tuple))
+        #print('charges LHS',largest_charge_LHS)
+        #print('charges RHS',largest_charge_RHS)
+
+        charges_LHS = np.array(charges_LHS)
+        charges_RHS = np.array(charges_RHS)
+        shift = np.array(largest_charge_RHS) - np.array(largest_charge_LHS)
+        charges_RHS_shifted = charges_RHS - shift
+        # Step 1: Store indices of each row in LHS and RHS
+        lhs_indices = defaultdict(list)
+        rhs_indices = defaultdict(list)
+        for i, row in enumerate(charges_LHS):
+            lhs_indices[tuple(row)].append(i)
+        for j, row in enumerate(charges_RHS_shifted):
+            rhs_indices[tuple(row)].append(j)
+        # Step 2: Pair indices while respecting the count limit
+        matches = []
+        for row in lhs_indices.keys() & rhs_indices.keys():  # Only consider common rows
+            lhs_list = lhs_indices[row]
+            rhs_list = rhs_indices[row]
+            # Pair elements up to the minimum occurrences
+            for i, j in zip(lhs_list, rhs_list):
+                matches.append((i, j))
+        # Convert to numpy array
+        matches = np.array(matches)
+        #print("Index Pairs:\n", matches)
+        print("Total Matching Pairs:", len(matches))  # Should match `common_count`
+        for match in matches:
+            ind_L,ind_R = match
+            if not np.allclose(charges_LHS[ind_L],charges_RHS_shifted[ind_R]):
+                print('uhhhhh')
+        ######
+        if len(matches)<100:return 
+            
+        #remove some  Ss and Bs from RHS MPS anc construct again. see if it kills off dead nodes
+        S_LHS = Ss[-1].copy()
+        B_LHS = Bflat[-1]
+        original_bond_dim = B_LHS.shape[-1]
+        if B_LHS.shape[-1]!= len(S_LHS):raise ValueError
+        mask = np.isin(np.arange(B_LHS.shape[2]), matches[:,0])
+        B_LHS = B_LHS[:,:,mask]
+        S_LHS = S_LHS[mask]
+        Ss[-1] = S_LHS
+        print(len(Ss),S_LHS.shape[0])
+        Bflat[-1] = B_LHS
+        ########################
+        psi=MPS.from_Bflat(self.sites[:new_length],Bflat[:new_length],SVs=Ss[:new_length+1], bc='segment',legL=self.psi_halfinf_L._B[0].get_leg('vL'))
+        #########################
+        #now one needs to shift all the charges of the B matrices 
+        filling= psi.expectation_value("nOp")
+        print('filling',filling)
+        print('TOTAL FILLING',np.sum(filling)/new_length,np.sum(filling))
+        print('new bond dimensions',[len(S) for S in psi._S])
+        
+        
+        
+        #print('success?')
+        #filling= psi.expectation_value("nOp")
+        #print('filling',filling)
+        #print('TOTAL FILLING',np.sum(filling)/len(self.sites),np.sum(filling))
+        #############################################
+        self.psi_merged = psi
+        quit()
+        return
+        #quit()
+
         new_length = len(self.psi_halfinf_L._B) + num
         for index in range(new_length):
             print('B,S,S',Bflat[index].shape,len(Ss[index]),len(Ss[index+1]))
@@ -781,7 +865,7 @@ class QH_system():
             print('site',i,self.psi_halfinf_R._B[i].shape)
         return
     
-    def add_sites_to_L(self,legL,leg_physical,numsites):
+    def add_sites_to_L(self,legL,Sleft,leg_physical,numsites):
         '''
         Creates the B flat and singular values for the sites to be added to the system
         ------------------------------------------------------------------------------
@@ -808,19 +892,26 @@ class QH_system():
         #create first leg part
         for site in range(numsites):
             qflat=[] #qflat to the right of site
+            Ss_temp = []#temporary singular values to the right of site
             ch_physical = leg_physical[site].to_qflat() #physicall charges
             if site == 0:
                 leg_to_the_left_charges = legL.to_qflat()
+                Ss_temp_left = Sleft
             else:
                 leg_to_the_left_charges = Qs[site-1]
+                Ss_temp_left = Ss[site - 1]
             for j,charge in enumerate(leg_to_the_left_charges):
                 charge_to_the_right = charge + ch_physical[0] # does not add a particle
                 qflat.append(charge_to_the_right)
+                Ss_temp.append(Ss_temp_left[j])
                 charge_to_the_right = charge + ch_physical[1] # adds a particle
                 qflat.append(charge_to_the_right)
+                Ss_temp.append(Ss_temp_left[j])
             qflat=np.array(qflat)
+            Ss_temp = np.array(Ss_temp)
             sorted_charges = np.lexsort(np.array(qflat).T) 
             qflat= qflat[sorted_charges]
+            Ss_temp = Ss_temp[sorted_charges]
             ####################################################
             ##################### now fill Bs ##################
             ####################################################
@@ -836,8 +927,10 @@ class QH_system():
             ####################################################
             ##################### now fill Ss ##################
             ####################################################
-            singular_values = np.random.random(Bflat.shape[2])
-            Ss.append(singular_values/np.sum(singular_values)) # these are the singular values to the *RIGHT* of my site. usual notation would have them to the left.
+            #Alternative choice: get random singular values
+            Ss_temp = np.random.random(Bflat.shape[2])
+            #get singular values that are a continuation of the previous one. ie if Q to the left has singular value S, then Q'=Q+qphys to the right will have singular value S
+            Ss.append(Ss_temp/np.sum(Ss_temp)) # these are the singular values to the *RIGHT* of my site. usual notation would have them to the left.
             Bs.append(Bflat)
             Qs.append(qflat)
             #plt.imshow(np.abs(Bflat[:,0,:]),cmap='coolwarm')
@@ -959,16 +1052,24 @@ class QH_system():
         '''
         return Bs,Ss
 ####
+sides_added = 3
 params = {}
 params['verbose'] = 1
 params['sys length'] = 120
 params['unit cell'] = 3#in the case of q=3 laughlin
-params['sites added'] = []#sides added in the middle
+params['sites added'] = 4#sides added in the middle
 params['model data file'] = "/mnt/users/kotssvasiliou/tenpy_data/laughlin_haldane/Data.pkl"
 params['left environment file'] = "/mnt/users/kotssvasiliou/tenpy_data/laughlin_haldane/env_L.npz"
 params['right environment file'] = "/mnt/users/kotssvasiliou/tenpy_data/laughlin_haldane/env_R.npz"
 QHsys = QH_system(params=params)
-QHsys.add_sides_to_Left_MPS(num=3)
+#
+repeat = 10
+for _ in range(repeat):
+    QHsys.patch_WFs()
+#
+quit()
+QHsys.patch_WFs(num=1)
+#QHsys.add_sides_to_Left_MPS(num=3)
 quit()
 timei = time.time()
 QHsys.patch_WFs()
