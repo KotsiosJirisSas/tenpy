@@ -33,4 +33,5 @@ coverage.*
 *.ipynb
 *.pkl
 NEW_COMMITS/0_test.py
+tenpy/additional_import/Zalatel_import.cpython-311-x86_64-linux-gnu.so
 
