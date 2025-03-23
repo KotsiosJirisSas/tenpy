@@ -1,0 +1,3 @@
+[30  0]
+excess number of electrons:-1.3519422504992828e-05
+K sector: -10.001630717524513

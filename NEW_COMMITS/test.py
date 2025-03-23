@@ -1,11 +1,8 @@
 import numpy as np
+Qflat_added = np.array([[1, 2], [3, 4], [5, 6]])
+qflat = np.array([[3, 4], [5, 6]])
 
-qflat = np.array([
-    [1, -1],
-    [1, -10],
-    [0, 0],
-    [1, 1],
-])
-sorted_charges = np.lexsort(np.array(qflat).T) 
-qflat= qflat[sorted_charges]
-print(qflat)
+# Find indices where rows match using numpy
+surviving_indices = np.array([i for i, x in enumerate(Qflat_added) if any(np.array_equal(x, y) for y in qflat)])
+
+print(surviving_indices)

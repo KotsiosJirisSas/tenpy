@@ -175,7 +175,10 @@ class QH_system():
         self.system_length = params['sys length']#what Dom calls L in his code
         self.verbose = params['verbose']
         self.unit_cell = params['unit cell']
-        self.pstate = ['','','','','','','']#,'','full']#params['sites added']
+        self.pstate = []#,'','full']#params['sites added']
+
+        for i in range(params['sites added']-2):
+            self.pstate.append('')
         #self.pstate=['empty','full','empty','full','empty','full','empty']
         self.load_model_params()
         self.graph = [self.graph[0]]*self.system_length #total graph is graph x sys length
@@ -491,6 +494,108 @@ class QH_system():
         for sslice in self.psi._B[-2].get_leg('vR').slices:
             print(self.psi._B[-2].get_leg('vR').charges[sslice])
         return
+
+    def construct_BS_from_right(self,leg_physical,numsites,Ss_full, Qflat_added, qflat_left,Qflat_right_final,Ss_fin,Ss_left_side):
+        Qs=[Qflat_right_final]
+        Ss=[Ss_fin]
+        Bs=[]
+        for site in range(numsites):
+            qflat=[] #qflat to the right of site
+            Ss_temp = []#temporary singular values to the right of site
+            ch_physical = leg_physical[numsites-1-site].to_qflat() #physicall charges
+
+            
+            if site == 0:
+                leg_to_the_right_charges = Qflat_right_final
+                Ss_temp_left = Ss_full[-1]
+            else:
+                leg_to_the_right_charges = Qs[site]
+                Ss_temp_left = Ss[site ]
+            for j,charge in enumerate(leg_to_the_right_charges):
+            
+    
+                
+                charge_to_the_right = charge - ch_physical[0] # does not add a particle
+               
+                qflat.append(charge_to_the_right)
+                Ss_temp.append(Ss_temp_left[j])
+                charge_to_the_right = charge - ch_physical[1] # adds a particle
+                qflat.append(charge_to_the_right)
+                Ss_temp.append(Ss_temp_left[j])
+
+
+            #intersection = [x for x in qflat if x in Qflat_added[-2-site]]
+           
+           
+            #print('intersection AAAAAA')
+            #print(intersection[0])
+            #Find only elements that survive
+            # print(qflat)
+            #quit()
+            surviving_indices=[]
+            print("START START")
+            print('finding the surviving indices!')
+            if site!=numsites-1:
+                print(len(Qflat_added[-2-site]))
+                for i, x in enumerate(Qflat_added[-2-site]):
+                    
+                    for y in qflat:
+                    
+                        if x[0]==y[0] and x[1]==y[1]:
+                            surviving_indices.append(i)
+
+                surviving_indices=list(set(surviving_indices))
+                #print(surviving_indices)
+          
+                #print(qflat)
+                #quit()
+                surviving_indices=np.array(surviving_indices)
+                # Indices of removed elements
+                #print(Qflat_added[-2-site])
+                intersection=np.array(Qflat_added[-2-site])[surviving_indices]
+            
+                Ss_temp=Ss_full[-2-site][surviving_indices]
+                qflat=np.array(qflat)
+                Ss_temp = np.array(Ss_temp)
+                qflat=np.array(intersection)
+                #print(qflat.shape)
+            if site==numsites-1:
+                #put left side SS as the last one
+                qflat=qflat_left
+                Ss_temp=Ss_left_side
+            ####################################################
+            ##################### now fill Bs ##################
+            ####################################################
+            Bflat = np.zeros((len(qflat),2,len(leg_to_the_right_charges)))
+            print(Bflat.shape)
+            for j,charge in enumerate(leg_to_the_right_charges):
+                charge_to_the_right = charge - ch_physical[0]
+                ind=np.where((qflat==charge_to_the_right).all(axis=1))[0]
+                Bflat[ind,0,j]+=np.random.random(len(ind))
+                charge_to_the_right = charge - ch_physical[1]
+                ind=np.where((qflat==charge_to_the_right).all(axis=1))[0]
+                Bflat[ind,1,j]+=np.random.random(len(ind))
+            ####################################################
+            ##################### now fill Ss ##################
+            ####################################################
+            #Alternative choice: get random singular values
+         
+            #get singular values that are a continuation of the previous one. ie if Q to the left has singular value S, then Q'=Q+qphys to the right will have singular value S
+            Ss.append(Ss_temp/np.sum(Ss_temp**2)) # these are the singular values to the *RIGHT* of my site. usual notation would have them to the left.
+            Bs.append(Bflat)
+            Qs.append(qflat)
+        Qs=Qs[::-1]
+        print(len(Bs))
+        Bs=Bs[::-1]
+        Ss=Ss[::-1]
+
+        for i in range(len(Bs)):
+            print(Bs[i].shape)
+            print(Ss[i].shape)
+      
+        return Bs,Ss[1:]
+
+
     def patch_WFs(self):
         from collections import Counter
         from collections import defaultdict
@@ -526,33 +631,28 @@ class QH_system():
         for i in range(len(self.psi_halfinf_L._B)):
             Ss.append(Ss1[i])
             Bflat.append(np.transpose(Bs1[i].to_ndarray(),(1,0,2)))
+
+        Ss.append(Ss1[-1])
         #PART 2: ADD ADDITIONAL SITES
         leg_physical=[]
         for i in range(num):
             leg_physical.append(self.sites[len(self.psi_halfinf_L._B)+i].leg)
-
+        
         left_leg=self.psi_halfinf_L._B[-1].get_leg('vR')
         left_Ss = self.psi_halfinf_L._S[-1]
         #Bs_added,Ss_added = self.add_sites_to_L(legL = left_leg,Sleft=left_Ss,leg_physical = leg_physical,numsites=num)
-        Bs_added,Ss_added = self.add_sites_to_L_with_pstate(legL = left_leg,Sleft=left_Ss,leg_physical = leg_physical,numsites=num)
-        #append extra Bs and Ss into total list
-        Ss.append(Ss1[len(self.psi_halfinf_L._B)]) #add one more pair of SVs #TODO Am i adding it in wrong place?
-        for i in range(num):
-            Ss.append(Ss_added[i])
-            Bflat.append(np.transpose(Bs_added[i],(1,0,2)))
-        #create MPS of LHS+ADDED_SITES
-        new_length = len(self.psi_halfinf_L._B) + num
-        psi=MPS.from_Bflat(self.sites[:new_length],Bflat[:new_length],SVs=Ss[:new_length+1], bc='segment',legL=self.psi_halfinf_L._B[0].get_leg('vL'))
+      
+        Qflat_added,Ss_added= self.add_sites_to_L_with_pstate(legL = left_leg,Sleft=left_Ss,leg_physical = leg_physical,numsites=num)
         #PART 3: CONNECT TO RHS
+
+       
+        
         #first: how many charges agree?
-        charges_LHS = psi._B[-1].get_leg('vR').to_qflat()
+        charges_LHS = Qflat_added[-1]
         charges_RHS = self.psi_halfinf_R._B[0].get_leg('vL').to_qflat()
-        largest_charge_LHS = charges_LHS[np.argmax(np.array(Ss[-1]))]
+        largest_charge_LHS = charges_LHS[np.argmax(np.array(Ss_added[-1]))]
         largest_charge_RHS = charges_RHS[np.argmax(np.array(Ss2[0]))]
-        #print(isinstance(largest_charge_LHS,list))
-        #print(isinstance(largest_charge_LHS,tuple))
-        #print('charges LHS',largest_charge_LHS)
-        #print('charges RHS',largest_charge_RHS)
+     
 
         charges_LHS = np.array(charges_LHS)
         charges_RHS = np.array(charges_RHS)
@@ -567,7 +667,7 @@ class QH_system():
         #shift=charges_RHS[self.shift_import[0]]-charges_LHS[self.shift_import[1]]
         #shift=self.shift_import
 
-
+      
         #FOR 3 UNIT CELL INSERTIONS WE GET THIS
         #shift=np.array([9,0])
 
@@ -599,22 +699,38 @@ class QH_system():
         ######
         #if len(matches)<100:return 
         if len(matches)<30:return    
+
+
+        Ss_left_side=self.psi_halfinf_L._S[-1]
         #remove some  Ss and Bs from RHS MPS anc construct again. see if it kills off dead nodes
-        S_LHS = Ss[-1].copy()
-        B_LHS = Bflat[-1]
-        original_bond_dim = B_LHS.shape[-1]
-        if B_LHS.shape[-1]!= len(S_LHS):raise ValueError
-        mask = np.isin(np.arange(B_LHS.shape[2]), matches[:,0])
-        B_LHS = B_LHS[:,:,mask]
-        S_LHS = S_LHS[mask]
-        Ss[-1] = S_LHS
-        print(len(Ss),S_LHS.shape[0])
-        Bflat[-1] = B_LHS
+        S_LHS = Ss_added[-1].copy()
+    
+        mask = np.isin(np.arange(len(S_LHS)), matches[:,0])
+        #print(mask)
+        #quit()
+        #B_LHS = B_LHS[:,:,mask]
+        
+        #construct the Bflat now!!
+        qflat_left=self.psi_halfinf_L._B[-1].get_leg('vR').to_qflat()
+        print('length of BS')
+        print(len(Qflat_added[-1][mask]))
+        #quit()
+        Bs_added,Ss_added=self.construct_BS_from_right(leg_physical,num,Ss_added, Qflat_added, qflat_left,Qflat_added[-1][mask], S_LHS[mask],Ss_left_side)
+        for i in range(len(Bs_added)):
+            Bflat.append(np.transpose(Bs_added[i],(1,0,2)))
+            Ss.append(Ss_added[i])
+        for i in range(len(Bflat)):
+            print(Bflat[i].shape)
+            print(Ss[i].shape)
+        new_length = len(self.psi_halfinf_L._B) + num
+        print(new_length)
+        
         ########################
         psi=MPS.from_Bflat(self.sites[:new_length],Bflat[:new_length],SVs=Ss[:new_length+1], bc='segment',legL=self.psi_halfinf_L._B[0].get_leg('vL'))
         #########################
         #psi.canonical_form_finite(cutoff=0.0)
-
+        print(psi)
+        #quit()
         #now one needs to shift all the charges of the B matrices 
         filling= psi.expectation_value("nOp")
         print('filling',filling)
@@ -1268,147 +1384,26 @@ class QH_system():
             sorted_charges = np.lexsort(np.array(qflat).T) 
             qflat= qflat[sorted_charges]
             Ss_temp = Ss_temp[sorted_charges]
-            ####################################################
-            ##################### now fill Bs ##################
-            ####################################################
-            Bflat = np.zeros((len(leg_to_the_left_charges),2,len(qflat)))
-            print(Bflat.shape)
-            for j,charge in enumerate(leg_to_the_left_charges):
-                charge_to_the_right = charge + ch_physical[0]
-                ind=np.where((qflat==charge_to_the_right).all(axis=1))[0]
-                Bflat[j,0,ind]+=np.random.random(len(ind))
-                charge_to_the_right = charge + ch_physical[1]
-                ind=np.where((qflat==charge_to_the_right).all(axis=1))[0]
-                Bflat[j,1,ind]+=np.random.random(len(ind))
+    
             ####################################################
             ##################### now fill Ss ##################
             ####################################################
             #Alternative choice: get random singular values
-            Ss_temp = np.random.random(Bflat.shape[2])
+            Ss_temp = np.random.random(len(qflat))
 
             #Ss_temp[self.shift_import[0]] = 1.2
             #get singular values that are a continuation of the previous one. ie if Q to the left has singular value S, then Q'=Q+qphys to the right will have singular value S
             Ss.append(Ss_temp/np.sum(Ss_temp**2)) # these are the singular values to the *RIGHT* of my site. usual notation would have them to the left.
-            Bs.append(Bflat)
+            
             Qs.append(qflat)
             #plt.imshow(np.abs(Bflat[:,0,:]),cmap='coolwarm')
             #plt.colorbar()
             #plt.title('added_Bmatrix')
             #plt.savefig('/mnt/users/kotssvasiliou/tenpy/NEW_COMMITS/figures/MPS_figures/B_'+str(site)+'.png',dpi=500)
         ###
-        '''
-        ch_physical=leg_physical_site.to_qflat()[0]
-        ch_physical2=leg_physical_site.to_qflat()[1]
-        for i,charge in enumerate(L):
-            charge_2=charge+ch_physical
-            qflat.append(charge_2)
-            charge_2=charge+ch_physical2
-            qflat.append(charge_2)
-        #remove duplicates
-        qflat = list(map(list, set(map(tuple, qflat))))
-        qflat=np.array(qflat)
-        #sort charges
-        sorted_charges = np.lexsort(np.array(qflat).T) 
-        qflat= qflat[sorted_charges]
-        #duljina_RMPS=len(qflat)
-        print("lenght:",duljina_RMPS)
-        Bflat=np.zeros(duljina_left*duljina_physical*duljina_RMPS)  
-        Bflat=np.reshape(Bflat,(duljina_left,duljina_physical,duljina_RMPS))
-        for i,charge in enumerate(L):
-            charge_2=charge+ch_physical
-            ind=np.where((qflat==charge_2).all(axis=1))[0]
-            Bflat[i,0,ind]+=np.random.random(len(ind))
-
-            charge_2=charge+ch_physical2
-            ind=np.where((qflat==charge_2).all(axis=1))[0]
-            Bflat[i,1,ind]+=np.random.random(len(ind))
-        Bs.append(Bflat)
-        #Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-        #Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-        #set left leg to be equal to qflat
-        #CREATE FIRST SITE OF THE BOUNDAR
-        print('duljina opet',duljina_left)
-        for i in range(len(pstate)):
-            #get the correct site etc
-            leg_physical_site=leg_physical[i+1]
-            Bflat=np.zeros(duljina_left*duljina_physical*duljina_left)  
-            Bflat=np.reshape(Bflat,(duljina_left,duljina_physical,duljina_left))
-            qflat=[]
-            if pstate[i]=='empty':
-                #add 0 on our site
-                ch_physical=leg_physical_site.to_qflat()[0]
-                for m,charge in enumerate(L):
-                    charge_2=charge+ch_physical
-                    qflat.append(charge_2)
-                #sort qflat2
-                qflat=np.array(qflat)
-                sorted_charges = np.lexsort(np.array(qflat).T) 
-                qflat= qflat[sorted_charges]
-                for m,charge in enumerate(L):
-                    charge_2=charge+ch_physical
-                    ind=np.where((qflat==charge_2).all(axis=1))[0]
-                    #Bflat[m,0,ind]+=np.random.random(len(ind))
-                Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-                Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-                #ALTERNATIVELY JUST FILL ALL OF THEM RANDOMLY SO YOU SHOULD NOT HAVE A PROBLEM AT ALL
-                #print(np.random.random(len(ind)))
-            elif pstate[i]=='full':
-                #add one on our site
-                ch_physical=leg_physical_site.to_qflat()[1]
-                for m,charge in enumerate(L):
-                    charge_2=charge+ch_physical
-                    #ind=np.where((L==charge).all(axis=1))[0]
-                    #Bflat[m,0,ind]+=np.random.random(len(ind))
-                    qflat.append(charge_2)
-                #GETS qflat, and sorts it out!
-                #sort qflat
-                qflat=np.array(qflat)
-                sorted_charges = np.lexsort(np.array(qflat).T) 
-                qflat= qflat[sorted_charges]
-                for m,charge in enumerate(L):
-                    charge_2=charge+ch_physical
-                    ind=np.where((qflat==charge_2).all(axis=1))[0]
-                    #Bflat[m,1,ind]+=np.random.random(len(ind))
-                Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-                Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-                #update the charges
-                #Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-            L=np.array(qflat)
-            Bs.append(Bflat)
-        R=legR.to_qflat()
-        #NOW AT THE LAST SITE WE HAVE TO MATCH TO SITE to the right
-        #HERE WE WANT TO HAVE BOTH CHARGES
-        duljina_RMPS=len(R)
-        Bflat=np.zeros(duljina_left*duljina_physical*duljina_RMPS)  
-        Bflat=np.reshape(Bflat,(duljina_left,duljina_physical,duljina_RMPS))
-        leg_physical_site=leg_physical[-1]
-        print("number of sites in this thing")
-        print(len(leg_physical))
-        print(duljina_RMPS)
-        #need to fill both so that charge on this side
-        #turns out to be 0.5
-        ch_physical=leg_physical_site.to_qflat()[0]
-        for i,charge in enumerate(L):
-            charge_2=charge+ch_physical
-            ind=np.where((R==charge_2).all(axis=1))[0]
-            #Bflat[i,0,ind]+=np.random.random(len(ind))
-            #print(np.random.random(len(ind)))
-        print('left-right charges')
-        ch_physical=leg_physical_site.to_qflat()[1]
-        for i,charge in enumerate(L):
-            charge_2=charge+ch_physical
-            #produce sites only when these match!!!
-            ind=np.where((R==charge_2).all(axis=1))[0]
-            print(charge_2)
-            print(ind)
-            #Bflat[i,1,ind]+=np.random.random(len(ind))
-        Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-        Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-        print(R)
-        Bs.append(Bflat)
-        return Bs
-        '''
-        return Bs,Ss
+      
+      
+        return Qs,Ss
 
 
 
