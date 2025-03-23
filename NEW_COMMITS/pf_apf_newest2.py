@@ -736,7 +736,7 @@ def patch_WF_together(psi1,psi2,sites,pstate):
 
     #psi=MPS.from_Bflat(sites[:len(Bflat)],Bflat, bc='segment',legL=left_leg)
     print('Patched two wavefunctions together sucessfully')
-    
+    quit()
     return psi
 
 
@@ -1971,7 +1971,7 @@ ind=np.where((R==charge_2).all(axis=1))[0]
 print('INDEX,INDEX')
 print( ind)
 """
- 
+"""
 #name='Environment_R_reconstructed_Pf'
 #print("loading right env")
 #name_env_q='Envs_qs_pf'
@@ -2006,3 +2006,4 @@ print("#"*100)
 #bulk_vacuum_boundary(name_load,name_save,name_graph,pstate=pstate)
 bulk_bulk_boundary(name_load,name_save,name_graph,pstate=pstate)
 
+"""

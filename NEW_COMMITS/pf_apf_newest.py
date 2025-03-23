@@ -559,6 +559,74 @@ def project_side_of_mps( psi_halfinf,side='left',charge=[0,0]):
  
     return psi_halfinf,charge
 
+
+def project_side_of_mps_given_charges( psi_halfinf,charge=[[0,0]]):
+    """
+    projects MPS to a single schmidt value:
+    psi_half_inf: MPS
+    side: 'left' or 'right' depending which side we want to project.
+    If left we project to largest SV, if right we project to largest schmidt value
+    with correponsing charge list
+    
+    """
+    #project the left edge of MPS to a single schmidt value
+    #makes convergence on boundary with vacuum quicker
+    print('projecting MPS',".."*30)
+
+    #delete environments so that they get reset after the projection
+    
+    psi_halfinf.segment_boundaries=(None,None)
+    S =  psi_halfinf.get_SL(0)
+
+
+    #instead need to find one corresponding to the above charge hmhmhmhm.
+    print('Charge of leg to which we project')
+    print(charge)
+    
+
+    leg=psi_halfinf._B[0].get_leg('vL')
+    flats=leg.to_qflat()
+    print(flats)
+    
+
+    #need to change this...
+    ind=[]
+
+    #finds the schmidt values with the corresponding charge
+    for j in range(len(charge)):
+        for i in range(len(flats)):
+            if np.all(flats[i]==charge[j]):
+                ind.append(i)
+    
+
+    ind=np.array(ind)
+
+    print(ind)
+    
+    
+    
+    
+    #project to the corresponding sector
+
+    proj = np.zeros(len(S), bool)
+    proj[ind] = True
+    Ss=S[ind]
+    B = psi_halfinf.get_B(0, form='B')
+    
+    B.iproject(proj, 'vL')
+    psi_halfinf.set_B(0, B, form='B')
+   
+    psi_halfinf.set_SL(0, Ss)
+    #psi_halfinf.set_SL(0, np.ones(1, float))
+    psi_halfinf.canonical_form_finite(cutoff=0.0)
+    psi_halfinf.test_sanity()
+    
+    
+
+    print('projected MPS',".."*30)
+ 
+    return psi_halfinf,charge
+
 def project_RHS_of_mps_vac( psi_halfinf,charge=[0,0]):
 
 
@@ -694,14 +762,18 @@ def patch_WF_together(psi1,psi2,sites,pstate):
     print(psi2._B[0].shape)
     B_new=set_MPS_boundary(legL,leg_physical,legR,pstate)
     
+
+    Ss.append(Ss1[-1])
     for i in range(len(pstate)+2):
         #try this and see what happens
         #Ss.append(Ss1[-1])
-        print(Ss1[-1].shape)
+        #print(Ss1[-1].shape)
         print(B_new[i].shape)
-        Ss.append(Ss1[-1])
-        #if i>0:
+        #Ss.append(Ss1[-1])
+        if i>0:
         #    Ss.append(np.random.random(B_new[i].shape[0]))
+            SS_new=list(Ss1[-1])+list(Ss1[-1])
+            Ss.append(np.array(SS_new))
         #np.linalg.svd(B, compute_uv=False)
         Bflat.append(np.transpose(B_new[i],(1,0,2)))
 
@@ -733,13 +805,146 @@ def patch_WF_together(psi1,psi2,sites,pstate):
     #MAIN POINT IS THAT ERROR WAS REMOVED, AND ISNTEAD JUST WARNING HAPPENS WITH SETTING ALL OTHER ELEMENTS TO ZERO
     psi=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
     filling= psi.expectation_value("nOp")
-    print()
+    print(psi)
     print(filling)
-    print(len(psi._B)*1/2)
-    print(np.sum(filling))
-
+    #print(len(psi._B)*1/2)
+    #print(np.sum(filling))
+    print(psi._B[len(psi1._B)+len(pstate)+2])
+    print(psi2._B[0])
     #psi=MPS.from_Bflat(sites[:len(Bflat)],Bflat, bc='segment',legL=left_leg)
+    leg=psi._B[len(psi1._B)+len(pstate)+2].get_leg('vL')
+    
+    charges=leg.charges
+    print('length of leg',print(len(charges)))
+    psi2,ch=project_side_of_mps_given_charges(psi2,charges)
+    
+    
+    print(psi2)
+    print(psi2._B)
     print('Patched two wavefunctions together sucessfully')
+
+
+     
+    Bflat=[]
+    Ss=[]
+    Ss1=psi._S
+    Ss2=psi2._S
+    print(psi1._B[0])
+    #print(psi1._B[0])
+
+    #constructs total Bflat by appending psis
+    #same for Ss
+
+    for i in range(len(psi1._B)):
+    
+        Ss.append(Ss1[i])
+        Bflat.append(np.transpose(psi._B[i].to_ndarray(),(1,0,2)))
+   
+  
+ 
+  
+   
+    
+    
+    print(legR)
+    leg_physical_site=sites[len(psi1._B)+len(pstate)+1].leg
+ 
+    #print(duljina_l,duljina_r)
+    #duljina_r=psi2._B[0].shape[0]
+    print(psi1._B[-1].shape)
+    print(np.transpose(psi1._B[-1].to_ndarray(),(1,0,2)).shape)
+    print(psi2._B[0].shape)
+   
+    
+
+    #Ss.append(Ss1[len(psi1._B)])
+    for i in range(len(pstate)+1):
+        #try this and see what happens
+        #Ss.append(Ss1[-1])
+        #print(Ss1[-1].shape)
+        Ss.append(Ss1[len(psi1._B)+i])
+        print(psi._B[len(psi1._B)+i].to_ndarray().shape)
+        #Ss.append(Ss1[-1])
+        #if i>0:
+        #    Ss.append(np.random.random(psi._B[len(psi1._B)+i].to_ndarray().shape[0]))
+        #np.linalg.svd(B, compute_uv=False)
+        Bflat.append(np.transpose(psi._B[len(psi1._B)+i].to_ndarray(),(1,0,2)))
+    legR=psi2._B[0].get_leg('vL')
+    R=legR.to_qflat()
+    L=psi._B[len(psi1._B)+len(pstate)].get_leg('vR').to_qflat()
+    duljina_L=len(L)
+    duljina_R=len(R)
+    print("duljine:")
+    print(duljina_L,duljina_R)
+    B_last=np.zeros(2*duljina_L*duljina_R)
+    B_last=np.reshape(B_last,(duljina_L,2,duljina_R))
+   
+    
+    ch_physical=leg_physical_site.to_qflat()[0]
+    #print(ch_physical)
+    found=0
+    for i,charge in enumerate(L):
+        charge_2=charge+ch_physical
+        ind=np.where((R==charge_2).all(axis=1))[0]
+        B_last[i,0,ind]+=np.random.random(len(ind))
+        #print(np.random.random(len(ind)))
+        if len(ind)!=0:
+            found+=1
+
+    #print('left-right charges')
+    
+    ch_physical=leg_physical_site.to_qflat()[1]
+    for i,charge in enumerate(L):
+        charge_2=charge+ch_physical
+        #produce sites only when these match!!!
+        ind=np.where((R==charge_2).all(axis=1))[0]
+        if len(ind)!=0:
+            found+=1
+        #print(charge_2)
+        #print(ind)
+        B_last[i,1,ind]+=np.random.random(len(ind))
+    print("number of found charges")
+    print(found)
+    print(B_last.shape)
+    
+    Ss.append(Ss1[len(psi1._B)+len(pstate)+1])
+    #Ss.append(np.random.random(B_last.shape[0]))
+    Bflat.append(np.transpose(B_last,(1,0,2)))
+
+
+
+    #last one, this one degines connection betwen left adn right
+    #Ss.append(Ss1[-1])
+    #print(B_new.shape)
+    #quit()
+    
+    #Ss.append(np.random.random(Ss1[-1].shape))
+    
+    #Ss.append(Ss2[0])
+
+    for i in range(len(psi2._B)):
+      
+        Ss.append(Ss2[i])
+        Bflat.append(np.transpose(psi2._B[i].to_ndarray(),(1,0,2)))
+    Ss.append(Ss2[-1])
+   
+
+    #reads charges off the left leg of MPS
+    left_leg=psi1._B[0].get_leg('vL')
+    print("start shit")
+
+    print('TRY TRY SHORTER')
+    print(len(Bflat))
+    print(len(Ss))
+    #MAIN POINT IS THAT ERROR WAS REMOVED, AND ISNTEAD JUST WARNING HAPPENS WITH SETTING ALL OTHER ELEMENTS TO ZERO
+    psi=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
+    filling= psi.expectation_value("nOp")
+    print(psi)
+    print(filling)
+    a=np.sum(filling)
+    print(np.sum(filling))
+    print(np.sum((filling-0.5)*np.arange(len(filling))))
+ 
     
     return psi
 
@@ -1016,14 +1221,14 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
         qflat.append(charge_2)
     
     #remove duplicates
-    qflat = list(map(list, set(map(tuple, qflat))))
+    #qflat = list(map(list, set(map(tuple, qflat))))
 
     qflat=np.array(qflat)
     #sort charges
     sorted_charges = np.lexsort(np.array(qflat).T) 
     qflat= qflat[sorted_charges]
 
-    #duljina_RMPS=len(qflat)
+    duljina_RMPS=len(qflat)
     print("lenght:",duljina_RMPS)
     Bflat=np.zeros(duljina_left*duljina_physical*duljina_RMPS)  
     Bflat=np.reshape(Bflat,(duljina_left,duljina_physical,duljina_RMPS))
@@ -1037,16 +1242,16 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
         ind=np.where((qflat==charge_2).all(axis=1))[0]
         Bflat[i,1,ind]+=np.random.random(len(ind))
     Bs.append(Bflat)
-    Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-    Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+    #Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+    #Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
 
     #set left leg to be equal to qflat
-    #L=np.array(qflat)
+    L=np.array(qflat)
     
     #CREATE FIRST SITE OF THE BOUNDAR
     
     #duljina_left=len(L)
-    #duljina_left=len(qflat)
+    duljina_left=len(qflat)
     print('duljina opet',duljina_left)
     #duljina_RMPS=len(qflat)
     
@@ -1071,9 +1276,9 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
             for m,charge in enumerate(L):
                 charge_2=charge+ch_physical
                 ind=np.where((qflat==charge_2).all(axis=1))[0]
-                #Bflat[m,0,ind]+=np.random.random(len(ind))
-            Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-            Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+                Bflat[m,0,ind]+=np.random.random(len(ind))
+            #Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+            #Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
             #ALTERNATIVELY JUST FILL ALL OF THEM RANDOMLY SO YOU SHOULD NOT HAVE A PROBLEM AT ALL?
 
             #print(np.random.random(len(ind)))
@@ -1082,8 +1287,7 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
             ch_physical=leg_physical_site.to_qflat()[1]
             for m,charge in enumerate(L):
                 charge_2=charge+ch_physical
-                #ind=np.where((L==charge).all(axis=1))[0]
-                #Bflat[m,0,ind]+=np.random.random(len(ind))
+            
                 qflat.append(charge_2)
 
             #GETS qflat, and sorts it out!
@@ -1095,9 +1299,9 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
             for m,charge in enumerate(L):
                 charge_2=charge+ch_physical
                 ind=np.where((qflat==charge_2).all(axis=1))[0]
-                #Bflat[m,1,ind]+=np.random.random(len(ind))
-            Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-            Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+                Bflat[m,1,ind]+=np.random.random(len(ind))
+            #Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+            #Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
             #update the charges
             #Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
         L=np.array(qflat)
@@ -1120,21 +1324,21 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
     for i,charge in enumerate(L):
         charge_2=charge+ch_physical
         ind=np.where((R==charge_2).all(axis=1))[0]
-        #Bflat[i,0,ind]+=np.random.random(len(ind))
+        Bflat[i,0,ind]+=np.random.random(len(ind))
         #print(np.random.random(len(ind)))
 
-    print('left-right charges')
+    #print('left-right charges')
     ch_physical=leg_physical_site.to_qflat()[1]
     for i,charge in enumerate(L):
         charge_2=charge+ch_physical
         #produce sites only when these match!!!
         ind=np.where((R==charge_2).all(axis=1))[0]
-        print(charge_2)
-        print(ind)
-        #Bflat[i,1,ind]+=np.random.random(len(ind))
-    Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-    Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-    print(R)
+        #print(charge_2)
+        #print(ind)
+        Bflat[i,1,ind]+=np.random.random(len(ind))
+    #Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+    #Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+    #print(R)
     Bs.append(Bflat)
     
     
@@ -1726,7 +1930,7 @@ def bulk_vacuum_boundary_left_side(name_load,name_save,name_graph,pstate=[]):
     eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_halfinf_right, M, dmrg_params,
                                         resume_data={'init_env_data': init_env_data_halfinf})
     #print(eng_halfinf.chi_max)
-    quit()
+    #quit()
     print("enviroment works")
     print("running DMRG")
     #
@@ -1786,9 +1990,9 @@ def bulk_bulk_boundary(name_load,name_save,name_graph,pstate=[]):
     #assert (L)%4==1
     #assert (L)%4==3
     #half=(L//8)*4
-    L=150+12*4+16#+8+32*4
+    L=150+12*4+16+16#+8+32*4
     #add one more site
-    half=51+3
+    half=51+3+3*12+8
   
     graph=[graph[0]]*L
     #graph= load_graph(name_graph)
@@ -1926,10 +2130,10 @@ def bulk_bulk_boundary(name_load,name_save,name_graph,pstate=[]):
 
     #as a test set RHS env to vacuum
     #may need to do it like this...
-    leg_MPS=psi_halfinf_right._B[-1].get_leg('vR')
+    #leg_MPS=psi_halfinf_right._B[-1].get_leg('vR')
     #leg_MPO
-    leg_HMPO=M.H_MPO._W[-1].get_leg('wR')
-    right_env=set_environment_to_vacuum(leg_HMPO,leg_MPS,side='right')
+    #leg_HMPO=M.H_MPO._W[-1].get_leg('wR')
+    #right_env=set_environment_to_vacuum(leg_HMPO,leg_MPS,side='right')
     print('right_env'*100)
     print(right_env)
     
@@ -1993,7 +2197,7 @@ def bulk_bulk_boundary(name_load,name_save,name_graph,pstate=[]):
     #
     #print("MPS qtotal:", M.qtotal)
     #print("MPO qtotal:", psi_halfinf.qtotal)
-    quit()
+    #quit()
     E0, psi=eng_halfinf.run()
 
 
@@ -2059,7 +2263,7 @@ name_save='fourth_eigen_Ly=18_L=402_large_no_external_potential_pf_apf_'+str(pst
 #name_save='PROJECTED_LEFT_SIDE_pf_vac_boundary_L=402_'+str(pstate[:4])+'_num='+str(len(pstate))
 
 
-name_save='segment_new_technique_Ly=18_L=219_pf_apf_'+str(pstate[:4])+'_num='+str(len(pstate))
+name_save='NEWEST_segment_new_technique_Ly=18_L=219_pf_apf_'+str(pstate[:4])+'_num='+str(len(pstate))
 print("#"*100)
 print("Start the calculation")
 print(name_save)
