@@ -1,0 +1,15 @@
+[-102    0]
+excess number of electrons:-8.422145943384751e-05
+K sector: 33.99006793525475
+[-66   0]
+excess number of electrons:1.1107112443897726e-05
+K sector: 22.0015178882916
+[-114    0]
+excess number of electrons:-0.00014834466212471087
+K sector: 37.9822985013335
+[-24   0]
+excess number of electrons:1.3472769306077659e-05
+K sector: 8.00165899803494
+[-39   0]
+excess number of electrons:-6.937651988447868e-07
+K sector: 13.000011665319974

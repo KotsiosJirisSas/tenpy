@@ -1,0 +1,12 @@
+shift:[186   0]
+excess number of electrons:-0.0006686372897171111
+K sector: -50.73668185568431
+shift:[270   0]
+excess number of electrons:-0.0001016648418135091
+K sector: -71.72361951548947
+shift:[-250    0]
+excess number of electrons:-8.057990868781673e-05
+K sector: 58.19046281619933
+shift:[-150    0]
+excess number of electrons:-0.00012339748250100868
+K sector: 33.15701793743111

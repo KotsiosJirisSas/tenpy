@@ -143,6 +143,8 @@ print("Built"+".."*10)
 
 
 
+quit()
+
 #initialize wavefunction as MPS
 pstate=["empty", "full","empty"]*broj
 psi = MPS.from_product_state(sites, pstate, bc="finite")

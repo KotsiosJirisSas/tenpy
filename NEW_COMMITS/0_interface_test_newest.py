@@ -535,8 +535,9 @@ class QH_system():
             surviving_indices=[]
             print("START START")
             print('finding the surviving indices!')
+            
             if site!=numsites-1:
-                print(len(Qflat_added[-2-site]))
+               
                 for i, x in enumerate(Qflat_added[-2-site]):
                     
                     for y in qflat:
@@ -1415,7 +1416,7 @@ params = {}
 params['verbose'] = 1
 params['sys length'] = 120
 params['unit cell'] = 3#in the case of q=3 laughlin
-params['sites added'] = 9#sides added in the middle
+params['sites added'] = b#sides added in the middle
 #params['model data file'] = "/mnt/users/kotssvasiliou/tenpy_data/laughlin_haldane/Data.pkl"
 params['model data file'] = "/mnt/users/dperkovic/quantum_hall_dmrg/data_load/interface_test/Data.pkl"
 
