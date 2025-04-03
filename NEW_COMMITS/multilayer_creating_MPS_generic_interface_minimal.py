@@ -176,6 +176,7 @@ class QH_system():
         self.unit_cell = params['unit cell']
         self.avg_filling = params['avg_filling']
         self.half= params['half']
+        self.nlayer=params['N_layer']
         #not needed parameter
         self.pstate = []#,'','full']#params['sites added']
         for i in range(params['sites added']-2):
@@ -256,13 +257,13 @@ class QH_system():
             sites=[]
             for i in range(self.system_length):
                 #produce a single site
-                spin=QH_MultilayerFermionSite_final(N=1,root_config=self.root_config,conserve=('each','K'),site_loc=i)
+                spin=QH_MultilayerFermionSite_final(N=self.nlayer,root_config=self.root_config,conserve=('each','K'),site_loc=i)
                 sites.append(spin)
         else:
             sites=[]
             #produce sites
             for i in range(-add,self.system_length-add):
-                spin=QH_MultilayerFermionSite_final(N=1,root_config=self.root_config,conserve=('each','K'),site_loc=i)
+                spin=QH_MultilayerFermionSite_final(N=self.nlayer,root_config=self.root_config,conserve=('each','K'),site_loc=i)
                 sites.append(spin)
         self.sites=sites
         return 
@@ -328,7 +329,8 @@ class QH_system():
         charges_LHS = np.array(charges_LHS)
         charges_RHS = np.array(charges_RHS)
         shift = np.array(largest_charge_RHS) - np.array(largest_charge_LHS)
-       
+        print(shift)
+        #quit()
         #if you import shift instead of determining it via method above
         if len(self.shift_import)>0:
             shift=self.shift_import
@@ -391,7 +393,7 @@ class QH_system():
         #now one needs to shift all the charges of the B matrices 
         filling= psi.expectation_value("nOp")
         print('filling',filling)
-        print('TOTAL FILLING',np.sum(filling-self.avg_filling))
+        print('TOTAL FILLING',np.sum(filling-self.avg_filling/self.nlayer))
         print('new bond dimensions',[len(S) for S in psi._S])
     
         
@@ -426,18 +428,18 @@ class QH_system():
         print('filling',filling)
 
         print('testing the WF','...'*10)
-        print('TOTAL leftover number of electrons',np.sum(filling-self.avg_filling))
-        K=np.sum(np.arange(len(filling))*(filling-self.avg_filling))
+        print('TOTAL leftover number of electrons',np.sum(filling-self.avg_filling/self.nlayer))
+        K=np.sum(np.arange(len(filling))//self.nlayer*(filling-self.avg_filling/self.nlayer))
         #print(psi)
         print("K sector:",K)
 
         print(shift)
-        z=np.abs(np.sum(filling-self.avg_filling))
+        z=np.abs(np.sum(filling-self.avg_filling/self.nlayer))
      
         if z<0.01:
-            with open('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy/NEW_COMMITS/L='+str(self.system_length)+'_Pf_Apf_truncated_charges_success='+str(self.sides_added)+'.txt','a') as f:
+            with open('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy/NEW_COMMITS/L='+str(self.system_length)+'_multilayer_with_interlayer_interaction_Haldane_success='+str(self.sides_added)+'.txt','a') as f:
                 f.write('shift:'+str(shift)+"\n")
-                f.write('excess number of electrons:'+str(np.sum(filling-self.avg_filling))+"\n")
+                f.write('excess number of electrons:'+str(np.sum(filling-self.avg_filling/self.nlayer))+"\n")
                 f.write("K sector: "+str(K)+"\n")
       
         print('passed')
@@ -464,7 +466,7 @@ class QH_system():
             model_par = loaded_xxxx['Model']
         except:
             model_par = loaded_xxxx['Parameters']
-        root_config_ = model_par['root_config'].reshape(self.unit_cell,1)
+        root_config_ = model_par['root_config'].reshape(self.unit_cell,self.nlayer)
         """
         if model_par['cons_K']:
             conserve = (model_par['cons_C'],'K') 
@@ -497,7 +499,9 @@ class QH_system():
             print('RHS MPS copied from LHS MPS')
        
         return
-    def load_data(self,MPSshift=2,side='right',charge_shift=[0,0]):
+    def load_data(self,MPSshift=2,side='right',charge_shift=[]):
+        if len(charge_shift)==0:
+            charge_shift=np.zeros(self.nlayer+1)
         """
         loads MPS as segment mps of length len(sites)
         Input:
@@ -516,13 +520,15 @@ class QH_system():
                                                             # and the [added piece] is -[]-[pstate]-[]-
             #print('og',self.sites[0].leg)
             #print('shifted',sites[0].leg)
-            shift = half+len(self.pstate)+MPSshift
+
+            #to shift by correct number of sites we have to divide by nlayer
+            shift = (half+len(self.pstate)+MPSshift)//self.nlayer
             #change this later on
             sites = self.sites[half+MPSshift:]    # why the +2???? system = [LHS]|[added piece][RHS]
                                                             # and the [added piece] is -[]-[pstate]-[]-
             #print('og',self.sites[0].leg)
             #print('shifted',sites[0].leg)
-            shift = half+MPSshift
+            shift = (half+MPSshift)//self.nlayer
     
         elif side == 'left':
   
@@ -537,10 +543,11 @@ class QH_system():
         qflat2 = psi_MPS['MPS_qflat'].copy()
         # we are taking first leg charges only
         #this bit checks whether the full charge or only left leg is given
-        if len(qflat2)==3:
+        if len(qflat2)==self.unit_cell*self.nlayer:
             qflat2=qflat2[0] 
        
         
+        #quit()
         #print('Qs shapes (at bonds)',len(qflat2),len(qflat2[0]),len(qflat2[1]),len(qflat2[2]))
 
         print('B FLAT SHAPE:',Bflat0[0].shape,Bflat0[1].shape,Bflat0[2].shape)
@@ -553,7 +560,11 @@ class QH_system():
             kopy=[]
             for m in range(len(qflat2[i])):
                 if m==0:
-                    shifted=qflat2[i][0]+shift*qflat2[i][1]# a momentum shift for the first charge sector???
+                    #SHIFT THIS TOO
+                    shifted=qflat2[i][0]
+                    for z in range(self.nlayer):
+                    
+                        shifted+=shift*qflat2[i][1+z]# a momentum shift for the first charge sector???
                     kopy.append(shifted)
                 else:
                     kopy.append(qflat2[i][m])
@@ -561,9 +572,12 @@ class QH_system():
         print("shift charges. The charge shift is",charge_shift)
         for i in range(len(qflat)):
             qflat[i][0]+=charge_shift[0]
-            qflat[i][1]+=charge_shift[1]  
+            for z in range(self.nlayer):
+                qflat[i][z+1]+=charge_shift[z+1]  
+           
         ####
         #print('Qs shapes (after)',len(qflat),len(qflat[0]),len(qflat[1]),len(qflat[2]))
+        print(len(qflat))
         qflat=np.array(qflat)
         #print('qflat_shifted',qflat)
         infinite_unit_cell=len(Bflat0)
@@ -774,21 +788,26 @@ if __name__ == "__main__":
 
     #nu for the state we are matching
     avg_filling=1/2
-    L=150+12*4+16+16+8+32*2
-    #add one more site
-    half=51+3+3*12+8+4+32+16
+    avg_filling=2/3
+
+    L=199
+   
+    half=(L//6)*6
+    L=199*2
     ####
     params = {}
     params['verbose'] = 1
     params['sys length'] = L
     params['half']=half
     params['avg_filling']=avg_filling
+    params['N_layer']=2
     #params['unit cell'] = 3#in the case of q=3 laughlin
-    params['unit cell'] = 4#in the case of pf-apf
+    params['unit cell'] = 3#in the case of pf-apf
     params['sites added'] = b#sides added in the middle
     #params['model data file'] = "/mnt/users/kotssvasiliou/tenpy_data/laughlin_haldane/Data.pkl"
-    params['model data file'] = "/mnt/users/dperkovic/quantum_hall_dmrg/data_load/interface_test/Data.pkl"
-    params['model data file'] = '/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/Data.pkl'
+   
+    params['model data file'] = '/mnt/users/dperkovic/quantum_hall_dmrg/data_load/multilayer_with_interlayer_interaction_Haldane/Data.pkl'
+  
     QHsys = QH_system(params=params)
 
     #QHsys.shift_import=[a,b]

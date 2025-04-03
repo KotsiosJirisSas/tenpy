@@ -460,7 +460,12 @@ def load_data(loaded_xxxx,sites,shift=0,side='right',charge_shift=[0,0]):
     
     mps=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
     print('loaded mps from data',".."*30)
-   
+    if side=='right':
+        leg=mps._B[2].get_leg('vL')
+        
+
+        mps=MPS.from_Bflat(sites[2:],Bflat[2:],SVs=Ss[2:], bc='segment',legL=leg)
+    
    
     return mps
 
@@ -1990,9 +1995,15 @@ def bulk_bulk_boundary(name_load,name_save,name_graph,pstate=[]):
     #assert (L)%4==1
     #assert (L)%4==3
     #half=(L//8)*4
-    L=150+12*4+16+16#+8+32*4
+    
+    
+  
+   
+    L=150+12*4+16+16+8+32*2-2
     #add one more site
-    half=51+3+3*12+8
+    #half=51+3+3*12+8+4+32
+    #add one more site
+    half=51+3+3*12+8+4+32+16
   
     graph=[graph[0]]*L
     #graph= load_graph(name_graph)
@@ -2031,7 +2042,8 @@ def bulk_bulk_boundary(name_load,name_save,name_graph,pstate=[]):
 
        
     #Load left hand side
-    psi_halfinf_right=load_data(loaded_xxxx2,sites[len(pstate)+2+half:],shift=len(pstate)+half+2,side='right',charge_shift=[0,0])
+    psi_halfinf_right=load_data(loaded_xxxx2,sites[len(pstate)+2+half-2:],shift=len(pstate)+half+2-2,side='right',charge_shift=[0,0])
+    
     psi_halfinf_left=load_data(loaded_xxxx,sites[:half],shift=0,side='left')
     #print(len(sites[half+len(pstate):]))
     print('DO IT DO IT DO IT')
@@ -2263,7 +2275,7 @@ name_save='fourth_eigen_Ly=18_L=402_large_no_external_potential_pf_apf_'+str(pst
 #name_save='PROJECTED_LEFT_SIDE_pf_vac_boundary_L=402_'+str(pstate[:4])+'_num='+str(len(pstate))
 
 
-name_save='NEWEST_segment_new_technique_Ly=18_L=219_pf_apf_'+str(pstate[:4])+'_num='+str(len(pstate))
+name_save='Topo_dipole_technique_new_technique_Ly=18_L=302_pf_apf_'+str(pstate[:4])+'_num='+str(len(pstate))
 print("#"*100)
 print("Start the calculation")
 print(name_save)
