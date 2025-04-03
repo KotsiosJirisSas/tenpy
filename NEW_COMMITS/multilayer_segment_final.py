@@ -1194,7 +1194,7 @@ def bulk_bulk_boundary(name_load,name_save,shift):
     params['unit cell'] = 3#in the case of pf-apf
     params['sites added'] = added_sites#sides added in the middle
   
-    params['model data file'] = '/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/'+name_load+'.pkl'
+    params['model data file'] = '/mnt/users/dperkovic/quantum_hall_dmrg/data_load/multilayer_with_interlayer_interaction_Haldane/'+name_load+'.pkl'
     QHsys = QH_system(params=params)
     QHsys.shift_import=shift
     QHsys.patch_WFs()
@@ -1329,10 +1329,11 @@ def bulk_bulk_boundary(name_load,name_save,shift):
 
 
 
-
 """
-model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
-model_par2,conserve,root_config_,loaded_xxxx2=load_param(name_load2)
+name_load2='Data(1_3,1_3)'
+name_load='Data(2_3,0)'
+model_par,conserve,root_config_,loaded_xxxx=load_param(name_load2)
+model_par2,conserve,root_config_,loaded_xxxx2=load_param(name_load)
 
 loaded={}
 print(loaded_xxxx.keys())
@@ -1355,7 +1356,7 @@ print('done')
 with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/multilayer_with_interlayer_interaction_Haldane/Data.pkl", "wb") as f:
     pickle.dump(loaded, f)
 
-quit()"
+quit()
 """
 
 added_sites=int(sys.argv[1])
@@ -1364,10 +1365,10 @@ shift2=int(sys.argv[3])
 shift3=int(sys.argv[4])
 shift=np.array([shift1,shift2,shift3])
 
-name_load='Data(1_3,1_3)'
+#name_load='Data(1_3,1_3)'
 #name_load='Data(2_3,0)'
 name_save="Final_method_Haldane_Ly=18_L=398_shift="+str(shift)+"_num_sites="+str(added_sites)
-#name_load2='Data'
+name_load='Data'
 
 
 

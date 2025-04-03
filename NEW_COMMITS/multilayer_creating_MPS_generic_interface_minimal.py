@@ -183,7 +183,7 @@ class QH_system():
             self.pstate.append('')
         #self.pstate=['empty','full','empty','full','empty','full','empty']
         self.load_model_params()
-        self.graph = [self.graph[0]]*self.system_length #total graph is graph x sys length
+        #self.graph = [self.graph[0]]*self.system_length #total graph is graph x sys length
         #Q: for multicomponent systems have to change this no? ie --> self.graph[:#_of_components]
         self.model_par['boundary_conditions']= ('infinite', self.system_length)
         #self.model_par['layers'] = [('L',self.LL)]
@@ -466,6 +466,7 @@ class QH_system():
             model_par = loaded_xxxx['Model']
         except:
             model_par = loaded_xxxx['Parameters']
+        print(model_par['root_config'])
         root_config_ = model_par['root_config'].reshape(self.unit_cell,self.nlayer)
         """
         if model_par['cons_K']:
