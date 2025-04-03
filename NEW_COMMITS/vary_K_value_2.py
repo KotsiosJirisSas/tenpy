@@ -1017,7 +1017,12 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     right_env=load_environment(loaded_xxxx,len(sites),root_config_,conserve, perm,side='right',old=True)
     print('env'*100)
     print(right_env)
-    
+    #leg_MPS=psi_halfinf._B[-1].get_leg('vR').to_qflat()[0]
+    #leg_MPO
+    #leg_env=right_env.get_leg('vL').to_qflat()[0]
+    #shift_final=leg_MPS-leg_env
+    #print(shift_final)
+    #quit()
 
 
 

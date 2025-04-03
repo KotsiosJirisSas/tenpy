@@ -1178,8 +1178,8 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     
     L=200
     L=101
-    L=150
-    L=199
+    #L=150
+    #L=199
     #L=35
     graph=[loaded_xxxx['graph'][0]]*L
     #graph=load_graph(name_graph)
@@ -1241,8 +1241,8 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     print(psi1._B[0])
     print(psi2)
    
-    patch_WF_together(psi1,psi2,sites)
-    quit()
+    #patch_WF_together(psi1,psi2,sites)
+    #quit()
     filling= psi_halfinf.expectation_value("nOp")
     N_bfr=np.sum(filling)
     A=L
@@ -1302,8 +1302,12 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     print(right_env)
     
 
-
-
+    leg_MPS=psi_halfinf._B[-1].get_leg('vR').to_qflat()[0]
+    #leg_MPO
+    leg_env=right_env.get_leg('vL').to_qflat()[0]
+    shift_final=leg_MPS-leg_env
+    print(shift_final)
+    quit()
     #leg_MPS
     leg_MPS=psi_halfinf._B[0].get_leg('vL')
     #leg_MPO

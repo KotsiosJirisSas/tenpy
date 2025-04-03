@@ -1176,7 +1176,7 @@ def bulk_bulk_boundary(name_load,name_save,shift):
     
     
     #INSERT UNIT CELL IN BETWEEN!
-    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=half)
+    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=False)
 
 
     perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
@@ -1222,13 +1222,35 @@ def bulk_bulk_boundary(name_load,name_save,shift):
     #need to shift charges due to differing conventions for charges on 2/3,0 and 1/3,1/3 
     #this convention assumes that 2/3,0 is on LHS and 1/3,1/3 on RHS
     
+
     
     #if it is the other way around then shifara=0
-    right_env=load_environment(data,(len(sites)-half)//2-1,root_config_,conserve, perm[0],side='right',old=True,charge_shift=-np.array(shift))
+    right_env=load_environment(data,(len(sites))//2-1,root_config_,conserve, perm[0],side='right',old=True,charge_shift=[0,0,0])
     print('right_env'*100)
     #print(right_env)
-    #quit()
+
+    leg_MPS=psi_total._B[-1].get_leg('vR').to_qflat()[0]
+    #leg_MPO
+    leg_env=right_env.get_leg('vL').to_qflat()[0]
+    shift_final=leg_MPS-leg_env
+    print('print out the shift')
+    print(shift_final)
+    print('right_env'*100)
+
+    name='Environment_R(2_3,0)'
+    name_load_q2='Envs_qs(2_3,0)'
+    data=load_environments_from_file(name,name_load_q2,side='right')
+
     #
+    right_env=load_environment(data,(len(sites))//2-1,root_config_,conserve, perm[0],side='right',old=True,charge_shift=shift_final)
+    #quit()
+
+    #leg_MPO=M.H_MPO._W[-1].get_leg('wL')
+    leg_MPO=M.H_MPO._W[-1]#.get_leg('wR')
+    #leg_MPO=M.H_MPO._W[-1]#.get_leg('wL')
+    print('MPO match')
+    print(leg_MPO)
+    print(right_env)
     print(psi_total._B[-1])
     print(psi_total._B[-2])
     print(psi_total._B[-3])
@@ -1242,13 +1264,13 @@ def bulk_bulk_boundary(name_load,name_save,shift):
     #leg_MPS
     #leg_MPS=psi_total._B[0].get_leg('vL')
     #leg_MPO
-    #leg_MPO=M.H_MPO._W[0].get_leg('wL')
+    #
  
     
     name='Environment_L(1_3,1_3)'
     name_load_q2='Envs_qs(1_3,1_3)'
     data=load_environments_from_file(name,name_load_q2,side='left')
-    left_environment=load_environment(data,-half//2-1,root_config_,conserve, perm[0],side='left',old=True,charge_shift=[0,0,0])
+    left_environment=load_environment(data,-1,root_config_,conserve, perm[0],side='left',old=True,charge_shift=[0,0,0])
     #print(M.H_MPO._W[0])
     print('psi'*100)
     
