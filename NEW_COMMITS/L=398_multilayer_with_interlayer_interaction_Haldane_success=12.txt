@@ -1,0 +1,60 @@
+shift:[  6 -18  18]
+excess number of electrons:-1.300998573094958e-06
+K sector: -4.77492891896631
+shift:[-78   6  -6]
+excess number of electrons:-1.3005822825928881e-06
+K sector: 9.225071171597389
+shift:[-12 -12  12]
+excess number of electrons:-1.3007493993022479e-06
+K sector: -1.7749289156051447
+shift:[-54   6  -6]
+excess number of electrons:-1.3005433785739928e-06
+K sector: 5.225071166563108
+shift:[-60 -12  12]
+excess number of electrons:-1.3009525103302444e-06
+K sector: 6.225071085127404
+shift:[-54 -18  18]
+excess number of electrons:-1.3008309009687746e-06
+K sector: 5.225071116403601
+shift:[-78 -18  18]
+excess number of electrons:-1.3009961689347538e-06
+K sector: 9.225071080382993
+shift:[-30 -12  12]
+excess number of electrons:-1.3006929039938164e-06
+K sector: 1.225071120762177
+shift:[6 0 0]
+excess number of electrons:-1.3009090399362933e-06
+K sector: -4.774928909660206
+shift:[6 0 0]
+excess number of electrons:-1.3005035633950612e-06
+K sector: -4.774928846292442
+shift:[-66  -6   6]
+excess number of electrons:-1.3007332819447992e-06
+K sector: 7.225071125498031
+shift:[-54 -24  24]
+excess number of electrons:-1.3007204266446415e-06
+K sector: 5.225071121611329
+shift:[-114    0    0]
+excess number of electrons:-1.300810301418931e-06
+K sector: 15.225071133913477
+shift:[-114    0    0]
+excess number of electrons:-1.3009853597478749e-06
+K sector: 15.225071097313371
+shift:[-12 -18  18]
+excess number of electrons:-1.300880767468593e-06
+K sector: -1.7749289112541575
+shift:[-108  -18   18]
+excess number of electrons:-1.3011223585213116e-06
+K sector: 14.225071074900754
+shift:[-60   0   0]
+excess number of electrons:-1.3007129986974952e-06
+K sector: 6.225071137573202
+shift:[-72   6  -6]
+excess number of electrons:-1.3006482607880177e-06
+K sector: 8.225071162721285
+shift:[  6 -18  18]
+excess number of electrons:-1.3009276812470105e-06
+K sector: -4.774928918756921
+shift:[-78   6  -6]
+excess number of electrons:-1.3006823422201386e-06
+K sector: 9.225071154380931
