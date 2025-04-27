@@ -55,17 +55,18 @@ def plot_density_with_EE_spectrum(density,distance,EEs,name):
 
 
 
-def plot_density(density,name,mu,N_layer=1,filling=2/3,potential=True):
+def plot_density(density,name,mu,N_layer=1,filling=1/2,potential=True):
     distance=np.arange(len(density))//N_layer
 
     fig, ax = plt.subplots(figsize=(6, 4))
-    #plt.figure()
+
   
     ax.plot(distance,density,c='#1f77b4', marker='o',markerfacecolor='none', linestyle='-', label="Main plot")
-    ax.set_title(r"$K=$"+str(mu),fontsize=15)
+    ax.set_title(r"$p=$"+str(mu),fontsize=15)
     
     ax.set_ylabel(r"$\nu$",fontsize=15)
     ax.set_xlabel(r"$X_i$",fontsize=15)
+
     max_x=120
     #ax.set_xlim(-2,max_x)
     integrals=[]
@@ -73,6 +74,8 @@ def plot_density(density,name,mu,N_layer=1,filling=2/3,potential=True):
         integral=np.sum(density[distance<x]-filling)
         integrals.append(integral)
     #ax2=ax.twinx()
+    ax.plot(distance,distance*0+0.5,ls='--')
+    #ax.set_xlim(40,250)
     #ax2.scatter(distance,np.array(integrals), color='r')
     if potential==False:
         v=0.2
@@ -103,15 +106,16 @@ def plot_density(density,name,mu,N_layer=1,filling=2/3,potential=True):
     #inset_ax = inset_axes(ax, width="40%", height="40%", loc=(5,5))  # width and height are percentages
     inset_ax.plot(distance,integrals, 'r', label="Inset plot")
     inset_ax.plot(distance,np.array(integrals)*0, ls='--', label="Inset plot")
-    inset_ax.plot(distance,np.array(integrals)*0-2/3, c='goldenrod',ls='--', label="Inset plot")
+    inset_ax.plot(distance,np.array(integrals)*0+1/4, c='goldenrod',ls='--', label="Inset plot")
     inset_ax.set_ylabel(r"$\Delta N$")
     inset_ax.set_xlabel(r"$X_i$")
-    inset_ax.set_xlim(-2,max_x)
-    inset_ax.set_xticks([])
-    inset_ax.set_yticks([0,-2/3])
-    custom_labels_y=['0','-2/3']
-    inset_ax.yaxis.set_label_coords(-0.03, 0.9)
-    inset_ax.set_yticklabels(custom_labels_y)
+    #inset_ax.set_xlim(-2,max_x)
+    #inset_ax.set_xticks([])
+    #inset_ax.set_yticks([0,-2/3])
+    #custom_labels_y=['0','-2/3']
+    #inset_ax.yaxis.set_label_coords(-0.03, 0.9)
+    #inset_ax.set_yticklabels(custom_labels_y)
+   
     #inset_ax.set_title("Inset", fontsize=8)
     plt.tight_layout()
     #inset_ax.tick_params(axis='minor', which='x', labelsize=8)

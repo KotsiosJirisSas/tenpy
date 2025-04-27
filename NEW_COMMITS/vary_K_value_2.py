@@ -992,11 +992,15 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     psi_halfinf=load_data(loaded_xxxx,sites[len(pstate):],shift=len(pstate))
   
     #THIS ONE HAS BOTH N,K conservation
-    #psi_halfinf=project_left_side_of_mps(psi_halfinf)
+    psi_halfinf=project_left_side_of_mps(psi_halfinf)
     print('origig'*100)
     print(psi_halfinf._B[-1])
     #psi_halfinf.canonical_form_finite()
     #print(psi_halfinf._B[0])
+    
+    filling= psi_halfinf.expectation_value("nOp")
+    p_bfr=np.sum((filling-1/3)*np.arange(len(filling)))    
+    N_bfr=np.sum(filling-1/3)
 
 
     
@@ -1009,6 +1013,16 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     psi_halfinf.canonical_form_finite(cutoff=0.0)
     #print(len(psi_halfinf._B))
     
+    print("for 1/3 banana banana banana")
+    filling= psi_halfinf.expectation_value("nOp")
+    p_after=np.sum((filling-1/3)*np.arange(len(filling)))
+    N_aft=np.sum(filling-1/3)
+    print('number of electrons')
+    print(N_bfr,N_aft)
+    print('dipole')
+    print(p_bfr,p_after)
+    quit()
+
 
     print('psi'*100)
     print(psi_halfinf._B[-1])

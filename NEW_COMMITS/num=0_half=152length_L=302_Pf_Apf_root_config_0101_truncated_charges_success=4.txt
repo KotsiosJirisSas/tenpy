@@ -1,0 +1,147 @@
+shift:[-36   0]
+excess number of electrons:1.8891119830444225e-05
+K sector: 4.731728262522619
+shift:[-24   0]
+excess number of electrons:2.023496816028203e-05
+K sector: 1.736203759774237
+shift:[-36   0]
+excess number of electrons:2.7950606800886124e-05
+K sector: 4.734893643119207
+shift:[16  0]
+excess number of electrons:-1.2438890130639368e-05
+K sector: -8.276024818079042
+shift:[-40   0]
+excess number of electrons:2.3973755490236393e-05
+K sector: 5.732482967859285
+shift:[24  0]
+excess number of electrons:-4.838781355220867e-05
+K sector: -10.281878279428723
+shift:[0 0]
+excess number of electrons:-1.3977547070165297e-05
+K sector: -4.276423902419511
+shift:[-4  0]
+excess number of electrons:-3.8765111943228625e-06
+K sector: -3.2738522454995636
+shift:[24  0]
+excess number of electrons:-1.504862491163994e-05
+K sector: -10.272385993585816
+shift:[-24   0]
+excess number of electrons:-3.213705788152055e-07
+K sector: 1.727108238257828
+shift:[-8  0]
+excess number of electrons:-2.760566042425694e-06
+K sector: -2.2727124733489186
+shift:[-16   0]
+excess number of electrons:1.372180691233682e-05
+K sector: -0.26942592863782266
+shift:[-20   0]
+excess number of electrons:-3.202078546316045e-06
+K sector: 0.729569484870841
+shift:[-4  0]
+excess number of electrons:-1.3376500283435178e-05
+K sector: -3.2767652670659673
+shift:[-32   0]
+excess number of electrons:2.036624585632918e-05
+K sector: 3.7336422778687646
+shift:[-8  0]
+excess number of electrons:-6.598117505585144e-06
+K sector: -2.272457556506629
+shift:[-16   0]
+excess number of electrons:-2.4652417427994955e-06
+K sector: -0.2729449051154873
+shift:[-8  0]
+excess number of electrons:-9.644015948995222e-06
+K sector: -2.276988307343503
+shift:[-52   0]
+excess number of electrons:6.976044610146337e-05
+K sector: 8.74682366661569
+shift:[-8  0]
+excess number of electrons:1.9699948931029e-06
+K sector: -2.272952042512011
+shift:[-20   0]
+excess number of electrons:4.6569176441635385e-05
+K sector: 0.7400874966380986
+shift:[-32   0]
+excess number of electrons:1.5294014196198802e-05
+K sector: 3.7314256238528722
+shift:[-20   0]
+excess number of electrons:-1.316622765112907e-05
+K sector: 0.7238916790971155
+shift:[-36   0]
+excess number of electrons:1.7953314678409438e-05
+K sector: 4.732196491201716
+shift:[-4  0]
+excess number of electrons:2.613203422985322e-06
+K sector: -3.2732050528559586
+shift:[-44   0]
+excess number of electrons:4.7025774067843695e-05
+K sector: 6.735220519252085
+shift:[24  0]
+excess number of electrons:-1.5920547913716998e-05
+K sector: -10.275864540062647
+shift:[-40   0]
+excess number of electrons:3.190167373595676e-05
+K sector: 5.73458390311715
+shift:[-8  0]
+excess number of electrons:-4.3060268511418975e-06
+K sector: -2.2748127730481986
+shift:[12  0]
+excess number of electrons:-1.48145322297899e-05
+K sector: -7.276781152574336
+shift:[-44   0]
+excess number of electrons:-2.951392453653945e-06
+K sector: 6.724666709769547
+shift:[-48   0]
+excess number of electrons:3.0200244687583755e-05
+K sector: 7.7339815438284
+shift:[8 0]
+excess number of electrons:1.8747035141486457e-06
+K sector: -6.26958111686705
+shift:[-12   0]
+excess number of electrons:1.9424029969961065e-05
+K sector: -1.268607512975521
+shift:[-40   0]
+excess number of electrons:3.452553157384797e-05
+K sector: 5.736651741277756
+shift:[12  0]
+excess number of electrons:-3.120281927854185e-05
+K sector: -7.278412508778172
+shift:[24  0]
+excess number of electrons:-1.617919005153512e-05
+K sector: -10.273727025650441
+shift:[24  0]
+excess number of electrons:-1.6057869278163217e-05
+K sector: -10.2708195458513
+shift:[-56   0]
+excess number of electrons:3.9502988820550033e-05
+K sector: 9.731152463512542
+shift:[8 0]
+excess number of electrons:-1.6473510228709465e-06
+K sector: -6.2751328934678
+shift:[-24   0]
+excess number of electrons:1.3192826413488401e-05
+K sector: 1.728567917842743
+shift:[24  0]
+excess number of electrons:-1.2333409079856583e-05
+K sector: -10.272947327347401
+shift:[20  0]
+excess number of electrons:-7.934744151005813e-06
+K sector: -9.27305313012058
+shift:[-28   0]
+excess number of electrons:2.532642866315271e-05
+K sector: 2.733568859257055
+shift:[-28   0]
+excess number of electrons:1.2795073709270799e-05
+K sector: 2.7286987760544292
+shift:[-8  0]
+excess number of electrons:-9.82496503953989e-06
+K sector: -2.2771082357831043
+shift:[-56   0]
+excess number of electrons:5.572121441288491e-05
+K sector: 9.744085791346908
+shift:[0 0]
+excess number of electrons:-3.0625308152898434e-05
+K sector: -4.279724653286849
+shift:[0 0]
+excess number of electrons:-2.8777979687866218e-05
+K sector: -4.276270027035408

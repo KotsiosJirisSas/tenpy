@@ -87,7 +87,6 @@ print("Old code finished producing MPO graph",".."*10)
 
 G=M.MPOgraph
 print(len(G))
-quit()
 #print(G[0][('Mk', 'AL-6-aL.11', 0)])
 #quit()
 G_new=QH_Graph_final.obtain_new_tenpy_MPO_graph(G)
@@ -102,8 +101,6 @@ L = len(G_new)
 sites=[]
 for i in range(L):
 	spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
-	#spin=QH_MultilayerFermionSite_3(N=1,root_config=root_config_,conserve=('N','K'),site_loc=i)
-	#spin=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
 	sites.append(spin)
 
 

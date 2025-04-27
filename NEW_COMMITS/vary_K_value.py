@@ -1217,10 +1217,12 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
 
     #INSERT UNIT CELL IN BETWEEN!
     
-    #M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=False)
+    M,sites,ordered_states=create_segment_DMRG_model(model_par,L,root_config_,conserve,graph,add=False)
     
 
-    #perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
+    perm=load_permutation_of_basis(loaded_xxxx,ordered_states,M.H_MPO._W[0])
+    
+    """
     sites=[]
     add=0
     conserve=('N','K')
@@ -1233,35 +1235,41 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
 
  
     psi1=load_data(loaded_xxxx2,sites[:50],shift=len(pstate),charge_shift=[3,0])
+    """
     #psi2=load_data(loaded_xxxx,sites[:50],shift=len(pstate))
     #filling= psi1.expectation_value("nOp")
     #print(filling)
     #quit()
     
-    print(psi1._B[0])
-    print(psi2)
+    #print(psi1._B[0])
+    #print(psi2)
    
     #patch_WF_together(psi1,psi2,sites)
     #quit()
-    filling= psi_halfinf.expectation_value("nOp")
-    N_bfr=np.sum(filling)
-    A=L
-    #A=3
-    #print()
-    print(filling)
+   
     #deviation=np.sum(filling[:A]-1/3)
     #print(deviation)
     #quit()
-    p_bfr=np.sum((filling[:A]-2/3)*np.arange(len(filling[:A])))
     
 
 
-
+    psi_halfinf=load_data(loaded_xxxx,sites[len(pstate):],shift=len(pstate))
+  
     #THIS ONE HAS BOTH N,K conservation
     psi_halfinf,charge=project_left_side_of_mps(psi_halfinf)
     print('origig'*100)
     #charge=[0,0]
     #print(charge)
+    filling= psi_halfinf.expectation_value("nOp")
+    p_bfr=np.sum((filling-2/3)*np.arange(len(filling)))
+    
+    N_bfr=np.sum(filling-2/3)
+
+    print(p_bfr)
+    print(N_bfr)
+    #A=3
+    #print()
+    print(filling)
     #print(psi_halfinf._B[-1])
     print(psi_halfinf._B[0])
     
@@ -1282,13 +1290,14 @@ def run_vacuum_boundary_modified_K_2(name_load,name_save,name_graph,pstate=[]):
     
 
     filling= psi_halfinf.expectation_value("nOp")
-    p_after=np.sum((filling[:A]-2/3)*np.arange(len(filling[:A])))
+    p_after=np.sum((filling-2/3)*np.arange(len(filling)))
     N_aft=np.sum(filling)
     print('number of electrons')
     print(N_bfr,N_aft)
     print('dipole')
     print(p_bfr,p_after)
     print()
+    quit()
     
     #quit()
     print('psi'*100)

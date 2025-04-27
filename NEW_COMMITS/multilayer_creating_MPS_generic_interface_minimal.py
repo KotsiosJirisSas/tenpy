@@ -437,7 +437,7 @@ class QH_system():
         z=np.abs(np.sum(filling-self.avg_filling/self.nlayer))
      
         if z<0.01:
-            with open('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy/NEW_COMMITS/L='+str(self.system_length)+'_multilayer_with_interlayer_interaction_Haldane_success='+str(self.sides_added)+'.txt','a') as f:
+            with open('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy/NEW_COMMITS/L='+str(self.system_length)+"_half="+str(self.half)+'_multilayer_with_interlayer_interaction_Haldane_success='+str(self.sides_added)+'.txt','a') as f:
                 f.write('shift:'+str(shift)+"\n")
                 f.write('excess number of electrons:'+str(np.sum(filling-self.avg_filling/self.nlayer))+"\n")
                 f.write("K sector: "+str(K)+"\n")
@@ -784,17 +784,19 @@ class QH_system():
 
 if __name__ == "__main__":
    
-    a=int(sys.argv[1])
+   
+    num=int(sys.argv[1])
     b=int(sys.argv[2])
-
+    half=int(sys.argv[3])
     #nu for the state we are matching
     avg_filling=1/2
     avg_filling=2/3
 
-    L=199
+    
    
-    half=(L//6)*6
-    L=199*2
+    #half=(L//6)*6
+    #half=(L//6)*6-2
+    L=num
     ####
     params = {}
     params['verbose'] = 1

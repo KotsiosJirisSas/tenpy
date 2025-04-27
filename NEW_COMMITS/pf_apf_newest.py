@@ -765,7 +765,13 @@ def patch_WF_together(psi1,psi2,sites,pstate):
     print(psi1._B[-1].shape)
     print(np.transpose(psi1._B[-1].to_ndarray(),(1,0,2)).shape)
     print(psi2._B[0].shape)
-    B_new=set_MPS_boundary(legL,leg_physical,legR,pstate)
+    #
+    index=np.argmax(psi1._S[-1])
+    index2=np.argmax(psi2._S[0])
+    
+    max_right=legR.to_qflat()[index2]
+    print('shiftara',max_right)
+    B_new,shiftara=set_MPS_boundary(legL,leg_physical,legR,max_right)
     
 
     Ss.append(Ss1[-1])
@@ -810,7 +816,7 @@ def patch_WF_together(psi1,psi2,sites,pstate):
     #psi=MPS.from_Bflat(sites[:len(Bflat)],Bflat, bc='segment',legL=left_leg)
     leg=psi._B[len(psi1._B)+len(pstate)+1].get_leg('vL')
     
-    charges=leg.charges
+    charges=leg.charges-shiftara
     print('length of leg',print(len(charges)))
     psi2,ch=project_side_of_mps_given_charges(psi2,charges)
     
@@ -834,36 +840,54 @@ def patch_WF_together(psi1,psi2,sites,pstate):
     for i in range(len(psi1._B)):
     
         Ss.append(Ss1[i])
-        Bflat.append(np.transpose(psi._B[i].to_ndarray(),(1,0,2)))
-   
-  
- 
-    #Ss.append(Ss1[len(psi1._B)])
-    for i in range(len(pstate)+1):
-        #try this and see what happens
-        #Ss.append(Ss1[-1])
-        #print(Ss1[-1].shape)
-        Ss.append(Ss1[len(psi1._B)+i])
-        print(psi._B[len(psi1._B)+i].to_ndarray().shape)
+        B=np.transpose(psi._B[i].to_ndarray(),(1,0,2))
+        Bflat.append(B)
+        print(B.shape)
+        print(Ss1[i].shape)
+    Ss.append(Ss1[len(psi1._B)])
+    print(Ss[len(psi1._B)].shape)
+    
+    legR=psi2._B[0].get_leg('vL')
+    
+    legL=psi._B[len(psi1._B)-1].get_leg('vR')
+    
+    index2=np.argmax(psi2._S[0])
+    max_right=legR.to_qflat()[index2]
+    print('shiftara',max_right)
+    B_last,shiftara=set_MPS_boundary(legL,leg_physical,legR,max_right)
+    print(B_last[0].shape)
+    Bflat.append(np.transpose(B_last[0],(1,0,2)))
 
-        Bflat.append(np.transpose(psi._B[len(psi1._B)+i].to_ndarray(),(1,0,2)))
-   
 
+
+    #last one, this one degines connection betwen left adn right
+    #Ss.append(Ss1[-1])
+    #print(B_new.shape)
+    #quit()
+    
+    #Ss.append(np.random.random(Ss1[-1].shape))
+    
+    #Ss.append(Ss2[0])
 
     for i in range(len(psi2._B)):
       
         Ss.append(Ss2[i])
-        Bflat.append(np.transpose(psi2._B[i].to_ndarray(),(1,0,2)))
+        B=np.transpose(psi2._B[i].to_ndarray(),(1,0,2))
+        Bflat.append(B)
+        print(B.shape)
+        print(Ss2[i].shape)
     Ss.append(Ss2[-1])
    
 
     #reads charges off the left leg of MPS
-    left_leg=psi1._B[0].get_leg('vL')
+    left_leg=psi._B[0].get_leg('vL')
     print("start shit")
 
     print('TRY TRY SHORTER')
-   
-    #MAIN POINT IS THAT ERROR WAS REMOVED, AND ISNTEAD JUST WARNING HAPPENS WITH SETTING ALL OTHER ELEMENTS TO ZERO
+    print(len(Ss))
+    print(len(Bflat))
+    print(len(sites))
+    #MAIN POINT IS THAT ERROR WAS REMOVED, AND INSTEAD JUST WARNING HAPPENS WITH SETTING ALL OTHER ELEMENTS TO ZERO
     psi=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
     filling= psi.expectation_value("nOp")
     print(psi)
@@ -1085,7 +1109,7 @@ def load_param(name):
         conserve=tuple(conserve)
     return model_par,conserve,root_config_,loaded_xxxx
 
-def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
+def set_MPS_boundary(legL,leg_physical, legR,max_right):
 
   
     """
@@ -1099,7 +1123,7 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
     duljina_physical=len(leg_physical[0].to_qflat())
     #gives corresponding labels to the environment
    
-   
+  
  
     Bs=[]
        
@@ -1120,7 +1144,12 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
     #qflat= qflat[sorted_charges]
     #set left leg to be equal to qflat
     #L=np.array(qflat)
-    R=legR.to_qflat()
+    ch_physical=leg_physical_site.to_qflat()[0]
+   
+    #match the two charges
+    shiftara=L[0]+ch_physical-max_right
+    print(shiftara)
+    R=legR.to_qflat()+shiftara
 
 
     #NOW AT THE LAST SITE WE HAVE TO MATCH TO SITE to the right
@@ -1153,13 +1182,13 @@ def set_MPS_boundary(legL,leg_physical, legR,pstate=[]):
         ind=np.where((R==charge_2).all(axis=1))[0]
         print(ind)
         Bflat[i,1,ind]+=np.random.random(len(ind))
-    Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
-    Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+    #Bflat[:,0,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
+    #Bflat[:,1,:]+=np.random.random((Bflat.shape[0],Bflat.shape[2]))
     #print(R)
     Bs.append(Bflat)
     
     
-    return Bs
+    return Bs,shiftara
 
 
 
@@ -1785,6 +1814,9 @@ def bulk_vacuum_boundary_left_side(name_load,name_save,name_graph,pstate=[]):
         hdf5_io.save_to_hdf5(f, data)
 
 def bulk_bulk_boundary(name_load,name_save,name_graph,pstate=[]):
+    
+    #L=150+12*4+16+16+8+32*2-2
+    #print(L)
     model_par,conserve,root_config_,loaded_xxxx=load_param(name_load)
     #model_par,conserve,root_config_,loaded_xxxx2=load_param(name_load2)
     loaded_xxxx2={'MPS_Ss':loaded_xxxx['MPS_2_Ss'],'MPS_qflat':loaded_xxxx['MPS_2_qflat'],'MPS_Bs':loaded_xxxx['MPS_2_Bs']}
@@ -1812,6 +1844,7 @@ def bulk_bulk_boundary(name_load,name_save,name_graph,pstate=[]):
   
    
     L=150+12*4+16+16+8+32*2-2
+    print(L)
     #add one more site
     #half=51+3+3*12+8+4+32
     #add one more site
@@ -1949,8 +1982,26 @@ def bulk_bulk_boundary(name_load,name_save,name_graph,pstate=[]):
     data=load_environments_from_file(name,name_env_q,side='right')
 
     #print(M.H_MPO._W[-1])
-    #MAKE SURE YOU USE RIGHT PERMUTATION
+    
+
+
     right_env=load_environment(data,len(sites)-2,root_config_,conserve, perm[0],side='right',old=True)
+    print('right_env'*100)
+    #print(right_env)
+
+    leg_MPS=psi_total._B[-1].get_leg('vR').to_qflat()[0]
+    #leg_MPO
+    leg_env=right_env.get_leg('vL').to_qflat()[0]
+    shift_final=leg_MPS-leg_env
+    #MAKE SURE YOU USE RIGHT PERMUTATION
+
+
+    name='Environment_R_APf'
+    print("loading right env")
+    name_env_q='Envs_qs'
+    data=load_environments_from_file(name,name_env_q,side='right')
+
+    right_env=load_environment(data,len(sites)-2,root_config_,conserve, perm[0],side='right',old=True,charge_shift=shift_final)
 
     #as a test set RHS env to vacuum
     #may need to do it like this...
@@ -2087,11 +2138,12 @@ name_save='fourth_eigen_Ly=18_L=402_large_no_external_potential_pf_apf_'+str(pst
 #name_save='PROJECTED_LEFT_SIDE_pf_vac_boundary_L=402_'+str(pstate[:4])+'_num='+str(len(pstate))
 
 
-name_save='Topo_dipole_technique_new_technique_Ly=18_L=302_pf_apf_'+str(pstate[:4])+'_num='+str(len(pstate))
+name_save='Topo_dipole_technique_new_technique_Ly=18_L=300_pf_apf_'+str(pstate[:4])+'_num='+str(len(pstate))
 print("#"*100)
 print("Start the calculation")
 print(name_save)
 print("#"*100)
+
 #bulk_vacuum_boundary_left_side(name_load,name_save,name_graph)
 #bulk_vacuum_boundary(name_load,name_save,name_graph,pstate=pstate)
 bulk_bulk_boundary(name_load,name_save,name_graph,pstate=pstate)

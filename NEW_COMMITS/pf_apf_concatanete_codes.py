@@ -592,14 +592,16 @@ def load_environment(loaded_xxxx,location,root_config_,conserve,permute, side='r
 
 def load_param(name):
 
-    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/"+name+'.pkl', 'rb') as f:
+    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/Lx=20_xi=4/"+name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     #IF LOADED FROM H5 FILE UNCOMMENT
     print(loaded_xxxx.keys())
     model_par = loaded_xxxx['Parameters']
-    #print(model_par)
-    #quit()
-    root_config_ = model_par['root_config'].reshape(4,1)
+    print(model_par)
+    try:
+        root_config_ = model_par['root_config'].reshape(4,1)
+    except:
+        root_config_ = loaded_xxxx['root_config'].reshape(4,1)
     #print(root_config_)
     
     conserve=[]
@@ -615,10 +617,10 @@ def load_param(name):
 
 
 def load_environments_from_file(name,name_load,side='right'):
-    file_path="/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/"+name+'.npz'
+    file_path="/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/Lx=20_xi=4/"+name+'.npz'
     data =np.load(file_path,allow_pickle=True)
     
-    file_path="/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/"+name_load+'.pkl'
+    file_path="/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/Lx=20_xi=4/"+name_load+'.pkl'
     with open(file_path, 'rb') as f:
         loaded_qs= pickle.load(f, encoding='latin1')
     print(loaded_qs.keys())
@@ -761,7 +763,7 @@ def sanity_check_permutation(loaded_xxxx,new_MPO, permute,permute2):
 
 def load_graph(name):
 
-    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/"+name+'.pkl', 'rb') as f:
+    with open("/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/Lx=20_xi=4/"+name+'.pkl', 'rb') as f:
         loaded_xxxx = pickle.load(f, encoding='latin1')
     return loaded_xxxx
   
@@ -786,7 +788,11 @@ def bulk_bulk_boundary(name_load,name_save,shift,added_sites):
     #half=51+3+3*12+8+4+32
     #add one more site
     half=51+3+3*12+8+4+32+16
-  
+    L=302
+    half=150
+    half=152
+    #152 IF 4*n=cellnumber
+    #150 IF 2
     graph=[graph[0]]*L
     #graph= load_graph(name_graph)
     L=len(graph)
@@ -826,10 +832,11 @@ def bulk_bulk_boundary(name_load,name_save,shift,added_sites):
     params['sys length'] = L
     params['half']=half
     params['avg_filling']=1/2
+    params['num']=0
     params['unit cell'] = 4#in the case of pf-apf
     params['sites added'] = added_sites#sides added in the middle
   
-    params['model data file'] = '/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/'+name_load+'.pkl'
+    params['model data file'] = '/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/Lx=20_xi=4/'+name_load+'.pkl'
     QHsys = QH_system(params=params)
     QHsys.shift_import=shift
     QHsys.patch_WFs()
@@ -887,8 +894,12 @@ def bulk_bulk_boundary(name_load,name_save,shift,added_sites):
     print(left_environment)
     #print(psi_halfinf_left._B[0])
     #print(psi_total._B[0])
-  
-   
+    
+    print(psi_total._B[0])
+    print(psi_total._B[1])
+    print(psi_total._B[2])
+    print(psi_total._B[3])
+    print(psi_total._B[4])
     init_env_data_halfinf={}
 
 
@@ -906,7 +917,7 @@ def bulk_bulk_boundary(name_load,name_save,shift,added_sites):
         'max_E_err': 1.e-7,
         'max_S_err': 1.e-5,
         'trunc_params': {
-            'chi_max': 4500,
+            'chi_max': 3600,
             'svd_min': 1.e-7,
         },
         'max_sweeps': 50}
@@ -949,7 +960,7 @@ def bulk_bulk_boundary(name_load,name_save,shift,added_sites):
     name_save=name_save+"_K_sector="+str(K)
 
    
-    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/pf_apf/"+name_save+".h5", 'w') as f:
+    with h5py.File("/mnt/users/dperkovic/quantum_hall_dmrg/segment_data/pf_apf/Lx=20_xi=4/"+name_save+".h5", 'w') as f:
         hdf5_io.save_to_hdf5(f, data)
 
 
@@ -965,7 +976,7 @@ shift2=int(sys.argv[3])
 shift=np.array([shift1,shift2])
 #print(name_graph)
 
-name_save="matched_boundary_segment_new_technique_Ly=18_L=219_pf_apf_shift"+str(shift)+'_num='+str(added_sites)
+name_save="matched_boundary_segment_new_technique_Ly=20_L=302_half=152_pf_apf_shift="+str(shift)+'_added_sites='+str(added_sites)
 print("#"*100)
 print("Start the calculation")
 print(name_save)

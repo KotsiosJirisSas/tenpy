@@ -170,10 +170,11 @@ class QH_system():
         '''
         time0 = time.time()
         self.data_location = params['model data file']
-
+        self.num=params['num']
         self.system_length = params['sys length']#what Dom calls L in his code
         self.verbose = params['verbose']
         self.unit_cell = params['unit cell']
+        
         self.avg_filling = params['avg_filling']
         self.half= params['half']
         #not needed parameter
@@ -315,8 +316,8 @@ class QH_system():
       
         Qflat_added,Ss_added= self.add_sites_to_L(legL = left_leg,Sleft=left_Ss,leg_physical = leg_physical,numsites=num)
         #PART 3: CONNECT TO RHS
-
-       
+        print(num)
+        print(Qflat_added)
         
         #first: how many charges agree?
         charges_LHS = Qflat_added[-1]
@@ -435,7 +436,8 @@ class QH_system():
         z=np.abs(np.sum(filling-self.avg_filling))
      
         if z<0.01:
-            with open('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy/NEW_COMMITS/L='+str(self.system_length)+'_Pf_Apf_truncated_charges_success='+str(self.sides_added)+'.txt','a') as f:
+           
+            with open('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy/NEW_COMMITS/root_0101_Lx=16_num='+str(self.num)+'_half='+str(self.half)+'length_L='+str(self.system_length)+'_Pf_Apf_truncated_charges_success='+str(self.sides_added)+'.txt','a') as f:
                 f.write('shift:'+str(shift)+"\n")
                 f.write('excess number of electrons:'+str(np.sum(filling-self.avg_filling))+"\n")
                 f.write("K sector: "+str(K)+"\n")
@@ -460,11 +462,19 @@ class QH_system():
         with open(self.data_location, 'rb') as f:
             loaded_xxxx = pickle.load(f, encoding='latin1')
         print(loaded_xxxx.keys()) 
+
         try:      
             model_par = loaded_xxxx['Model']
         except:
             model_par = loaded_xxxx['Parameters']
-        root_config_ = model_par['root_config'].reshape(self.unit_cell,1)
+        print(model_par.keys())
+        
+        try:
+            root_config_ = model_par['root_config'].reshape(self.unit_cell,1)
+        #except:
+        #    root_config_ =loaded_xxxx['root_config'].reshape(self.unit_cell,1)
+        except:
+            root_config_=np.array([1,1,0,0]).reshape(self.unit_cell,1)
         """
         if model_par['cons_K']:
             conserve = (model_par['cons_C'],'K') 
@@ -511,18 +521,18 @@ class QH_system():
         half=self.half
         if side == 'right':
             psi_MPS = self.loaded_MPS_R.copy()
-           
+            
             sites = self.sites[half+len(self.pstate)+MPSshift:]    # why the +2???? system = [LHS]|[added piece][RHS]
                                                             # and the [added piece] is -[]-[pstate]-[]-
             #print('og',self.sites[0].leg)
             #print('shifted',sites[0].leg)
             shift = half+len(self.pstate)+MPSshift
             #change this later on
-            sites = self.sites[half+MPSshift:]    # why the +2???? system = [LHS]|[added piece][RHS]
+            sites = self.sites[half+MPSshift-self.num:]    # why the +2???? system = [LHS]|[added piece][RHS]
                                                             # and the [added piece] is -[]-[pstate]-[]-
             #print('og',self.sites[0].leg)
             #print('shifted',sites[0].leg)
-            shift = half+MPSshift
+            shift = half+MPSshift-self.num
     
         elif side == 'left':
   
@@ -535,10 +545,26 @@ class QH_system():
         Bflat0 = psi_MPS['MPS_Bs'].copy()
         Ss = psi_MPS['MPS_Ss'].copy()
         qflat2 = psi_MPS['MPS_qflat'].copy()
+        """
+        if side == 'left':
+            arr = np.array(qflat2)  # Shape: (N, D)
+            # Convert to a 2D array if it's not already
+            arr = np.array([np.ravel(x) for x in arr])
+
+            # Compare each row to the previous one
+            diffs = np.any(arr[1:] != arr[:-1], axis=1)
+
+            # New elements start at index 0 and where diffs is True (offset by 1)
+            new_element_indices = np.flatnonzero(np.r_[True, diffs])
+
+            print(new_element_indices)
+            #quit()
+        """
         # we are taking first leg charges only
         #this bit checks whether the full charge or only left leg is given
         if len(qflat2)==3:
             qflat2=qflat2[0] 
+
        
         
         #print('Qs shapes (at bonds)',len(qflat2),len(qflat2[0]),len(qflat2[1]),len(qflat2[2]))
@@ -548,6 +574,10 @@ class QH_system():
 
         #change qflat into representation consistent with Tenpy3
         #this is just charges of the leftmost leg
+        print("shifing number of sites")
+        print(shift)
+
+        print(qflat2[:10])
         qflat=[]
         for i in range(len(qflat2)):
             kopy=[]
@@ -590,6 +620,17 @@ class QH_system():
         #mps=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
         mps=MPS.from_Bflat(sites,Bflat,SVs=Ss, bc='segment',legL=left_leg)
         print('loaded mps from data',".."*30)
+        print('loaded mps from data',".."*30)
+       
+        #
+      
+        if side=='right' and self.num!=0:
+            leg=mps._B[self.num].get_leg('vL')
+            
+
+            mps=MPS.from_Bflat(sites[self.num:],Bflat[self.num:],SVs=Ss[self.num:], bc='segment',legL=leg)
+
+    
         if side == 'right':
             self.psi_halfinf_R = mps
         elif side == 'left':
@@ -769,26 +810,29 @@ class QH_system():
 
 if __name__ == "__main__":
    
-    a=int(sys.argv[1])
+    num=int(sys.argv[1])
     b=int(sys.argv[2])
+    half=int(sys.argv[3])
 
     #nu for the state we are matching
     avg_filling=1/2
-    L=150+12*4+16+16+8+32*2
+    L=150+12*4+16+16+8+32*2-2
+    L=300
     #add one more site
-    half=51+3+3*12+8+4+32+16
+    #half=151
     ####
     params = {}
     params['verbose'] = 1
     params['sys length'] = L
     params['half']=half
+    params['num']=num
     params['avg_filling']=avg_filling
     #params['unit cell'] = 3#in the case of q=3 laughlin
     params['unit cell'] = 4#in the case of pf-apf
     params['sites added'] = b#sides added in the middle
     #params['model data file'] = "/mnt/users/kotssvasiliou/tenpy_data/laughlin_haldane/Data.pkl"
-    params['model data file'] = "/mnt/users/dperkovic/quantum_hall_dmrg/data_load/interface_test/Data.pkl"
-    params['model data file'] = '/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/Data.pkl'
+    #params['model data file'] = "/mnt/users/dperkovic/quantum_hall_dmrg/data_load/interface_test/Data.pkl"
+    params['model data file'] = '/mnt/users/dperkovic/quantum_hall_dmrg/data_load/pf_apf_final/Lx=16_xi=4_chi=2600_root_0101/Data.pkl'
     QHsys = QH_system(params=params)
 
     #QHsys.shift_import=[a,b]

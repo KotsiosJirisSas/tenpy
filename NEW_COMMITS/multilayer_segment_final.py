@@ -829,7 +829,7 @@ def bulk_bulk_boundary(name_load,name_save,shift):
     L=199
 
     assert (2*L)%6==2
-    half=(L//6)*6
+    half=(L//6)*6-2
 
     graph=[graph[0],graph[1]]*L
     #graph= load_graph(name_graph)
