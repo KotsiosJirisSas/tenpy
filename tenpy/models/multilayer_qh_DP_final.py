@@ -95,6 +95,16 @@ try:
 except:
 	pass
 
+def warn_on_div_zero(message, category, filename, lineno, file=None, line=None):
+		if "divide by zero" in str(message):
+			print("Divide by zero warning encountered!")
+			print("qd array causing issue:")
+			print(warn_on_div_zero.qd)  # qd must be accessible here or passed appropriately
+			print(warn_on_div_zero.mask)
+			quit()
+		# Proceed with default warning behavior:
+		return False  # Returning False means the warning is not suppressed
+
 class QH_model(model): #CHANGED model to Model
 	#IN ORDER TO MOVE THIS TO THE MODEL IN TENPY3 WE NEED TO ALSO DEFINE THE LATTICE - SEE WHAT IS THIS LATTICE TYPE EXACTLY ETC
 	#
@@ -116,9 +126,12 @@ class QH_model(model): #CHANGED model to Model
 			'cons_K': specified if momentum is conserved.
 		"""
 
-	def __init__(self, pars):
+	def __init__(self, pars,text_job):
 		super(QH_model, self).__init__()
 		self.model_init_t0 = time.time()
+
+		self.text_job=text_job
+		
 		pars = deepcopy(pars)
 		verbose = self.verbose = set_var(pars, 'verbose', 1, force_verbose=0)
 		if verbose > 0:
@@ -127,6 +140,15 @@ class QH_model(model): #CHANGED model to Model
 		self.dtype = set_var(pars, 'dtype', float)
 		
 		self.Lx = set_var(pars, 'Lx', 10.)	# circumference
+		try:
+			self.pref=pars['pref']
+		except:
+			#prefactor determining the strength of interaction between different Landau levels in the same speci
+			#in the same LL level
+			self.pref=1
+		pref=self.pref
+		
+
 		self.kappa = 2*np.pi/self.Lx
 		
 	##	Specifying the layers
@@ -138,7 +160,7 @@ class QH_model(model): #CHANGED model to Model
 			N = set_var(pars, 'Nlayer', 1)	# number of layers
 			if N < 1 or (not isinstance(N, int)): raise TypeError((N, type(N)))
 			layers = [ [l, 0] for l in range(N) ]		# Default - N distinct species in LLL
-
+		
 		self.Nlayer = N
 	##	Compute useful layer data (i.e., species, bands, layers)
 		self.species = species = {}
@@ -149,20 +171,31 @@ class QH_model(model): #CHANGED model to Model
 				raise ValueError
 			species.setdefault(mu, []).append(j)
 			bands.setdefault(mu, []).append(a)
-		
+		#print(self.species)
+		#quit()
 	##set the type of bands depending the second part of the layer tuple
 	#if its a list of integers, use the usual LL subclass corresponding to GaAs, 
 	#if a list of lists, use the general_LL subclass, written to handle  graphene & bilayer graphene
 		self.bands={}	
+		print(bands)
+		#quit()
 		for mu, b in bands.items():
+			#OK SO IT DOES HAVE IT
+			#b=[[0.4,0],[np.sqrt(1-0.4**2),1]]
+			#b = [ [{0: 0.4  }], [{1:np.sqrt(1-0.4**2)  }] ]
+			print(b)
+			#just a single band, then add more bands i guess
+			#b = [ [{0: 0.4  },{1:np.sqrt(1-0.4**2)  }] ]
+			
 			if hasattr(b[0],'__iter__'):
 				if b[0][0]=="tilt":
 					self.bands[mu]=tilted_Dirac_cone(b[0][1])
 				else:
 					self.bands[mu]=general_LL(b)
+			
 			else:		
 				self.bands[mu]=LL(b)
-			
+		
 	##  Anisotropy = {mu1: anisotropy1, mu2: anisotropy2, ... } sets anisotropy of form factors
 		for mu, anisotropy in set_var(pars, 'anisotropy', {}).items():
 			self.bands[mu].anisotropy = anisotropy
@@ -246,22 +279,40 @@ class QH_model(model): #CHANGED model to Model
 		self.mu = set_var(pars, 'mu', None) #mu = [mu_{layer1}, mu_{layer2}, ...];  if len(mu) < Nlayer, goes through cyclically
 		
 		self.Vs = deepcopy(pars.get('Vs', {}))
+	
 		exp_approx = self.exp_approx = set_var(pars, 'exp_approx', True)
 		self.add_conj = self.ignore_herm_conj = set_var(pars, 'ignore_herm_conj', False)
 		self.Vabcd_filter = set_var(pars, 'Vabcd_filter', {})
 
 		#PRODUCE OPERATORS AS NPC ARRAYS- CHARGES NEED TO BE FIXED HERE SOMEWHERE
 		##	Process stuff from the parameters collected above
-		self.make_Hilbert_space()
+		
+		######## NO need to make hilbert space; so commented out
+		#self.make_Hilbert_space()
 		if verbose >= 4:
 			print( joinstr(['\tQmat: ', self.Qmat, ',  Qp_flat: ', joinstr(self.Qp_flat)]))
 		
 		
 		#PRODUCE V_MK TERMS
-		self.make_Vmk(self.Vs, verbose=verbose)	# 2-body terms
+		
+		self.make_Vmk(self.Vs,pref, verbose=verbose)	# 2-body terms
+		
+		
+		#DOM: WE COMPARED Vmk with the OLD CODE FOR HALDANE
+		#THEY ARE IDENTICAL, PROBLEM MUST OCCUR LATER!
+		#quit()
+		
+		#DOM: EXPLANATION OF ELEMNT NOTATION WITHIN THE LIST 
+		#IS WRITTEN ABOVE DEFINITION OF THIS FUNCTION
 		self.convert_Vmk_tolist()
+		#print(self.Vmk['L']['L'].shape)
+		
 	
 
+		#VMK MATRIX IS THE SAME!
+		#TODO:
+		#check if this list is the same print(self.Vmk_list)
+		#quit()
 		if 'Ts' in pars:
 			self.make_Trm(pars['Ts'])	# 1-body terms
 			self.convert_Trm_tolist()
@@ -278,19 +329,29 @@ class QH_model(model): #CHANGED model to Model
 		elif len(self.Vmk_list) == 0 or exp_approx == "Don't make MPOgraph from Vmk":
 			self.make_empty_MPOgraph1(verbose=verbose)		# No potentials.
 		elif exp_approx == False or exp_approx is None or exp_approx == 'none':
+			
 			self.make_MPOgraph1_from_Vmk_old(verbose=verbose)
 		elif exp_approx == '1in':
 			self.make_MPOgraph1_from_Vmk_exp(verbose=verbose)
+			
 		elif exp_approx == True or exp_approx == 'slycot':
 			if verbose >= 3: print( "\tSlycot loaded: %s, more_slicot loaded: %s" % (Markov.Loaded_Sylcot, Markov.Loaded_more_slicot))
+			
 			self.make_MPOgraph1_from_Vmk_slycot(verbose=verbose)
 		else:
 			print( "Unrecognized options: 'exp_approx': {}".format(exp_approx))
+		
+		#quit()
+		#print(self.MPOgraph1
+		#quit()
+		#HERE WE END PRODUCING THE GRAPH
+		#JUST MAKES LIST OF COPIES OF MPOGRAPH1
 		self.MPOgraph1_to_MPOgraph(verbose=verbose)
-
+		
 		if self.mu is not None:
 			self.add_chemical_pot(self.mu)
-			
+		
+		#quit()
 		self.V3=set_var(pars,'nnn',None)		
 		if self.V3 is not None:
 			self.add_three_body(self.V3)
@@ -303,8 +364,13 @@ class QH_model(model): #CHANGED model to Model
 
 		print("MPO GRAPH IS CONSTRUCTED, SO NEED TO CONSTRUCT HMPO FROM MPOGRAPH....")
 		#quit()
+		#SHOULDNT CARE ABOUT THIS
 		#BUILD H_MPO USING NPC ARRAYS - THIS IS THE ONLY BIT I MODIFIED IN model_old_tenpy2 - rest is untouched
-		self.build_H_mpo_from_MPOgraph(self.MPOgraph, verbose=verbose)
+		
+		#DOM: I COMMENTED OUT BUILD MPO BECAUSE WE DO NOT EVEN CONSTRUCT IT HERE
+		#WE CONSTRUCT IT IN TENPY3!
+	
+		#self.build_H_mpo_from_MPOgraph(self.MPOgraph, verbose=verbose)
 		
 		if verbose >= 2: 
 			print( "\tBuilding QH_model took {} seconds.".format(time.time() - self.model_init_t0))
@@ -697,6 +763,7 @@ class QH_model(model): #CHANGED model to Model
 		"""
 		species = self.species
 		bands = self.bands
+	
 		maxM = int(np.ceil( 10./self.kappa))
 		verbose = self.verbose
 		if verbose >= 2: print( '\tmake_Trm:')
@@ -968,7 +1035,7 @@ class QH_model(model): #CHANGED model to Model
 		#TODO: check if the keys in Vmk matches that of the current model.
 
 
-	def make_Vmk(self, Vs, verbose=0):
+	def make_Vmk(self, Vs, pref,verbose=0):
 		"""	Parses the Vs model parameters, and calls function to compute matrix elements Vmk. Writes to self.Vmk and self.V_mask
 			
 			Types of potentials: (see their functions for appropriate dict format)
@@ -990,12 +1057,14 @@ class QH_model(model): #CHANGED model to Model
 				'loadVmk'	(probably doesn't work)
 				'pickleVmk'	(still works, I think. RM)
 		"""
+		
 		N = len(self.species)		
 		magic_kappa_factor = 0.5 * (2*np.pi)**(-1.5) * self.kappa
 		species = self.species
 		bands = self.bands
-		#self.screening = Vs.setdefault('screening', {'a':0, 'b':0.5} )
-		#implements Eq. 2 from arxiv 1307.2909, which gives a phenomenological formula for the LL mixing in graphene
+
+
+		
 		self.screening = Vs.setdefault('screening', None )
 		
 		
@@ -1012,8 +1081,12 @@ class QH_model(model): #CHANGED model to Model
 			self.maxM = Vs.get('maxM', int(np.ceil(-np.log(0.1*eps)/self.kappa)))
 			xiK = Vs.get('xiK', 1.)
 			xiK = max([1., xiK])
+		
+			
+			
 			self.maxK = int(np.ceil(-np.log(0.1*eps)*xiK/self.kappa))
 			self.Vq0 = { (k1,k2):0. for k1 in species for k2 in species }
+			
 			if not hasattr(self, 'Vmk'): self.Vmk = {}
 
 		maxM = self.maxM
@@ -1039,16 +1112,21 @@ class QH_model(model): #CHANGED model to Model
 			if mu not in Vmk:
 				Vmk[mu] = {}
 			if nu not in Vmk[mu]:
+				
+				##### if mu, nu are tuples
 				n_mu1 = len(species[mu[0]])
 				n_mu2 = len(species[mu[1]])
 				n_nu1 = len(species[nu[0]])
 				n_nu2 = len(species[nu[1]])
 
 				t = np.zeros((n_mu1, n_mu2) + (n_nu1, n_nu2) + (2*maxM+1, 2*maxK+1))
-
+				
 				Vmk[mu][nu] = t
-
+			
 			return Vmk[mu][nu]
+			
+			
+			
 
 		###TODO!!! Fix the sizes, the code 'load' is actually incompatible with the following code.			
 		## Look for Potentials in Vs, and generate the Vmk for each.
@@ -1063,14 +1141,22 @@ class QH_model(model): #CHANGED model to Model
 		
 		if 'haldane' in Vs:
 			#Haldane Pseudo-pot - array is strength of mth term
+			
+			
 			for (mu, nu), v in Vs['haldane'].items():
+				verbose=2
 				if verbose >= 2: print( "\t\tMaking Haldane pseudopotentials: (mu,nu) = (%s,%s), V_l = %s" % (mu, nu, v))
+				
+				
 				vmk = get_vmk(mu, nu)
+				
+				#quit()
 				if np.prod(vmk.shape[:4]) > 1:
 					raise NotImplementedError("Haldane-pseudopotentials do not support LL mixing")
 				
 				vmk += self.vmk_haldane(v, maxM, maxK) * magic_kappa_factor
-
+			
+			
 		if 'rV(r)' in Vs:
 			"""Real space interactions between mu/nu 
 					(mu, nu) : {'rV', 'tol', 'd', 'coarse'}
@@ -1096,18 +1182,49 @@ class QH_model(model): #CHANGED model to Model
 				vq = lambda qx,qy: Vq_radial(np.sqrt(qx**2+qy**2))
 				#Treat as usual
 				vmk = get_vmk(mu, nu)
-				vmk += self.Vmk_from_vq(vq, mu, nu) * magic_kappa_factor
+				vmk += self.Vmk_from_vq(vq, mu, nu,pref,v.get('V0',0.0)) * magic_kappa_factor
 				self.Vq0[(mu, nu)] += vq(0, 0) / 8. / np.pi
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
+		if 'v(q)' in Vs:
+			"""Real space interactions between mu/nu 
+					(mu, nu) : {'rV', 'tol', 'd', 'coarse'}
 			
+				rV is function in 1 variable, r*V(r)
+					or a string describing the function, e.g. rV = "lambda r: np.exp(-(r/6.)**2/2.) * r / np.sqrt(r**2 + 1.**2)"
+				
+				tol, d, coarse are completely optional and specify accuracy of Fourier transform; default values should be fine.
+				See vq_from_rV() documentation for additional details.
+			"""
+			for (mu, nu), v in Vs['v(q)'].items():
+				if verbose >= 2: print( "\t\tMaking v(q) potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
+				if type(mu) is tuple or type(nu) is tuple:
+					raise ValueError								
+				d = v.setdefault('d', 1.)
+				coarse = v.setdefault('coarse', 1)
+				tol = v.setdefault('tol', 1e-10)
+				#Calculate V(q) via Fourier integrals...
+				#Vq_radial = self.vq_from_rV(v['rV'], tol = tol, d = d, coarse = coarse)
+				#Wrap V as function of two variables
+				#def vq(qx, qy):
+				#	return V(np.sqrt(qx**2+qy**2))
+				vq = lambda qx,qy: v['vq'](np.sqrt(qx**2+qy**2))
+				#Treat as usual
+				vmk = get_vmk(mu, nu)
+				###NOTE: that V0 is fixed here to be 0.0
+				vmk += self.Vmk_from_vq(vq, mu, nu,pref,0.0) * magic_kappa_factor
+				self.Vq0[(mu, nu)] += vq(0, 0) / 8. / np.pi
+				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
+
+
 		if 'coulomb' in Vs:
 			for (mu, nu), v in Vs['coulomb'].items():
 				if verbose >= 2: print( "\t\tMaking Coulomb potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
-				vq = functools.partial(self.vq_coulomb, v['v'], v['xi'])
+					#vq_coulomb(self, v, xi,V0, qx, qy)
+				vq = functools.partial(self.vq_coulomb, v['v'], v['xi'],v.get('V0',0.))
 				vmk = get_vmk(mu, nu)
-				vmk += self.Vmk_from_vq(vq, mu, nu) * magic_kappa_factor
+				vmk += self.Vmk_from_vq(vq, mu, nu,pref,v.get('V0',0.)) * magic_kappa_factor
 				self.Vq0[(mu, nu)] += vq(0, 0) / 8. / np.pi
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
 
@@ -1116,10 +1233,10 @@ class QH_model(model): #CHANGED model to Model
 				if verbose >= 2: print( "\t\tMaking Gated Coulomb potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
-# 				vq = functools.partial(self.vq_coulomb_blgated, v['v'], v['d'], v.get('z', 0.) )
-# 				vq = functools.partial(self.vq_coulomb_blgated, v['v'], v['d'], v.get('z', 0.), v.get('epsA', 1.), v.get('betaA', 1.) )
+				vq = functools.partial(self.vq_coulomb_blgated, v['v'], v['d'], v.get('z', 0.),v.get('V0',0.) )
+				vq = functools.partial(self.vq_coulomb_blgated, v['v'], v['d'], v.get('z', 0.),v.get('V0',0.), v.get('epsA', 1.), v.get('betaA', 1.) )
 				vmk = get_vmk(mu, nu)
-				vmk += self.Vmk_from_vq(vq, mu, nu) * magic_kappa_factor
+				vmk += self.Vmk_from_vq(vq, mu, nu,pref,v.get('V0',0.)) * magic_kappa_factor
 				self.Vq0[(mu, nu)] += vq(0, 0) / 8. / np.pi
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
                     
@@ -1130,7 +1247,7 @@ class QH_model(model): #CHANGED model to Model
 					raise ValueError
 				vq = functools.partial(self.vq_coulomb_bilayer, v['v'], v['d'], v.get('z0', 0.), v.get('z', 0.) )
 				vmk = get_vmk(mu, nu)
-				vmk += self.Vmk_from_vq(vq, mu, nu) * magic_kappa_factor
+				vmk += self.Vmk_from_vq(vq, mu, nu,v.get('V0',0.)) * magic_kappa_factor
 				self.Vq0[(mu, nu)] += vq(0, 0) / 8. / np.pi
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
 				
@@ -1153,17 +1270,24 @@ class QH_model(model): #CHANGED model to Model
 				if verbose >= 2: print( "\t\tMaking (Gaussian) Coulomb potentials: (mu,nu) = (%s,%s), v = %s" % (mu, nu, v))
 				if type(mu) is tuple or type(nu) is tuple:
 					raise ValueError
+				
 				xi_order = v.get('order', 0)
 				if xi_order == 0:
-					vq = functools.partial(self.vq_coulomb_gaussian, v['v'], v['xi'])
+					vq = functools.partial(self.vq_coulomb_gaussian, v['v'], v['xi'],v.get('V0',0.))
 				elif xi_order == 1:
-					vq = functools.partial(self.vq_coulomb_gaussian1, v['v'], v['xi'])
+					vq = functools.partial(self.vq_coulomb_gaussian1, v['v'], v['xi'],v.get('V0',0.))
 				elif xi_order == 2:
-					vq = functools.partial(self.vq_coulomb_gaussian2, v['v'], v['xi'])
+					vq = functools.partial(self.vq_coulomb_gaussian2, v['v'], v['xi'],v.get('V0',0.))
 				vmk = get_vmk(mu, nu)
-				vmk += self.Vmk_from_vq(vq, mu, nu) * magic_kappa_factor
+				#print('ALO')
+				#print(vq(0, 0))
+				#quit()
+			
+				vmk += self.Vmk_from_vq(vq, mu, nu,pref,v.get('V0',0.)) * magic_kappa_factor
 				self.Vq0[(mu, nu)] += vq(0, 0) / 8. / np.pi
 				self.Vq0[(nu, mu)] += vq(0, 0) / 8. / np.pi
+				
+				#quit()
 			
 		#These are redundant; use TK they are faster. Just to check method
 		if 'TK_vq' in Vs:
@@ -1173,7 +1297,7 @@ class QH_model(model): #CHANGED model to Model
 					raise ValueError
 				vq = functools.partial(self.vq_TK, t)
 				vmk = get_vmk(mu, nu)
-				vmk += self.Vmk_from_vq(vq, mu, nu) * magic_kappa_factor
+				vmk += self.Vmk_from_vq(vq, mu, nu,pref) * magic_kappa_factor
 		
 		#These are redundant; use haldane they are faster. Just to check method
 		if 'haldane_vq' in Vs:
@@ -1183,15 +1307,20 @@ class QH_model(model): #CHANGED model to Model
 					raise ValueError
 				vq = functools.partial(self.vq_haldanePP, t)
 				vmk = get_vmk(mu, nu)
-				vmk += self.Vmk_from_vq(vq, mu, nu) * magic_kappa_factor
+				vmk += self.Vmk_from_vq(vq, mu, nu,pref) * magic_kappa_factor
 				
 
-	##	(Anti)symmetrize Vmk
+		##	(Anti)symmetrize Vmk
+
+	
 	
 		if self.p_type == 'F': eta = -1
 		if self.p_type == 'B': eta = 1
-
+	
+		
 		for mu in Vmk.keys():
+			#KEYS ARE JUST LABELS OF LAYERS WHICH INTERACT
+			#print(mu)
 			for nu in Vmk[mu].keys():
 				if mu[0] == nu[0]:
 					if Vmk[mu][nu].shape[4] < 2*maxK+1:
@@ -1201,18 +1330,25 @@ class QH_model(model): #CHANGED model to Model
 					if Vmk[mu][nu].shape[4] < 2*maxK+1:
 						Vmk[mu][nu] = pad(Vmk[mu][nu], maxK-maxM, 0, maxK-maxM, 0, axis = 4)
 					Vmk[mu][nu] = 0.5 * (Vmk[mu][nu] + eta*np.transpose(Vmk[mu][nu], [0, 3, 2, 1, 5, 4])[:, :, :, :, ::-1, ::-1])
-				
-
+		
+		#quit()
 		self.make_V_mask(self.V_eps)
+		#self.plot_Vmk()
+		
+		#print(np.sum((V_mk_KONS)**2))
+		#DOM: comparison is a thief of joy
+		#except here, caause this shit works
+		#print(np.sum((V_mk_KONS-self.Vmk['L']['L'])**2))
+		#quit()
 
-		if 'pickleVmk' in Vs:
-			self.save_Vmk(Vs['pickleVmk'])
+
+		###########
+		#if 'pickleVmk' in Vs:
+		#	self.save_Vmk(Vs['pickleVmk'])
 		if verbose >= 3: print( '\t\tV(q=0):', self.Vq0)
 
 
 	def plot_Vmk(self):
-		###I broke this function because Vmk is now of the form Vmk[(mu, mu')][(nu, nu')]
-		raise NotImplemented
 		from matplotlib import pyplot as plt
 		N = self.Nlayer
 		species = self.species
@@ -1221,14 +1357,19 @@ class QH_model(model): #CHANGED model to Model
 			n_mu = len(species[mu])
 			for nu in species.keys():
 				n_nu = len(species[nu])
+				print('species',mu,nu)
 				if self.Vmk[mu][nu] is not None:
 					for a, b in itertools.product( range(n_mu), range(n_mu)):
-						plt.subplot(n_mu, n_mu, 1 + n_mu*a+b)
-						plt.imshow(np.abs(self.Vmk[mu][nu][a, b, 0, 0, :, :] ), cmap=plt.cm.gray, interpolation='nearest')
+						#plt.subplot(n_mu, n_mu, 1 + n_mu*a+b,label=str(nu)+str(mu))
+						plt.imshow(np.abs(self.Vmk[mu][nu][a, b, 0, 0, :, :] ), cmap=plt.cm.jet, interpolation='nearest')
 						plt.contour(self.V_mask[mu][nu][a, b, 0, 0, :, :], [0.5])
+						#plt.colorbar()
 						plt.title(str(np.count_nonzero(self.V_mask[mu][nu]))+'non-zero')
+						#plt.savefig('/home/v/vasiliou/plotV'+str(nu)+str(mu)+'.png')
 				
 		plt.show()
+		print('PLOTTING VMKS AND SAVING IN /home/v/vasiliou/plotV! REMOVE IF HASSLE')
+		plt.savefig('/mnt/users/dperkovic/quantum_hall_dmrg/tenpy/NEW_COMMITS/plotV.png')	
 		
 		
 	def make_V_mask(self, eps = 0.):
@@ -1327,7 +1468,7 @@ class QH_model(model): #CHANGED model to Model
 		return q_max, mul, n
 		
 
-	def Vmk_from_vq(self, vq, mu, nu):
+	def Vmk_from_vq(self, vq, mu, nu,pref,V0):
 		""" Builds Vmk for a particular species-species interaction given the Fourier transformed interaction vq(qx, qy) (see notes).
 		
 			self.maxM, self.maxK - extent in m, k
@@ -1338,7 +1479,8 @@ class QH_model(model): #CHANGED model to Model
 				
 			Vabcd_filter[(mu, nu)][a, b, c, d] = bool is set, an optional filter specifying which matrix elements types should be computed.
 				When false, the value of Vmk is illdefined (not necessarily 0)
-		
+			pref: strength of mixing the bands
+			V0: the isotropic perturbation
 		"""
 
 		kappa = self.kappa
@@ -1362,24 +1504,42 @@ class QH_model(model): #CHANGED model to Model
 		P1=b1.P
 		P2=b2.P
 		F1=b1.F
+	
+		
 		F2=b2.F
 		pre_F1=b1.pre_F
 		pre_F2=b2.pre_F
 		
 		
-		
-		def vq_screened(m,q):
+		def vq_screened(m,q,V0):
 			""" V_eff(q) = V(q) / (1 - V(q) Pi(q) )"""
 			"""E.g., for BLG  V_eff = V(q) / (1 + V(q) a tanh(b q^2) )"""
 			
-			V0 = vq(m, qy)
+			V_unscreened = vq(m, qy)
+
+			
+			
+
+			####
+			#DOM HAS EDITED THIS TO INCLUDE SCREEENING
+			###
 			if self.screening is not None:
-				return V0/(1 - V0*self.screening(m, q))
+				
+				### Screen couloumb interaction only, and then add perturbation on top of it.
+				a_screening, b_screening = self.screening['a'], self.screening['b']
+			
+				print('here')
+				
+				
+				
+				
+				screening_term=(V_unscreened -4*np.pi*V0)*a_screening*np.tanh(b_screening*q**2)
+				
+				return (V_unscreened -4*np.pi*V0) /(1 + screening_term)+4*np.pi*V0
 			else:
-				return V0
-			#return V0/(1 + V0*a_screening*np.tanh(b_screening*q2))
+				return V_unscreened 
+			
 		
-		#a_screening, b_screening = self.screening['a'], self.screening['b']
 		screened = True
 		
 		n_mu = b1.n
@@ -1396,21 +1556,29 @@ class QH_model(model): #CHANGED model to Model
 		
 		#Do the two species have the exact same bands?
 		same_bands = (b1==b2)
+		
+		
+
+		
 		if self.verbose >= 2:
 			print( "\t\tComputing Vmk [a b c d]: ")		# no new line
 		
 		#Determine integration bounds in qy - must be commensurate with Lx. We integrate out to q_max
-				
+		print(maxK)
+		#quit()
 		q_max, mul, n  = self.Vq_discretization_parameters(maxK)
 		qy = np.linspace(0, self.Lx/2.*mul, n*mul+1)
 		dqy = self.Lx/2./n
-
+		
 
 
 		#The integrand obeys f(qy) = f(-qy)^\ast
 		def f(qy, M, a, b, c, d):
+			#print('INAREA')
 			
-			if screened: return F1(a, b, M, qy)*F2(c, d, -M, -qy)*vq_screened(M, qy)
+			
+			
+			if screened: return F1(a, b, M, qy)*F2(c, d, -M, -qy)*vq_screened(M, qy,V0)
 			else: return F1(a, b, M, qy)*F2(c, d, -M, -qy)*vq(M, qy)
 		
 		#Only evaluate function out to keep, then pad with 0s
@@ -1418,7 +1586,7 @@ class QH_model(model): #CHANGED model to Model
 		vz = np.zeros(len(qy), dtype=np.complex128)
 		keep = int(q_max/dqy) #No need to evaluate function beyond here.
 		qy = qy[:keep]
-
+		
 		for a, b, c, d in itertools.product(range(n_mu), range(n_mu), range(n_nu), range(n_nu) ):
 			
 			if filter is not None and not filter[a, b, c, d]:
@@ -1437,8 +1605,9 @@ class QH_model(model): #CHANGED model to Model
 				did[c, d, a, b] = True
 				did[d, c, b, a] = True #Exchange species + h.c.
 			
+			#quit()
 			#An m/k independent prefactor - we seperate it from the numerical integration.
-			pre = pre_F1(a, b)*pre_F2(c, d)*dqy/np.sqrt(2*np.pi)
+			pre = pre_F1(a, b,pref)*pre_F2(c, d,pref)*dqy/np.sqrt(2*np.pi)
 			P = P1(a, b)*P2(c, d) #Parity of sector
 			
 			#Only need upper quadrant in mk space - rest related by symmetry
@@ -1451,10 +1620,19 @@ class QH_model(model): #CHANGED model to Model
 				else:
 					vz[:keep] = y
 					y = np.fft.hfft(vz)[::mul]
+					
 				
 				y = np.concatenate((y[-maxK:], y[:maxK+1]))
+				
+				#checks if prefactor is complex and then turns y into the complex number
+				if type(pre)==np.complex128:
+					y=y+0j
+				
 				y *= pre
-				if np.abs(y[-1]) > self.V_eps*0.01:
+				
+			
+				if np.abs(y[-1]) > self.V_eps:
+					#print('INSIDE BRO INSIDE')
 					print( "\n\tfrom_vq(): Tail end of the Vmk's aren't small enough!  m, M[m], v[-5:] =", m, M[m], y[-5:])
 					if np.abs(y[-1]) > 1e-6:
 						print( "It means that the tail end of the matrix elements is  not negligible, and more matrix elements should be calculated.\n\n        This will occur if either a) xiK is too small  b) you use an interaction which is\nactually long range (for instance, when you combine gaussian with layer width\n(remember?)\n\nM")
@@ -1520,31 +1698,31 @@ class QH_model(model): #CHANGED model to Model
 		return interp1d(qs, vq, kind = 'cubic')
 
 
-	def vq_coulomb(self, v, xi, qx, qy):
+	def vq_coulomb(self, v, xi,V0, qx, qy):
 		"""	Real space potential V(r) = e^{-r/xi}/r  (Yukawa). """
-		return (2*np.pi*v)/np.sqrt(1./xi**2 + qx**2 + qy**2)
+		return (2*np.pi*v)/np.sqrt(1./xi**2 + qx**2 + qy**2)+4*np.pi*V0
 	
 	@classmethod
-	def vq_coulomb_gaussian(cls, v, xi, qx, qy):
+	def vq_coulomb_gaussian(cls, v, xi, V0,qx, qy):
 		"""	Coulomb interaction, with Gaussian damping.
 				V(r) = v e^(-r^2/2xi^2) / r
 			"""
 		q2 = qx**2 + qy**2
-		return (v*np.sqrt(2 * np.pi**3) * xi) * sp.special.ive(0, q2 * (xi**2 / 4.))
+		return (v*np.sqrt(2 * np.pi**3) * xi) * sp.special.ive(0, q2 * (xi**2 / 4.))+4*np.pi*V0
 	
 	@classmethod
-	def vq_coulomb_gaussian1(cls, v, xi, qx, qy):
+	def vq_coulomb_gaussian1(cls, v, xi, V0,qx, qy):
 		"""	V(r) = v F1(r^2/2xi^2) / r,   with F1(z) = (1 + z) e^{-z}
 				This can be derived from Vq0 = vq_coulomb_gaussian, with Vq1 = Vq0 + (xi/2) d/d(xi) Vq0.
 			"""
 		qxi = (qx**2 + qy**2) * xi**2 / 4.
-		return (v * np.sqrt(2 * np.pi**3) * xi) * ( (1.5-qxi) * sp.special.ive(0, qxi) + qxi * sp.special.ive(1, qxi) )
+		return (v * np.sqrt(2 * np.pi**3) * xi) * ( (1.5-qxi) * sp.special.ive(0, qxi) + qxi * sp.special.ive(1, qxi) )+4*np.pi*V0
 
 	@classmethod
-	def vq_coulomb_gaussian2(cls, v, xi, qx, qy):
+	def vq_coulomb_gaussian2(cls, v, xi,V0, qx, qy):
 		"""	V(r) = v F2(r^2/2xi^2) / r,   with F2(z) = (1 + z + z^2/2) e^{-z} """
 		qxi = (qx**2 + qy**2) * xi**2 / 4.
-		return (v * np.sqrt(2 * np.pi**3) * xi) * ( (1.875 - 2.5*qxi + qxi**2) * sp.special.ive(0, qxi) + (2*qxi - qxi**2) * sp.special.ive(1, qxi) )
+		return (v * np.sqrt(2 * np.pi**3) * xi) * ( (1.875 - 2.5*qxi + qxi**2) * sp.special.ive(0, qxi) + (2*qxi - qxi**2) * sp.special.ive(1, qxi) )+4*np.pi*V0
 	
 	@classmethod
 	def vq_coulomb_blgated_old(self, v, d, z, qx, qy):
@@ -1573,31 +1751,51 @@ class QH_model(model): #CHANGED model to Model
 		return V
     
 	@classmethod
-	def vq_coulomb_blgated(self, v, d, z, epsA, betaA, qx, qy):
+	def vq_coulomb_blgated(self, v, d, z, V0val,epsA, betaA, qx, qy):
 		"""	 
 			A coulomb potential with metallic gates placed above and below the gas.
 			The top gate is at z =  d/2, the bottom gate is at z = - d/2, and the 2DEG is at z.
 			The bottom substrate dielectric was taken into account in Ec and rescaling of length.
 			We allow the top substrate to be different from the bottom substrate (epsA = eps_t/eps_b, betaA = beta_t/beta_b).
 			
-			V(q) = 4 pi / q / (epsA coth(betaA (d/2 - z) q) + coth( (d/2 + z) q) )
+			V(q) = 4 pi / q / (epsA coth(betaA (d/2 - z) q) + coth( (d/2 + z) q) )+perturbation
+
+			OK DOM: this is V(q)=2pi tanh(qd/2)/q
+			perturbation=4*pi*V0val# so V0 correpsonds to perturbation V0 in the pseudopotential
 		"""
 
 		q = np.sqrt(qx**2 + qy**2)
 		qd = d*q
 		zq = z*q
-		#mask = qd > 0.05
-		#qd2 = qd*qd
-		#V = v*(2*np.pi*d)*np.where(mask, np.tanh(qd/2)/qd, (1./2)*(1 - (1./12)*qd2*(1. - (1/10.)*qd2*(1. - (17./168.)*qd2*(1.-(31./306.)*qd2)))))
-		mask = (qd != 0.)
-
+		
+		q_arr = np.atleast_1d(qd)
+		zq_arr = np.atleast_1d(zq)
+		mask = (q_arr != 0.)
+		
 		z_d = z/d
 		eps_beta = epsA/betaA
+		#DOM: changed in tenpy3 how to handle if qd is scalar
+		#changed a bit to avoid warning when using the mask
+		#problem is that numpy first tries to evaluate everything and only then it masks stuff!
+		
+		V = np.empty_like(q_arr)
+	
+		# safe branch: where qd != 0
+		V[mask] = v*(4*np.pi*d)*(
+			1./q_arr[mask]/(epsA/np.tanh(betaA*(q_arr[mask]/2. - zq_arr[mask])) + 1./np.tanh(q_arr[mask]/2. + zq_arr[mask]))
+			)+4*np.pi*V0val
+		
 
-		V = v*(4*np.pi*d)*np.where(mask, 1./qd/(epsA/np.tanh(betaA*(qd/2. - zq)) + 1./np.tanh(qd/2. + zq)), 0.5*(1 - 2*z_d)*(1 + 2*z_d)/(1 + eps_beta - 2*z_d*(1 - eps_beta)) )
-
-		return V
-    
+		# safe branch: where qd == 0
+		V[~mask] = v*(4*np.pi*d)*(
+			0.5*(1 - 2*z_d)*(1 + 2*z_d)/(1 + eps_beta - 2*z_d*(1 - eps_beta)) )+4*np.pi*V0val
+		#THIS IS THE ORIGINAL LINE
+	
+		if np.isscalar(qd):
+			return V[0]
+		else:
+			return V
+   
 	@classmethod
 	def vq_coulomb_bilayer(self, v, d, z0, z, qx, qy):
 		"""	 
@@ -1684,6 +1882,7 @@ class QH_model(model): #CHANGED model to Model
 		vmk = np.zeros( (n_mu, n_mu, n_nu, n_nu, 2*maxM+1, 2*maxK+1) )
 
 		def F(a, b, m, conj):
+
 			z = np.poly1d([np.sqrt(2.), m])*conj
 			zb = np.poly1d([-np.sqrt(2.), m])*conj
 			if a > b:
@@ -1724,7 +1923,7 @@ class QH_model(model): #CHANGED model to Model
 		from numpy.polynomial import Polynomial as P
 		from numpy.polynomial import Laguerre as L
 		from numpy.polynomial import hermite as H
-			
+		
 		Vmk = np.zeros( (2*maxM+1, 2*maxK+1))
 		M = self.kappa*np.arange(0, maxM+1)
 		K = self.kappa*np.arange(0, maxK+1)
@@ -1812,6 +2011,8 @@ class QH_model(model): #CHANGED model to Model
 			self.Qp_flat = np.zeros([L, 2, self.num_q], np.int64)
 			"""
 
+			##TODO: remove parts of the code here, no need to create hilbert spcea
+			## since we want only the graph first.
 			self.Id = [ np.eye(2) for s in range(N) ]
 			self.StrOp = [ np.diag([1., -1]) for s in range(N) ]
 			self.nOp = [ np.diag([0., 1]) for s in range(N) ]
@@ -1819,19 +2020,16 @@ class QH_model(model): #CHANGED model to Model
 			self.AOp = [ np.diag([1.], -1) for s in range(N) ]		# creation
 			self.aOp = [ np.diag([1.], 1) for s in range(N) ]		# annihilation
 			self.invnOp = [ np.diag([1., 0]) for s in range(N) ]
+		
 			#self.StrOp,self.nOp,self.nOp_shift,self.AOp,self.aOp,self.invnOp=block_diag(*self.StrOp), block_diag(*self.nOp),block_diag(*self.nOp_shift),block_diag(*self.AOp),block_diag(*self.aOp),block_diag(*self.invnOp)
 			#TRY THIS MAYBE STUPID BUT MAYBE WORTH IT
 			
 			#OK TOUCHED STUFF
-			from tenpy.networks.site import QH_MultilayerFermionSite_2
+			#from tenpy.networks.site import QH_MultilayerFermionSite_final
 			
-			root_config_ = np.array([0,1,0])
-			root_config_ = root_config_.reshape(3,1)
-			spin_testara=QH_MultilayerFermionSite_2(N=1,root_config=root_config_,conserve='N')
-			from tenpy.networks.site import QH_MultilayerFermionSite
-			#spin_testara=QH_MultilayerFermionSite(N=1)
-			#from tenpy.networks.site import FermionSite
-			#spin_testara=FermionSite(conserve='N')
+			#root_config_ = np.array([0,1,0])
+			#root_config_ = root_config_.reshape(3,1)
+			#spin_testara=QH_MultilayerFermionSite_final(N=1,root_config=root_config_,conserve='N')
 			
 			self.site_ops = ['Id', 'StrOp', 'nOp', 'AOp', 'aOp', 'invnOp','nOp_shift']
 
@@ -1840,11 +2038,10 @@ class QH_model(model): #CHANGED model to Model
 			self.bond_ops = ['AOp_l', 'AOp_r']
 			
 			self.Qp_flat = np.zeros([L, 2, self.num_q], np.int64)
-
-			self.Id, self.StrOp, self.nOp, self.nOp_shift,self.AOp,self.aOp,self.invnOp =spin_testara.Id, spin_testara.StrOp, spin_testara.nOp, spin_testara.nOp_shift,spin_testara.AOp,spin_testara.aOp,spin_testara.invnOp 
 			
-			#self.Id, self.StrOp, self.nOp, self.nOp_shift,self.AOp,self.aOp,self.invnOp =spin_testara.Id, spin_testara.JW, spin_testara.N, spin_testara.dN,spin_testara.Cd,spin_testara.C,spin_testara.InvN 
-			print('INNNBIG')
+			#self.Id, self.StrOp, self.nOp, self.nOp_shift,self.AOp,self.aOp,self.invnOp =spin_testara.Id, spin_testara.StrOp, spin_testara.nOp, spin_testara.nOp_shift,spin_testara.AOp,spin_testara.aOp,spin_testara.invnOp 
+			
+			
 		elif self.p_type == 'B':
 		##	Hilbert space & Operators
 			d = self.N_bosons + 1		# assume all the d's are the same
@@ -1994,8 +2191,10 @@ class QH_model(model): #CHANGED model to Model
 					#CONVERT vmk into float32 because packVmk requires this in cython, and its easier to change it here
 					#potentially change in cython
 					vmk = np.asarray(vmk, dtype=np.float32)
-					packVmk(Vmk_list, vmk, mask, maxM, maxK, species[mu[0]],species[mu[1]], species[nu[0]],species[nu[1]], tol = 1e-12)
-					
+					if not isinstance(mu, tuple):
+						packVmk(Vmk_list, vmk, mask, maxM, maxK, species[mu],species[mu], species[nu],species[nu], tol = 1e-12)
+					else:
+						packVmk(Vmk_list, vmk, mask, maxM, maxK, species[mu[0]],species[mu[1]], species[nu[0]],species[nu[1]], tol = 1e-12)
 				####	Below is what packVmk does.
 				#	n_mu = len(species[mu])
 				#	n_nu = len(species[nu])
@@ -2016,32 +2215,49 @@ class QH_model(model): #CHANGED model to Model
 			"""
 		N = self.Nlayer
 		L = self.L
-
+		
 	##	Modify the Vmk_list so m,r now represents distance in sites (as opposed to N-sites)
 		if self.p_type == 'F': swapph = -1
+
+		
+	
 		if self.p_type == 'B': swapph = 1
+		counter=0
 		self.splitV_list = splitV_list = []
 		for Vmk in self.Vmk_list:
 			m,k,ly0,ly1,ly2,ly3,Vstrength,must_keep = Vmk
 			Op = ['A0', 'A1', 'a2', 'a3']		# The Vmk_list is written for a3 (lowering) operator applied first and A0 (raising) last.
 			loc = np.array([ly0 + N * k, ly1 + N * m, ly2, ly3 + N * (m+k)], int)
 		##	Have to sort the locations from smallest to largest
+
+			
+			#MAYBE PROBLEMATIC ELEMENTS ARE THOSE THAT HAVE THE REPEATED VALUE OF LOC
 			order = np.argsort(loc)
+		
+			perm_order=order
+			
+			
+			
 			locdist = loc[order][1:] - loc[order][:-1]
 			ly = np.array([ly0, ly1, ly2, ly3])[order]
-			#print( loc, 'order', order, 'locdist', locdist, 'layer', ly
+			#print loc, 'order', order, 'locdist', locdist, 'layer', ly
+			
 		##	Get the sign.
+			#permute_order=np.array([order[2],order[3],order[0],order[1]])
 		##	The right most operator is applied first, left most last.
 		##	Since argsort is stable, when you operators lie on the same site, A is to the left of a.
-			if swapph == -1: Vstrength *= perm_sign(order)
+			if swapph == -1: Vstrength *= perm_sign(perm_order)
 			splitV_list.append([(Op[order[0]], ly[0]), locdist[0], (Op[order[1]], ly[1]), locdist[1], \
 				(Op[order[2]], ly[2]), locdist[2], (Op[order[3]], ly[3]), Vstrength, must_keep or force_keep])
 			if verbose >= 6: print( ' ', Vmk, '->', splitV_list[-1])
-
+		
+		#quit()
 
 
 	##################################################	
 	def make_MPOgraph1_from_Vmk_old(self, verbose=0, force_keep=False):
+		
+	
 		"""	Given Vmk_list, make the MPOgraph1.  Make a node for each (m,r) """
 		if verbose >= 1: 
 			print( "Making MPOgraph1 from Vmk...")
@@ -2104,7 +2320,7 @@ class QH_model(model): #CHANGED model to Model
 	##	Hopping is of form: Vstrength * Op4_{m1+r+m2} Op3_{m1+r} Op2_{m1} Op1_{0}
 		for V in self.splitV_list:
 			(Op1,ly1),m1,(Op2,ly2),r,(Op3,ly3),m2,(Op4,ly4),Vstrength,keep = V
-			print( (Op1,ly1),m1,(Op2,ly2),r,(Op3,ly3),m2,(Op4,ly4),Vstrength,keep)
+			#print( (Op1,ly1),m1,(Op2,ly2),r,(Op3,ly3),m2,(Op4,ly4),Vstrength,keep)
 			Op1 = Op1[0]; Op2 = Op2[0]; Op3 = Op3[0]; Op4 = Op4[0];
 			if np.abs(Vstrength) == 0: continue
 			#print( ' ', V
@@ -2391,6 +2607,15 @@ class QH_model(model): #CHANGED model to Model
 		N = self.Nlayer
 		L = self.L
 		self.make_split_Vmk_list(verbose, False)
+
+		
+		
+	
+		
+		
+
+		
+	
 	##	The elements of MPOgraph1[s] labels the states to the *left* of site s, so Op's in MPOgraph1[s] always sit in site s.
 		if hasattr(self, 'MPOgraph'): raise RuntimeError
 		try:
@@ -2406,15 +2631,18 @@ class QH_model(model): #CHANGED model to Model
 	## m1 is spacing between Op0 and Op1, r is betwen Op1 and Op2, m2 is between Op2 and Op3
 	## the positions are the positions of the actual tensors, not the orbitals
 	## therefore orbitals at the same physical site but in different layers will have different positions
-		
+		#THIS IS TRIVIAL CREATION
 		MS = Markov.MPO_system(dtype = self.dtype)
+	
+		
 		r0_list = {}		# store all the terms with r = 0 separately
 		r0m0_list = {}
-		r0_onem0_list={}
-		for V in self.splitV_list:
+		for num,V in enumerate(self.splitV_list):
 		
 			(Op0,ly0),m1,(Op1,ly1),r,(Op2,ly2),m2,(Op3,ly3),Vstrength,must_keep = V
 			Op0 = Op0[0]; Op1 = Op1[0]; Op2 = Op2[0]; Op3 = Op3[0];
+			
+		
 			if np.abs(Vstrength) == 0: continue
 			if self.p_type == 'F':
 				if Op0 == 'a': Vstrength = -Vstrength	# StrOp from Op1,Op2,Op3
@@ -2422,10 +2650,12 @@ class QH_model(model): #CHANGED model to Model
 			if r == 0:
 				##	These are cases where Op1 and Op2 overlap on the same site; these are handled separately from the MarkovSys
 				Op12 = Op1 + Op2
+				
+				print(m1,m2)
 				if m1 > 0 and m2 > 0:
 					if Op12 == 'Aa':
 						key12 = 'n'
-					elif (Op12 == 'AA' or Op12 == 'aa') and self.p_type=='B':
+					elif Op12 == 'AA' or Op12 == 'aa':
 						key12 = Op12
 					else:
 						raise ValueError("unidentfied operator %s" % Op12)
@@ -2437,20 +2667,54 @@ class QH_model(model): #CHANGED model to Model
 					r0m0_list.setdefault(('AAaa',ly0), 0.)
 					r0m0_list[('AAaa',ly0)] += Vstrength
 				else:
+					#I guess MPO too hard to make?
 					raise RuntimeError ("Fuck.", V, Vstrength)
 			else:
 				if (r - ly2 + ly1) % N: raise RuntimeError
-				MS.add_io_single_r( (Op0,ly0,m1,Op1,ly1), (Op2,ly2,m2,Op3,ly3), (r-ly2+ly1) // N, Vstrength )
+				#DOM: FIRST INSTANCE OF ERROR SEEN IN THIS FUNCTION! 
+				
+
+
+				MS.add_io_single_r( (Op0,ly0,m1,Op1,ly1), (Op2,ly2,m2,Op3,ly3), (r-ly2+ly1) // N, Vstrength,num )
 		if verbose >= 1:
-			print( '\tProcessed %s Vmk terms.', len(self.splitV_list))
-			if self.ignore_herm_conj: print( '\tAvoiding Hermitian conjugate terms.')
-		Opkey_str = lambda tupla: tupla[0] + str(tupla[1]) + '_' + str(tupla[2]) + '_' + tupla[3] + str(tupla[4])
-		#print(Opkey_str)
-		print('XX'*20)
-		#Opkey_str = lambda (OO1,ll1,mm,OO2,ll2): OO1+str(ll1)+'_'+str(mm)+'_'+OO2+str(ll2)
-		#Opkey_Herm = lambda (OO1,ll1,mm,OO2,ll2): ('a' if OO1=='A' else 'A', ll1, mm, 'a' if OO2=='A' else 'A', ll2)
+			print ('\tProcessed %s Vmk terms.' % len(self.splitV_list))
+			if self.ignore_herm_conj: print('\tAvoiding Hermitian conjugate terms.')
+		#print(MS.__dict__)
+		
+		"""
+		with open('/mnt/users/dperkovic/DMRG_modified/tenpy/run_idmrg/tests/MS_pickle.pkl','wb') as f:
+        		pickle.dump(dicta, f)
+		"""
+		"""
+		with open('/mnt/users/dperkovic/DMRG_modified/tenpy/run_idmrg/tests/MS_pickle.pkl','rb') as f:
+        		wt=pickle.load( f)
+		
+		#for x in range(len(wt)):	
+		print(wt.keys())
+		print(dicta.keys())
+
+		for key in wt.keys():
+			#print(key)
+			try:
+				print(wt[key]==dicta[key])
+			except:
+				pass;
+		
+		for m in range(len(wt['io'])):
+			
+			for key in wt['io'][m].keys():
+				vool=np.all(wt['io'][m][key]==dicta['io'][m][key])
+				if not vool:
+					print(vool)
+					quit()
+		"""
+		#SO PRODUCED ALL RIGHT IN BOTH CORES
+		print('good')
+		
 		MS.check_sanity()
-		if verbose >= 4: print( "\tr0m0:", r0m0_list)
+		#verbose=4
+		if verbose >= 4: print("\tr0m0:", r0m0_list)
+		
 		
 	##	Add in the necessary information for exponential approximation
 	##	2a) Make the ignore_r0 table
@@ -2461,9 +2725,9 @@ class QH_model(model): #CHANGED model to Model
 				for b,i in enumerate(io['in']):
 					if i[4] >= o[1]:		# compare ly1 to ly2
 						ignore_r0[a, b] = 1
-						if seq[a, b, 0] != 0: raise RuntimeError((a, b, seq[a, b, 0]))
+						if seq[a, b, 0] != 0: raise RuntimeError(a, b, seq[a, b, 0])
 			#io['ignore_r0'] = ignore_r0
-			#print( joinstr([ ignore_r0, seq[:, :, 0] ]), '\n'
+			#print joinstr([ ignore_r0, seq[:, :, 0] ]), '\n'
 	##	2b) Identify the complex conjugates
 		HermConj = { 'a':'A', 'A':'a' }
 		for ikey in MS.Din:
@@ -2471,40 +2735,150 @@ class QH_model(model): #CHANGED model to Model
 			if m1 > 0:
 				MS.Din[ikey]['conj'] = (HermConj[Op0],ly0,m1,HermConj[Op1],ly1)
 			else:
-				Op01=Op0+Op1
-				assert m1==0 and ly0==ly1 and (Op01=='AA' or Op01=='aa' or Op01=='Aa')
 				MS.Din[ikey]['conj'] = (HermConj[Op1],ly1,m1,HermConj[Op0],ly0)	# assume that Op01 is one of Aa, aa, or AA
 		for okey in MS.Dout:
 			Op2,ly2,m2,Op3,ly3 = okey
 			if m2 > 0:
 				MS.Dout[okey]['conj'] = (HermConj[Op2],ly2,m2,HermConj[Op3],ly3)
 			else:
-				Op23=Op2+Op3
-				assert m2==0 and ly2==ly3 and (Op23=='AA' or Op23=='aa' or Op23=='Aa')
 				MS.Dout[okey]['conj'] = (HermConj[Op3],ly3,m2,HermConj[Op2],ly2)	# assume that Op23 is one of Aa, aa, or AA
 		MS.pair_conj_blocks()
 		
 	##	3) Make the exponential approximations
 	##	Each ioblock will then have keys 'A', 'B', 'C' and 'N', 'norm_err'
-		MS.compute_norm()		# create key '2norm'
-		target_err = self.V_eps * MS.info['2norm']
-		MS.compute_ABC(tol = target_err, verbose = max(verbose-3,0), verbose_prepend = '\t\t')
+		"""
+		with open('/mnt/users/dperkovic/DMRG_modified/tenpy/run_idmrg/tests/MS_pickle.pkl','wb') as f:
+        		pickle.dump(dicta, f)
+		"""
+		"""
+		with open('/mnt/users/dperkovic/DMRG_modified/tenpy/run_idmrg/tests/MS_pickle.pkl','rb') as f:
+        		wt=pickle.load( f)
+		print(wt.keys())
+		print(dicta.keys())
 
+		for key in wt.keys():
+			#print(key)
+			try:
+				print(wt[key]==dicta[key])
+			except:
+				print(key)
+				pass;
+		
+		for m in range(len(wt['io'])):
+			
+			for key in wt['io'][m].keys():
+				vool=np.all(wt['io'][m][key]==dicta['io'][m][key])
+				if not vool:
+					print(vool)
+					quit()
+		print('passed')
+		"""
+		
+		MS.compute_norm()		# create key '2norm'
+
+	
+		target_err = self.V_eps * MS.info['2norm']
+		
+	
+		#######
+		## ALL COMPLETELY THE SAME UP TO HERE, ERROR OCCURS IN THERE
+		######
+		MS.compute_ABC(text_job=self.text_job,tol = target_err, verbose = max(verbose-3,0), verbose_prepend = '\t\t')
+		#thus an error happens here
+		
+
+		
 	##	4-8) Let someone else finish the job
+		#print(MS.__dict__.keys())
+		#print(MS.__dict__['dtype'])
+		
+		#import numpy.array as array
+		
+		
+		
+		#quit()
+		"""
+		('A', np.int64(0), np.int64(6), 'a', np.int64(0)) index
+		[13, 0]
+		[12, 0]
+		"""
+		"""
+		for i,el in enumerate(MS.__dict__['io']):
+			for keys in el.keys():
+				print("#"*100)
+				#print(el,el2)
+				print(keys)
+				print( MS.__dict__['io'][i][keys])
+				print(KONS_DICT['io'][i][keys])
+		#quit()
+		"""
+		"""
+		print(len(MS.__dict__['io']))
+		quit()
+		for el in MS.__dict__['io'][0].keys():
+			
+			print("#"*100)
+			print(el)
+			print( MS.__dict__['io'][0][el])
+			print(KONS_DICT['io'][0][el])
+		quit()
+		print('babababab')
+		print(r0_list)
+		print(t0)
+		print(r0m0_list)
+		print(verbose)
+		"""
+		
+		#MS.io=KONS_DICT['io']
 		self.make_MPOgraph1_from_MS(MS, r0_list, t0=t0, r0m0_list=r0m0_list, verbose=verbose)
 		
+		"""
+		print(self.MPOgraph1)
+		with open('graph.pkl','rb') as f:
+			KONS_DICT=pickle.load(f,encoding='latin1')
+		for el in self.MPOgraph1[0].keys():
+			for el2 in self.MPOgraph1[0][el].keys():
+				print("#"*100)
+				print(el,el2)
+				print(self.MPOgraph1[0][el][el2])
+				print(KONS_DICT[0][el][el2])
+		"""
 
 	def make_MPOgraph1_from_MS(self, MS, r0_list, t0=None, r0m0_list={}, verbose=0):
 		"""Given a MS (Markov system) and a r0_list, make the MPO graph.
 		This function is a continuation of make_MPOgraph1_from_Vmk_slycot().
 			"""
+
+		
 		if t0 is None: t0 = time.time()
 		N = self.Nlayer
+		#print(N)
+		#quit()
+		
+		
 		MPOgraph1 = self.MPOgraph		# Hack to get addNodes and addNodesB to work
+		
 		#Opkey_str = lambda (OO1,ll1,mm,OO2,ll2): OO1+str(ll1)+'_'+str(mm)+'_'+OO2+str(ll2)
 		if self.p_type=='B': sOp='Id'
 		elif self.p_type =='F': sOp='StrOp'
 		else: raise NotImplementedError
+		
+		
+		
+		"""
+		for el in MS.io[0].keys():
+			
+			#for el2 in self.io[0][el].keys():
+			print('£'*30)
+			
+			print(data[0][el])
+			print(MS.io[0][el])
+			print('£'*30)
+		"""
+		#quit()
+
+
+
 	##	4) Add MPO_graph information to MPO_system, and also make the string nodes.
 	##	Sources
 		create_nodes_in_list = []
@@ -2521,6 +2895,7 @@ class QH_model(model): #CHANGED model to Model
 					pre_Op1_ly, D['src'] = self.addNodes((Op0+'_',ly0), ly0, m1, 'R', (Op0+'Op',1.), sOp)
 					#print(pre_Op1_ly)
 					#quit()
+				
 					#print(D['src'])
 					#quit()
 				else:
@@ -2540,6 +2915,7 @@ class QH_model(model): #CHANGED model to Model
 			#print(Op23key)
 			if m2 > 0:		# The final string leading to 'F' (backwards) with Op3
 				if Op3 == 'a' or Op3 == 'A':
+				
 					post_Op2_ly, D['dest'] = self.addNodesB(('_'+Op3,ly3), ly3, m2, 'F', (Op3+'Op',1.), sOp)
 				else:
 					raise NotImplementedError("Don't know what to do with Op3 '%s' in %s" % (Op3,Op23key))
@@ -2552,11 +2928,18 @@ class QH_model(model): #CHANGED model to Model
 			D['orb'] = ly2
 	##	Prepare the io blocks, and give them names (unique identifiers for the MPOgraph)
 		for bid,io in enumerate(MS.io):
+			
 			io['StrOp'] = 'Id'		# operator between loop nodes
 			Op01key = io['in'][0]		# a sample input key, used to generate a name for the ioblock
 			io['name'] = Op01key[0] + str(self.layers[Op01key[1]][0]) + '-' + str((Op01key[2] - Op01key[4] + Op01key[1]) // N) + '-' + Op01key[3] + str(self.layers[Op01key[4]][0]) + '.' + str(bid)
 			#print(io)
+
+		#print(io)
+		#quit()
 		
+
+		
+		#quit()
 	##	5)	Create the nodes for the r = 0 cases
 		for r0Op,V in r0_list.items():
 			Op0,ly0,m1,Op12,ly12,m2,Op3,ly3 = r0Op		# guarentee that m1, m2 > 0
@@ -2570,10 +2953,12 @@ class QH_model(model): #CHANGED model to Model
 			XNode = MPOgraph1[pre_Op1_ly][pre_Op1_node].setdefault(post_Op2_node, [])
 		
 			XNode.append((Op12+'Op',V))
+		
 			if verbose >= 5: print( "\t\tr = 0: (%s, %s, %s) -> (_%s, %s, %s-1), %sOp, ly=%s, V=%s" % (Op0+'_',ly0,m1,Op3,ly3,m2,Op12,ly12,V))
 		for r0Op,V in r0m0_list.items():
 			if r0Op[0] == 'AAaa':
 				XNode = MPOgraph1[r0Op[1]]['R'].setdefault('F', [])
+			
 				XNode.append(('AAaaOp',V))
 				if verbose >= 4: print( "\tAdding operator 'AAaa' R->F with V = {}".format(V))
 			else:
@@ -2582,14 +2967,34 @@ class QH_model(model): #CHANGED model to Model
 		#quit()
 	##	6) ........
 		if self.ignore_herm_conj:
+			
 			io_create_nodes = np.zeros(len(MS.io), dtype=int)
 			for inKey in create_nodes_in_list:
 				io_create_nodes[MS.Din[inKey]['index'][0]] = 1
 			MS.create_partial_MPO_nodes(MPOgraph1, np.nonzero(io_create_nodes)[0], double_unconj_ioblocks=True)
 		else:
+			
 			io_create_nodes = np.ones(len(MS.io), dtype=int)
 			MS.create_MPO_nodes(MPOgraph1)
+		#quit()
+		"""
+		filename='MPOgraph_new.pkl'
+		with open(filename, 'rb') as f:
+			data = pickle.load(f,encoding='latin1')
 		
+		print(MPOgraph1)
+		for el in MPOgraph1[0].keys():
+			
+			for el2 in MPOgraph1[0][el].keys():
+				print('£'*30)
+				print(el,el2)
+				print(data[0][el][el2])
+				print(MPOgraph1[0][el][el2])
+				print('£'*30)
+		"""
+		#quit()
+
+
 	##	7) Print stuff for educational purposes
 		if verbose >= 3:	
 			for j,block in enumerate(MS.io):
@@ -2621,6 +3026,14 @@ class QH_model(model): #CHANGED model to Model
 		#quit()
 		del self.MPOgraph		# Undo the hack earlier
 		#print(MS)
+		
+		#MS.Din IN nodes
+		#MS.Dout OUT nodes
+		#MS.io Contains some number
+		#print(MS.io[0]['A'])
+		#print(r0_list)
+		#print(self.Lx)
+		#quit()
 		self.Vmk_MS = {'version':1.2, 'Nlayer':self.Nlayer, 'MS':MS, 'r0_list':r0_list, 'r0m0_list':r0m0_list,
 			'Lx':self.Lx, 'Vq0':self.Vq0, 'p_type':self.p_type, 'species':self.species, 'bands':self.bands}
 		#self.print(_MPOgraph(MPOgraph1)
@@ -2931,6 +3344,7 @@ class bands(object):
 	def pre_F(self, a, b):
 		return 1.
 	def F(self, a, b, qx, qy):
+		print('what')
 		raise NotImplementedError	# need to overload
 	def orbital_spin(self, a):
 		return 0.
@@ -2940,14 +3354,21 @@ class bands(object):
 
 def F_NM(a, b, qx, qy):
 	"""Conventional form factors"""
+
+	
 	q2 = qy**2 + qx**2
+
+	
 	if a==0 and b==0:
 		return  np.exp(-q2/4.)
 	elif a > b:
+		
 		return   (  np.sqrt(1.*sp.special.factorial(b, exact=True)/sp.special.factorial(a, exact=True))*np.sqrt(2.)**(b-a)  )*np.exp(-q2/4.) * (qx-1j*qy)**(a-b) * sp.special.eval_genlaguerre(b, a-b, q2/2.)
 	if a < b:
+		
 		return   (np.sqrt(1.*sp.special.factorial(a, exact=True)/sp.special.factorial(b, exact=True))*np.sqrt(2.)**(a-b))*np.exp(-q2/4.) * (-qx-1j*qy)**(b-a) * sp.special.eval_genlaguerre(a, b-a, q2/2.)
 	else:
+	
 		return np.exp(-q2/4.) * sp.special.eval_genlaguerre(a, 0, q2/2.)
 
 def phi_N(a, y):
@@ -2970,19 +3391,31 @@ class LL(bands):
 		#parity of form factor
 		return (-1)**(self[a] + self[b])
 	
-	def pre_F(self, a, b):
+	def pre_F(self, a, b,pref):
 		a = self[a]
 		b = self[b]
 		#print(b)
 		#print(sp.special.factorial(b, exact=True))
+		
+		#quit()
+		
+		
+	
 		if a==b:
 			return 1.
 		elif a > b:
+
+			#we could replace it here with a scaled down term
+			
+
+			#scale it down!
+		
 			#misc replaced by special
-			return np.sqrt(1.*sp.special.factorial(b, exact=True)/sp.special.factorial(a, exact=True))*np.sqrt(2.)**(b-a)
+			#NEED TO CHECK WHICH ONE IS np.conj and which one IS NOT!
+			return np.conj(pref)*np.sqrt(1.*sp.special.factorial(b, exact=True)/sp.special.factorial(a, exact=True))*np.sqrt(2.)**(b-a)
 		else:
 			#misc replaced by special
-			return np.sqrt(1.*sp.special.factorial(a, exact=True)/sp.special.factorial(b, exact=True))*np.sqrt(2.)**(a-b)
+			return pref*np.sqrt(1.*sp.special.factorial(a, exact=True)/sp.special.factorial(b, exact=True))*np.sqrt(2.)**(a-b)
 
 	def F(self, a, b, qx, qy):
 		qx = qx / float(self.anisotropy)
@@ -2992,8 +3425,8 @@ class LL(bands):
 		b = self[b]
 
 		#return F_NM(a, b, qx, qy)
-		
-		
+		#can just modify these
+	
 		q2 = qy**2 + qx**2
 		if a==0 and b==0:
 			return np.exp(-q2/4.)
@@ -3003,7 +3436,7 @@ class LL(bands):
 			return np.exp(-q2/4.) * (-qx-1j*qy)**(b-a) * sp.special.eval_genlaguerre(a, b-a, q2/2.)
 		else:
 			return np.exp(-q2/4.) * sp.special.eval_genlaguerre(a, 0, q2/2.)
-
+		
 	
 	def phi(self, a, y):
 		a = self[a]
@@ -3070,7 +3503,10 @@ class general_LL(bands):
 		
 		Each layer u_a is list over "A", but a dictionary over N:
 		
+		DOM: HM WHAT IS THIS CRAP, HOW DOES IT WORK????!!!!
 		u_a = [ { N :u_[a, A=0, N]  }, { N :u_[a, A=1, N]  },  . . .  ]
+		DOM: what is the issue with parity ffs...
+		
 	"""
 	
 	def __init__(self, u, eps = 1.):
@@ -3081,26 +3517,44 @@ class general_LL(bands):
 		
 		#infer parities of orbitals
 		Pa = []
+		
 		for ua in u:
 			PaA = []
 			norm2 = 0.
+
 			for uaA in ua:
-				norm2 += np.linalg.norm(np.array(uaA.values()))**2
-				p = list(set((-1)**np.array(uaA.keys())))
+				
+			
+				#quit()
+				val=np.array(list(uaA.values()))
+				norm2 += np.linalg.norm(val)**2
+				#norm2 += np.linalg.norm(np.array(uaA.values()))**2
+				keys=np.array(list(uaA.keys()))
+				#p = list(set((-1)**np.array(uaA.keys())))
+				p = list(set((-1)**keys))
+
+				
+				
 				if len(p)==0:
 					PaA.append(np.nan)
 				elif len(p)==1:
 					PaA.append(p[0])
 				else:
+					#why is this the issue
+					print(p)
+					print('i guess parity undetermined???')
 					raise ValueError
 			if np.abs(norm2 - 1.) > 1e-12:
 				print( "WARNING: u has norm {}".format(norm2))
 			Pa.append(np.array(PaA))
 	
+
 		Pab = np.ones( (len(u), len(u)) , dtype = np.int64)
+
 		for a in range(len(u)):
 			for b in range(len(u)):
 				p = list(set( Pa[a]*Pa[b]))
+
 				if len(p)==1:
 					if np.isnan(p[0]):
 						Pab[a, b] = 1 #won't be used since 0, so safe to default.
@@ -3128,7 +3582,7 @@ class general_LL(bands):
 	def P(self, a, b):
 		return self.Pab[a, b]
 	
-	def pre_F(self, a, b):
+	def pre_F(self, a, b,pref):
 		return 1.
 
 	def F(self, a, b, qx, qy):
@@ -3141,11 +3595,20 @@ class general_LL(bands):
 		except:
 			F = 0.
 		
+		#OK SO I TH
+		
 		for ua, ub in zip(self.u[a], self.u[b]):
+			
 			for k1, v1 in ua.items():
 				for k2, v2 in ub.items():
+					
+					if k1!=k2:
+						#decoding stuff here
+						pass
+						#print('gg')
+						#print(k1,k2)
 					F = F + np.conj(v1)*v2*F_NM(k1, k2, qx, qy)
-				
+		
 		return F
 
 	def phi():

@@ -277,6 +277,7 @@ class ChargeInfo:
         res : bool
             True, if all 0 <= charges <= self.mod (wherever self.mod != 1)
         """
+        
         charges = np.asarray(charges, dtype=QTYPE)[..., self._mask]
         return np.all(np.logical_and(0 <= charges, charges < self._mod_masked))
 
@@ -700,7 +701,11 @@ class LegCharge:
             raise ValueError("slices does not start with 0")
         if ch.ndim != 2 or ch.shape[1] != self.chinfo.qnumber:
             raise ValueError("shape of `charges` incompatible with qnumber")
+        
+     
         if not self.chinfo.check_valid(ch):
+           
+           
             raise ValueError("charges invalid for " + str(self.chinfo) + "\n" + str(self))
         if self.qconj != -1 and self.qconj != 1:
             raise ValueError("qconj has invalid value != +-1 :" + repr(self.qconj))
@@ -818,6 +823,7 @@ class LegCharge:
         """
         if optimize(OptimizationFlag.skip_arg_checks):
             return
+        
         self.test_equal(other.conj())
 
     def test_equal(self, other):

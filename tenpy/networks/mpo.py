@@ -41,7 +41,7 @@ from scipy.linalg import expm
 import warnings
 import copy
 import logging
-
+import sys
 logger = logging.getLogger(__name__)
 
 from ..linalg import np_conserved as npc
@@ -55,6 +55,12 @@ from .terms import TermList
 from ..tools.misc import to_iterable, add_with_None_0
 from ..tools.math import lcm
 from ..tools.params import asConfig
+
+
+sys.path.append('/mnt/users/dperkovic/DMRG_modified/tenpy/tenpy/networks') 
+from shift_charges import shift_charges_leg
+from shift_charges import translate_by_appropriate_amount
+from shift_charges import translate_all_legs
 
 __all__ = [
     'MPO', 'make_W_II', 'MPOGraph', 'MPOEnvironment', 'MPOTransferMatrix', 'grid_insert_ops'
@@ -134,6 +140,12 @@ class MPO:
         self.IdR = self._get_Id(IdR, len(sites))
         self.grouped = 1
         self.bc = bc
+        #so if momentum is conserved, make sure its all good.
+        if 'K' in self.chinfo.names:
+            self.translate=True
+        else: 
+            self.translate=False
+       
         self.max_range = max_range
         self.explicit_plus_hc = explicit_plus_hc
         self.test_sanity()
@@ -298,12 +310,14 @@ class MPO:
                 legs = _calc_grid_legs_infinite(chinfo, grids, Ws_qtotal, None, IdL[0])
         assert len(legs) == L + 1
         Ws = []
-        print('entering the long part')
+      
+        #print('entering the long part')
         for i in range(L):
-            #print(i)
+         
             W = npc.grid_outer(grids[i], [legs[i], legs[i + 1].conj()], Ws_qtotal[i], ['wL', 'wR'])
             Ws.append(W)
-        print('its finally finished')
+        #print('its finally finished')
+        
         return cls(sites, Ws, bc, IdL, IdR, max_range, explicit_plus_hc)
 
     @classmethod
@@ -399,7 +413,18 @@ class MPO:
             S.leg.test_contractible(W.get_leg('p*'))
             if self.bc == 'infinite' or i + 1 < self.L:
                 W2 = self.get_W(i + 1)
-                W.get_leg('wR').test_contractible(W2.get_leg('wL'))
+                leg2=W2.get_leg('wL')
+                leg1=W.get_leg('wR')
+                ##########
+                ## translation here does not change any legs, it is just done so 
+                #that sanity check of matching last and first leg is passed
+                #########
+                if self.translate:
+                   
+                    leg2=translate_by_appropriate_amount([leg2],leg1,bunch=[leg2.bunched])
+                    leg2=leg2[0]
+                  
+                leg1.test_contractible(leg2)
         if not (len(self.IdL) == len(self.IdR) == self.L + 1):
             raise ValueError("wrong len of `IdL`/`IdR`")
 
@@ -429,10 +454,34 @@ class MPO:
 
     def get_W(self, i, copy=False):
         """Return `W` at site `i`."""
+
+        i_old=i
         i = self._to_valid_index(i)
-        if copy:
-            return self._W[i].copy()
-        return self._W[i]
+        W_i=self._W[i].copy()
+
+        if self.translate and self.bc=='infinite':
+          
+            #if asked for MPO matrix at site larger than the unit cell, we perform
+            #translation of charges to match the site to the corresponding charg
+            C1=np.sum(self.sites[i].leg.to_qflat()[0][1:])
+            Nlayer=self.sites[i].Nlayer
+            
+            Ki=self.sites[i].leg.to_qflat()[0][0]+(i_old-i)*C1//Nlayer
+            K_W= W_i[i].legs[-1].to_qflat()[0][0] 
+            
+            if K_W!=Ki:
+                bunch=[leg.bunched for leg in W_i.legs]
+
+                
+                
+                W_i.legs=translate_all_legs(W_i.legs,(Ki-K_W)//C1,bunch)
+                #change qtotal
+                W_i.qtotal= W_i._get_block_charge(W_i._qdata[0])
+
+                # this is a bit rubbish because it may be too slow
+                #self._W[i].qtotal=npc.detect_qtotal(self._W[i].to_ndarray(), self._W[i].legs)
+                
+        return W_i
 
     def set_W(self, i, W):
         """Set `W` at site `i`."""
@@ -562,7 +611,7 @@ class MPO:
             w = w.transpose(['wL', 'wR', 'p', 'p*'])
             p, w = w.sort_legcharge([True, True, False, False], [True, True, False, False])
           
-            #quit()
+            
             if perms[i] is not None:
                 assert np.all(p[0] == perms[i])
             perms[i] = p[0]
@@ -757,6 +806,7 @@ class MPO:
             return self.expectation_value_finite(psi, **init_env_data)
         elif self.max_range is None or self.max_range > 10 * self.L:
             return self.expectation_value_TM(psi, tol=tol, **init_env_data)
+
         else:
             return self.expectation_value_power(psi, tol=tol, max_range=max_range, **init_env_data)
 
@@ -810,17 +860,53 @@ class MPO:
         exp_val : float/complex
             The expectation value density of `self` with respect to the state `psi`.
         """
+    
         if psi.finite:
             raise ValueError("not infinite MPS")
         if np.linalg.norm(psi.norm_test()) > tol:
             psi = psi.copy()
             psi.canonical_form()
         guess = init_env_data.get('init_RP', None)
-        TM = MPOTransferMatrix(self, psi, transpose=False, guess=guess)
+        
+
+       
+
+        ########## FIXED. PROBLEM WAS THAT WE NEEDED TO SEPARATELY SHIFT
+        #ENVIRONMENT MPO AND MPS LIKE LEGS. SINCE MPS LEGS DID NOT NEED SHIFTING 
+        #AND MPO LEGS DID NEED SHIFTING
+
+        
+        #NEED TO APPLY SHIFT HERE. JUST NEED TO FIGURE OUT WHERE
+      
+        TM=MPOTransferMatrix(self, psi, transpose=False, guess=guess)
+        #print('do this')
+        #print(TM.__dict__)
+
+        
+       
+        ######################
+        ###### this bit seems to be wrong. At least when we use initial environments
+        #### HOWEVER, THIS GIVES CONSISTEN ENERGY TO DMRG, SO THE ERROR FROM HERE MUST BE
+        #THE SAME AS THE ERROR IN OTHER PLACE
+        ##### should try and understand why
+        #quit()
+
         val, vec = TM.dominant_eigenvector(tol=tol)
+     
+        
+        #print(val)
+        #print(vec)
+
+
+        
+       
         if abs(1. - val) > tol * 10.:
             logger.warning("MPOTransferMatrix eigenvalue not 1: got 1. - %.3e", 1. - val)
+        #print('this error now exists so need to fix this one')
+        #quit()
         E = TM.energy(vec)  #  handles explicit_plus_hc
+        #TODO: come back to this and see waht goes on
+        #quit()
         return np.real_if_close(E)
 
     def expectation_value_power(self, psi, tol=1.e-10, max_range=100):
@@ -858,6 +944,8 @@ class MPO:
             raise ValueError("not infinite MPS")
         env = MPOEnvironment(psi, self, psi, start_env_sites=0)
         L = lcm(self.L, psi.L)
+
+       
         LP0 = env.init_LP(0)
         masks_L_no_IdL = []
         masks_R_no_IdRL = []
@@ -871,6 +959,8 @@ class MPO:
             masks_R_no_IdRL.append(mask_R)
         # contract first site with theta
         theta = psi.get_theta(0, 1)
+
+     
         LP = npc.tensordot(LP0, theta, axes=['vR', 'vL'])
         LP = npc.tensordot(LP, self._W[0], axes=[['wR', 'p0'], ['wL', 'p*']])
         LP = npc.tensordot(LP, theta.conj(), axes=[['vR*', 'p'], ['vL*', 'p0*']])
@@ -1633,6 +1723,12 @@ class MPOGraph:
         self.sites = list(sites)
         self.chinfo = self.sites[0].leg.chinfo
         self.bc = bc
+
+        if 'K' in self.chinfo.names:
+            self.translate=True
+          
+        else: 
+            self.translate=False
         self.max_range = max_range
         # empty graph
         self.states = [set() for _ in range(self.L + 1)]
@@ -1896,6 +1992,7 @@ class MPOGraph:
         grids = self._build_grids()
         IdL = [s.get('IdL', None) for s in self._ordered_states]
         IdR = [s.get('IdR', None) for s in self._ordered_states]
+      
         legs, Ws_qtotal = self._calc_legcharges(Ws_qtotal)
         H = MPO.from_grids(self.sites, grids, self.bc, IdL, IdR, Ws_qtotal, legs, self.max_range)
         return H
@@ -1939,20 +2036,26 @@ class MPOGraph:
     def _build_grids(self):
         """translate the graph dictionaries into grids for the `Ws`."""
         states = self._ordered_states
-        print(len(states[0]))
+       
         
         assert (states is not None)  # make sure that _set_ordered_states was called
         grids = []
         for i in range(self.L):
+            
             stL, stR = states[i:i + 2]
+           
+           
             graph = self.graph[i]  # ``{keyL: {keyR: [(opname, strength)]}}``
             grid = [None] * len(stL)
             for keyL, a in stL.items():
                 row = [None] * len(stR)
                 for keyR, lst in graph[keyL].items():
-                   
+                    
+                
                     b = stR[keyR]
                     row[b] = lst
+                  
+                        
                 grid[a] = row
             grids.append(grid)
         
@@ -1979,6 +2082,7 @@ class MPOGraph:
             Same as argument, but parsed to a list of L charges defaulting to zeros.
         """
         L = self.L
+      
         states = self._ordered_states
         sites = self.sites
         infinite = (self.bc == 'infinite')
@@ -1994,7 +2098,27 @@ class MPOGraph:
         charges = [[None] * len(st) for st in states]
         charges[0][states[0]['IdL']] = chinfo.make_valid(None)  # default charge = 0.
         if infinite:
-            charges[-1] = charges[0]  # bond is identical
+            ############
+            ### DOM EDITED
+            
+            if not self.translate:
+                charges[-1] = charges[0]  # bond is identical
+            else:
+                ################################################
+                #if translation occurs
+                #
+                charges[-1]=charges[0]
+                #ind=np.where(np.isnan(charges[-1])!=True)
+                #print(ind)
+                for i,value in enumerate(charges[-1]):
+                
+                    if value is None:
+                        pass 
+                    else:
+                        Nlayer=self.sites[i].Nlayer
+                      
+                        
+                        charges[-1][i][0]+=np.sum(charges[-1][i][1:])*(L//Nlayer)
 
         def travel_q_LR(i, keyL):
             """Transport charges from left to right through the MPO graph.
@@ -2020,15 +2144,41 @@ class MPOGraph:
                 for keyR, ops in edges.items():
                     r = st_r[keyR]                
                     qR = ch_r[r]
+                    #print('CHARGARA'*30)
+                    #print(qR)
+                    ########################
+                    #maybe need to translate here, but how do we know what is needed to
+                    #translate?
+                    ####################
+
+
                     if qR is None:
                         op_qtotal = site.get_op(ops[0][0]).qtotal
+
+                        #ah so this is the problem, here charge will be calculated
+                        #so (K,N) will search for site in 4th orbital
+                        #instead of the first orbital
                         ch_r[r] = qL_Wq + op_qtotal  # solve chargerule for q_right
+                       
+                       
+                        #######################################
+                        #shift it back for K conservation
+                        if i+1>=L and infinite and self.translate:
+                            Nlayer=self.sites[i].Nlayer
+                            #print('before, after')
+                          
+                            #number of layers is assumed to be all the other charges
+                            ch_r[r][0]=ch_r[r][0]-(L//Nlayer)*np.sum(ch_r[r][1:])
+                      
+                          
                         if infinite or i + 1 < L:
+                            
                             edge_stack.append(((i + 1) % L, keyR))
                 stack = edge_stack + stack
-        print('entering the bad bit')
+            
+        #print('entering the bad bit')
         travel_q_LR(0, 'IdL')
-        print('exiting the bad bit')
+        #print('exiting the bad bit')
         # now we can still have unknown edges in the case of "dead ends" in the MPO graph.
 
         def travel_q_RL(i, keyL):
@@ -2081,12 +2231,30 @@ class MPOGraph:
             ch = chinfo.make_valid(ch)
             leg = npc.LegCharge.from_qflat(chinfo, ch, qconj=+1)
             legs.append(leg)
+    
         if infinite:
-            legs[-1] = legs[0]  # identical charges
+          
+            ###################################################
+            #translation added betweeen the legs
+            #last and first leg ARE NOT THE SAME if K conservation is present
+            #need to perform a shift by L to get the last leg
+            #this translates the final leg just for the sanity check of conservation!
+            if self.translate:
+                ## calculate number of layers assuming that all not K charges are N
+                Nlayer=self.sites[i].Nlayer
+               
+               
+                
+                legs[-1]=shift_charges_leg(legs[0],L//Nlayer)
+
+              
+            else:
+                legs[-1] = legs[0]  # identical charges
+       
         return legs, Ws_qtotal
 
 
-class MPOEnvironment(BaseEnvironment):
+class MPOEnvironment(BaseEnvironment):#
     """Stores partial contractions of :math:`<bra|H|ket>` for an MPO `H`.
 
     The network for a contraction :math:`<bra|H|ket>` of an MPO `H` between two MPS looks like::
@@ -2135,6 +2303,7 @@ class MPOEnvironment(BaseEnvironment):
     def __init__(self, bra, H, ket, cache=None, **init_env_data):
         self.H = H
         super().__init__(bra, ket, cache, **init_env_data)
+
         self.dtype = np.result_type(bra.dtype, ket.dtype, H.dtype)
 
     def init_first_LP_last_RP(self,
@@ -2169,16 +2338,31 @@ class MPOEnvironment(BaseEnvironment):
             See above.
         """
         #print(self.finite)
+        #sort the H matrix
+     
         if not self.finite  and (init_LP is None or init_RP is None) and \
                 start_env_sites is None and self.bra is self.ket:
             norm_err = np.linalg.norm(self.ket.norm_test())
-            if norm_err > 1.e-10:
+            norm_tol= 1.e-10
+            #norm_tol= 1.e-3
+            if norm_err >norm_tol:
                 warnings.warn("call psi.canonical_form() to regenerate MPO environments from psi"
                               f" with current norm error {norm_err:.2e}")
                 self.ket.canonical_form()
+            
+            
             env_data = MPOTransferMatrix.find_init_LP_RP(self.H, self.ket, 0, self.L - 1)
             init_LP = env_data['init_LP']
             init_RP = env_data['init_RP']
+            
+            ################################
+            #########################
+            ##################DELET THESE TWO LINES AND ACTIVATE LAST FOUR LINES
+            #init_LP = None
+            #init_RP = None
+            #this does it only once. seems to converge to same thing whether we make it non or not none
+            #also N,K different runs converge to same but wrong thing.
+            #making infinite cell longer leads to 1/3 in the middle but messed up behaviour at the edges
             start_env_sites = 0
         if start_env_sites is None:
             start_env_sites = 0 if self.finite else self.L
@@ -2189,11 +2373,11 @@ class MPOEnvironment(BaseEnvironment):
         init_LP, init_RP = self._check_compatible_legs(init_LP, init_RP, start_env_sites)
         #print(init_LP)
         #print(init_RP)
-        #quit()
+        
         #print('AAAAAAAAA')
         #print(init_LP)
         #print(init_RP)
-        #quit()
+        
         
         if self.ket.bc == 'segment' and (init_LP is None or init_RP is None):
             raise ValueError("Environments with segment b.c. need explicit environments!")
@@ -2201,41 +2385,48 @@ class MPOEnvironment(BaseEnvironment):
         super().init_first_LP_last_RP(init_LP, init_RP, age_LP, age_RP, start_env_sites)
 
     def _check_compatible_legs(self, init_LP, init_RP, start_env_sites):
+        #print that legs are ok
+        #checks whether environment is compatible with MPO legs
         if init_LP is not None:
             try:
-                #print('WHY DO YOU BREAK :(')
                 i = -start_env_sites
-                #print(i)
-                MPO_Bs=self.H.get_W(i).get_leg('wL')
-                mpo=self.H.get_W(i)
-                #print("left side mpo")
-                #print(mpo.size)
-                #print(MPO_Bs)
-                #print("*"*10,"charges of enviroment")
-                #print(init_LP.get_leg('wR'))
                 
+                
+                #### shift all charges when needed
+                ## Here we are permuting so that translation occurs only 
+                # if it is necessary by actual MPO.
+                # we note that MPO connects to environment only by one leg
+                init_LP_permuted=[init_LP.legs[1],init_LP.legs[0],init_LP.legs[2]]
+                bunch=[leg.bunched for leg in init_LP_permuted]
+                init_LP.legs=translate_by_appropriate_amount(init_LP_permuted,self.H.get_W(i).get_leg('wL'),bunch=bunch)
+                init_LP.legs = [init_LP.legs[i] for i in [1, 0, 2]]
+
+                init_LP.qtotal =init_LP._get_block_charge( init_LP._qdata[0])
+            
+
                 init_LP.get_leg('wR').test_contractible(self.H.get_W(i).get_leg('wL'))
-                print("passes")
+   
             except ValueError:
                 warnings.warn("dropping `init_LP` with incompatible MPO legs")
                 init_LP = None
         if init_RP is not None:
             try:
+
+                #### shift all charges when needed
+                ## same as above. This cures the problem of resuming the MPO calculation.
+
                 j = self.L - 1 + start_env_sites
-                #print("number of sites BLAH BLAH")
-                #print(start_env_sites)
-                #print(j)
-                #print(self.H.L)
-                #print('BANANANANANANANANANANA'*10)
-                #banana=self.H.get_W(j)
-                #print("*"*10,"charges of mpo")
-                #print(self.H.get_W(i).get_leg('wR'))
-                
-                #print(banana)
+                init_RP_permuted=[init_RP.legs[1],init_RP.legs[0],init_RP.legs[2]]
+                bunch=[leg.bunched for leg in init_RP_permuted]
+                init_RP.legs=translate_by_appropriate_amount(init_RP_permuted,self.H.get_W(j).get_leg('wR'),bunch=bunch)
+                init_RP.legs = [init_RP.legs[i] for i in [1, 0, 2]]
+                init_RP.qtotal =init_RP._get_block_charge( init_RP._qdata[0])
+            
                 init_RP.get_leg('wL').test_contractible(self.H.get_W(j).get_leg('wR'))
             except ValueError:
                 warnings.warn("dropping `init_RP` with incompatible MPO legs")
                 init_RP = None
+          
         return super()._check_compatible_legs(init_LP, init_RP, start_env_sites)
 
     def test_sanity(self):
@@ -2379,6 +2570,9 @@ class MPOEnvironment(BaseEnvironment):
             Contraction of everything right of site `i`,
             with labels ``'vL*', 'wL', 'vL'`` for `bra`, `H`, `ket`.
         """
+        
+       
+
         # actually same as MPSEnvironment, just updated the labels in the doc string.
         return super().get_RP(i, store)
 
@@ -2398,6 +2592,9 @@ class MPOEnvironment(BaseEnvironment):
         """
         # same as MPSEnvironment.full_contraction, but also contract 'wL' with 'wR'
         LP, RP = self._full_contraction_LP_RP(i0)
+
+        #_,LP=LP.sort_legcharge(sort=True, bunch=False)
+        #_,RP=RP.sort_legcharge(sort=True, bunch=False)
         res = npc.inner(LP, RP, axes=[['vR*', 'wR', 'vR'], ['vL*', 'wL', 'vL']], do_conj=False)
         if self.H.explicit_plus_hc:
             res = res + np.conj(res)
@@ -2406,21 +2603,43 @@ class MPOEnvironment(BaseEnvironment):
     def _contract_LP(self, i, LP):
         """Contract LP with the tensors on site `i` to form ``self._LP[i+1]``"""
         # same as MPSEnvironment._contract_LP, but also contract with `H.get_W(i)`
-        LP = npc.tensordot(LP, self.ket.get_B(i, form='A'), axes=('vR', 'vL'))
-        LP = npc.tensordot(self.H.get_W(i), LP, axes=(['p*', 'wL'], ['p', 'wR']))
+        #translations are performed in corresponding get_ function
+        H4=self.H.get_W(i)
+        ket=self.ket.get_B(i, form='A') 
+        bra=self.bra.get_B(i, form='A').conj()
+
+        LP = npc.tensordot(LP,ket, axes=('vR', 'vL'))
+        LP = npc.tensordot(H4, LP, axes=(['p*', 'wL'], ['p', 'wR']))
+    
+        
         axes = (self.bra._get_p_label('*') + ['vL*'], self.ket._p_label + ['vR*'])
-        # for a usual MPS, axes = (['p*', 'vL*'], ['p', 'vR*'])
-        LP = npc.tensordot(self.bra.get_B(i, form='A').conj(), LP, axes=axes)
+        # for a usual MPS, axes = (['p*', 'vL*'], ['p', 'vR*']) 
+        LP = npc.tensordot(bra, LP, axes=axes)
         return LP  # labels 'vR*', 'wR', 'vR'
 
     def _contract_RP(self, i, RP):
         """Contract RP with the tensors on site `i` to form ``self._RP[i-1]``"""
         # same as MPSEnvironment._contract_RP, but also contract with `H.get_W(i)`
-        RP = npc.tensordot(self.ket.get_B(i, form='B'), RP, axes=('vR', 'vL'))
-        RP = npc.tensordot(RP, self.H.get_W(i), axes=(['p', 'wL'], ['p*', 'wR']))
+
+        #no need to translate anything since it is automatically translated  in calling these
+        #functions
+        H4=self.H.get_W(i)
+        ket=self.ket.get_B(i, form='B')
+
+       
+        bra=self.bra.get_B(i, form='B').conj()
+       
+      
+
+     
+        RP = npc.tensordot(ket, RP, axes=('vR', 'vL'))
+        RP = npc.tensordot(RP, H4, axes=(['p', 'wL'], ['p*', 'wR']))
         axes = (self.ket._p_label + ['vL*'], self.ket._get_p_label('*') + ['vR*'])
         # for a usual MPS, axes = (['p', 'vL*'], ['p*', 'vR*'])
-        RP = npc.tensordot(RP, self.bra.get_B(i, form='B').conj(), axes=axes)
+        RP = npc.tensordot(RP, bra, axes=axes)
+
+
+        
         return RP  # labels 'vL', 'wL', 'vL*'
 
     def _contract_LHeff(self, i, label_p='p0', pipe=None):
@@ -2439,7 +2658,7 @@ class MPOEnvironment(BaseEnvironment):
     def _contract_RHeff(self, i, label_p='p1', pipe=None):
         RP = self.get_RP(i)
         p, ps = label_p, label_p + '*'
-        W = self.H.get_W(i).replace_labels(['p', 'p*'], [p, ps])
+        W = self.H.get_W(i).replace_labels(['p', 'p*'], [p, ps]) 
         RHeff = npc.tensordot(W, RP, axes=['wR', 'wL'])
         if pipe is None:
             pipe = RHeff.make_pipe([p, 'vL*'], qconj=-1)
@@ -2460,6 +2679,11 @@ class MPOEnvironment(BaseEnvironment):
 
 
 class MPOTransferMatrix(NpcLinearOperator):
+
+
+    #SO MPO TRANSFER MATRIX IS WHAT GOES WRONG
+    #I NEED KONSTANTINOS TO SEND THIS
+    #still could be wrong in MPS THO
     """Transfermatrix of a Hamiltonian-like MPO sandwiched between canonicalized MPS.
 
     Given an MPS in canonical form, this class helps to find the correct initial MPO environment
@@ -2517,16 +2741,27 @@ class MPOTransferMatrix(NpcLinearOperator):
         self.IdR = H.get_IdR(-1)  # on bond between MPS unit cells
         if self.IdL is None or self.IdR is None:
             raise ValueError("MPO needs to have structure with IdL/IdR")
+        
+        self.Nlayer=H.sites[0].Nlayer #extract layer number
+        
         wL = H.get_W(0).get_leg('wL')
         wR = wL.conj()
         S = psi.get_SL(0)
+        
+        
+        #print('x'*30)
+        #print("wL IdL =", self.IdL)
+        #print("wL charge at IdL =", wL.get_charge(self.IdL))
+        #print("wR IdL =", self.IdL)
+        #print("wR charge at IdL =", wR.get_charge(self.IdL))
+        #print("H W0 qtotal =", H.get_W(0).qtotal)
         if not transpose:  # right to left
             vR = psi.get_B(psi.L-1, 'B').get_leg('vR')
             if isinstance(S, npc.Array):
-                rho = npc.tensordot(S, S.conj(), axes=['vL', 'vL*'])
+                rho = npc.tensordot(S, S.conj(), axes=['vL', 'vL*'])    
             else:
-                S2 = S**2
-                rho = npc.diag(S2, vR, labels=['vR', 'vR*'])
+                S2 = S**2      
+                rho = npc.diag(S2, vR, labels=['vR', 'vR*'])    
 
             self.acts_on = ['vL', 'wL', 'vL*']  # vec: vL wL vL*
 
@@ -2543,7 +2778,7 @@ class MPOTransferMatrix(NpcLinearOperator):
             self._E_shift = eye_R.add_leg(wL, self.IdL, axis=1, label='wL')  # vL wL vL*
             self._proj_trace = self._E_shift.conj().iset_leg_labels(['vR', 'wR', 'vR*']) / chi0
             self._proj_norm = eye_R.add_leg(wL, self.IdR, axis=1, label='wL').conj()  # vL* wL* vL
-            self._proj_rho = rho.add_leg(wR, self.IdL, axis=1, label='wR')  # vR wR vR*
+            self._proj_rho = rho.add_leg(wR, self.IdL, axis=1, label='wR')  # vR wR vR*    
         else:  # left to right
             vL = psi.get_B(0, 'A').get_leg('vL')
             if isinstance(S, npc.Array):
@@ -2591,7 +2826,12 @@ class MPOTransferMatrix(NpcLinearOperator):
             if not transpose:
                 guess = eye_R.add_leg(wL, self.IdR, axis=1, label='wL')  # vL wL vL*
             else:
+               
+
+              
+                #quit()
                 guess = eye_L.add_leg(wR, self.IdL, axis=1, label='wR')  # vR* wR vR
+                
             # no need to _project: E = 0
         else:
             if not transpose:
@@ -2600,6 +2840,29 @@ class MPOTransferMatrix(NpcLinearOperator):
                 guess = guess.transpose(['vR*', 'wR', 'vR'])  # copy!
             self._project(guess)
         self.guess = guess
+     
+        
+        #in case we have translation and infinite boundary conditions, we need
+        #to perform translation
+        self.L=psi.L
+     
+        if psi.translate and  psi.bc=='infinite':
+            self.translate=True
+        else:
+            self.translate=False
+        L=psi.L
+        if not transpose and psi.translate==True and psi.bc=='infinite':
+            #here, do not shift MPS-like LEGS, BUT DO SHIFT
+            #MPO-LIKE LEGS - this then works fine!
+            leg=self.guess.legs[1]
+            bunched=leg.bunched
+
+            
+            lega=shift_charges_leg(leg,L//self.Nlayer)
+            if bunched:
+                _,lega=lega.bunch()
+            self.guess.legs[1]=lega
+        
         self.flat_linop, self.flat_guess = FlatLinearOperator.from_guess_with_pipe(self.matvec,
                                                                                    self.guess,
                                                                                    dtype=dtype)
@@ -2629,6 +2892,7 @@ class MPOTransferMatrix(NpcLinearOperator):
                 vec = npc.tensordot(W, vec, axes=[['wL', 'p*'], ['wR', 'p']])  # wR p vR* vR
                 vec = npc.tensordot(Ac, vec, axes=[['p*', 'vL*'], ['p', 'vR*']])  # vR* wR vR
         if project:
+            
             self._project(vec)
         return vec
 
@@ -2637,10 +2901,50 @@ class MPOTransferMatrix(NpcLinearOperator):
         if not self.transpose: # Acts to the right, T * RP = RP + e_R * I
             vec.itranspose(['vL', 'wL', 'vL*'])  # shouldn't do anything
             E = npc.inner(vec, self._proj_subtr, axes=[['vL', 'wL', 'vL*'], ['vR', 'wR', 'vR*']])
+            ###########
+            #DOM: last thing I changed
+            # If there is errror in the algorithm, should be this thing here!
+            #print(self._proj_subtr)
+            
+
+            ##########
+            ## translation here does not change any legs, it is just done so 
+            #that sanity check of matching last and first leg is passed
+            #########
+   
+            #uncomment if needed
+            if self.translate:
+                
+                #TODO: fix this to translate all legs, or not needed?
+                # seems like not needed.
+                leg2=self._E_shift.get_leg('vL')
+                leg1=vec.get_leg('vL')
+                leg2=translate_by_appropriate_amount([leg2],leg1,bunch=[leg2.bunched])
+                leg2=leg2[0]
+                self._E_shift.legs[0]=leg2
+
+
+                leg2=self._E_shift.get_leg('vL*')
+                leg1=vec.get_leg('vL*')
+                leg2=translate_by_appropriate_amount([leg2],leg1,bunch=[leg2.bunched])
+                leg2=leg2[0]
+                self._E_shift.legs[-1]=leg2
+                #TODO: there is easier way of doing this.
+                ## recalculate qtotal.
+                #self._E_shift.qtotal=npc.detect_qtotal(self._E_shift.to_ndarray(),self._E_shift.legs)
+                self._E_shift.qtotal =self._E_shift._get_block_charge(self._E_shift._qdata[0])
+            
+            ##############
             vec -= self._E_shift * E
         else: # Acts to the left, LP * T = LP + e_L * I
             vec.itranspose(['vR*', 'wR', 'vR'])  # shouldn't do anything
+            #TODO: TRANSLATION HERE!
             E = npc.inner(vec, self._proj_subtr, axes=[['vR*', 'wR', 'vR'], ['vL*', 'wL', 'vL']])
+            #print(self._E_shift)
+            #print(vec)
+            bunch=[leg.bunched for leg in self._E_shift.legs]
+            self._E_shift.legs=translate_by_appropriate_amount(self._E_shift.legs,vec.legs[0],bunch=bunch)
+            self._E_shift.qtotal =self._E_shift._get_block_charge( self._E_shift._qdata[0])
             vec -= self._E_shift * E
 
     def dominant_eigenvector(self, **kwargs):
@@ -2658,12 +2962,29 @@ class MPOTransferMatrix(NpcLinearOperator):
         vec :
             Eigenvector to be used as initial LP/RP for an :class:`MPOEnvironment`.
         """
+
+        #print("flat_guess:", self.flat_guess)
+        #print("flat_linop:", self.flat_linop.__dict__)
+        #print("kwargs:", kwargs)
+       
         if 'v0_npc' not in kwargs:
             kwargs.setdefault('v0', self.flat_guess)
+
+        #print(self.flat_linop.__dict__.keys())
+        #quit()
+        
         vals, vecs = self.flat_linop.eigenvectors(**kwargs)
+        #print(vals)
+        #quit()
         val = vals[0]
         v0 = vecs[0]
         v0 = v0.split_legs()
+       
+        #_,v0=v0.sort_legcharge(sort=True, bunch=False)
+        #_,self._proj_norm=self._proj_norm.sort_legcharge(sort=True, bunch=False)
+        #print(v0)
+        #print(self._proj_norm)
+        
         norm = npc.inner(self._proj_norm, v0, axes='range', do_conj=False) / self._chi0
         return val, v0 / norm
 
@@ -2681,6 +3002,12 @@ class MPOTransferMatrix(NpcLinearOperator):
             axes= (['vL', 'wL', 'vL*'], ['vR', 'wR', 'vR*'])
         else:
             axes= (['vR*', 'wR', 'vR'], ['vL*', 'wL', 'vL'])
+
+        
+        #SO CALCULATES ENVIRONEMENT ENERGY
+        #THEN TOTAL SITES+ENV ENERGY
+        #AND LOOKS AT DIFFERENCE!
+        #but dominant vector is environment I think
         E0 = npc.inner(dom_vec, self._proj_rho, axes)
         vec = self.matvec(dom_vec, project=False)
         E = npc.inner(vec, self._proj_rho, axes)
@@ -2739,15 +3066,69 @@ class MPOTransferMatrix(NpcLinearOperator):
             guess_init_env_data = {}
         for transpose in [False, True]:
             guess = guess_init_env_data.get('init_LP' if transpose else 'init_RP', None)
+            #print('gauge substraction')
+            #print(_subtraction_gauge)
+            #print('guess'*20)
+            #print(guess)
+            #leg1=psi._B[0].legs[0]
+            #copy_legs = [psi._B[-1].legs[2],  psi._B[-1].legs[1],  psi._B[-1].legs[0] ]
+
+            #bunch = [leg.bunched for leg in copy_legs]
+            #copy_legs=translate_by_appropriate_amount( copy_legs,leg1,bunch=bunch)
+            #copy_legs = [copy_legs[2],copy_legs[1],copy_legs[0]]
+            #psi._B[-1].legs=copy_legs
+
+            ##change the corresponding charges.
+            """
+            psi._B[-1].qtotal =psi._B[-1]._get_block_charge( psi._B[-1]._qdata[0])
+            for i in range(H.L):
+                W = H._W[i]
+
+                H._W[i] = npc.Array.from_ndarray(
+                    W.to_ndarray(),
+                    W.legs,
+                    labels=W.get_leg_labels(),
+                )
+
+            for i in range(psi.L):
+                B = psi._B[i]
+
+                #print("\n================")
+                #print("SITE", i)
+                #print("qtotal:", B.qtotal)
+                #print(B)
+
+                psi._B[i]= npc.Array.from_ndarray(
+                    B.to_ndarray(),
+                    B.legs,
+                    qtotal=B.qtotal,
+                    labels=B.get_leg_labels(),
+                )
+
+                #print("site", i, "OK")
+            """
             TM = cls(H, psi, transpose=transpose, guess=guess, _subtraction_gauge=_subtraction_gauge)
+            
+            
+            
             val, vec = TM.dominant_eigenvector(**kwargs)
             if abs(1. - val) > tol_ev0:
                 logger.warning("MPOTransferMatrix eigenvalue not 1: got %s", val)
+         
+            
+        
+            #so vector is initial environment
             envs.append(vec)
             if calc_E:
                 Es.append(TM.energy(vec)) #E_R, E_L
             L = TM.L
             del TM
+            
+
+        
+        #THE ABOVE PART IS WRONG FOR FED IN MPS
+        #NOT SURE ABOUT GENERIC ONE
+        
         init_env_data = {'init_LP': envs[1], 'init_RP': envs[0], 'age_LP': 0, 'age_RP': 0}
         if first != 0 or (last is not None and last % L != L - 1):
             env = MPOEnvironment(psi, H, psi, **init_env_data)
@@ -2755,6 +3136,8 @@ class MPOTransferMatrix(NpcLinearOperator):
                 init_env_data['init_LP'] = env.get_LP(first, store=False)
             if last is not None and last % L != L - 1:
                 init_env_data['init_RP'] = env.get_RP(last, store=False)
+    
+    
         if calc_E:
             # We need this for segment excitation energies.
             # TODO: this doesn't work for non-default first/last!?
@@ -2829,9 +3212,9 @@ def _calc_grid_legs_finite(chinfo, grids, Ws_qtotal, leg0):
         #print(leg0)
     legs = [leg0]
     #print(leg0)
-    #quit()
+    
     for i, gr in enumerate(grids):
-        print(i)
+        #print(i)
         gr_legs = [legs[-1], None]
         gr_legs = npc.detect_grid_outer_legcharge(gr,
                                                   gr_legs,
@@ -2875,7 +3258,7 @@ def _calc_grid_legs_infinite(chinfo, grids, Ws_qtotal, leg0, IdL_0):
             
             grid = grids[i]
             #print(grid[0][0])
-            #quit()
+            
             QsL, QsR = charges[i:i + 2]
             for vL, row in enumerate(grid):
                 qL = QsL[vL]

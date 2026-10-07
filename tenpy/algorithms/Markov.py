@@ -3,9 +3,11 @@ import scipy as sp
 from time import time
 from tenpy.tools.string import joinstr
 from tenpy.tools.math import anynan
-import control
+import control#_old as control
+
+import slycot
 try:
-	import control
+	import control#_old as control
 	import slycot
 	Loaded_Sylcot = True
 except:
@@ -454,14 +456,19 @@ class MPO_system(object):
 		if not isinstance(self.node_header, tuple): raise RuntimeError(self.node_header)
 
 
-	def add_io_single_r(self, i, o, r, val):
+	def add_io_single_r(self, i, o, r, val,num):
 		if r < 0: raise ValueError((i, o, r, val))
 		Din = self.Din
 		Dout = self.Dout
 		io = self.io
-#		if self.counter >= 0: print self.counter, i, o, r, val
 		
-		##
+		
+		
+	
+			
+		
+#		if self.counter >= 0: print self.counter, i, o, r, val
+	
 		if (i not in Din):
 			if (o not in Dout):
 				ikey = Din[i] = { 'index': [len(io), 0] }
@@ -505,6 +512,14 @@ class MPO_system(object):
 		
 		self.counter += 1
 #		if self.counter > 7288: quit()
+		#ERROR OCCURS BEFORE THIS POINT
+		
+		
+		#print(i)
+		#print(ikey)
+		#quit()
+		
+
 
 
 	def combine_ioblock(self, block_index1, block_index2):
@@ -539,8 +554,8 @@ class MPO_system(object):
 
 	def remove_empty_block(self, block_index):
 		io = self.io
-		if block_index >= len(io): raise ValueError((lock_index, len(io)))
-		if io[block_index] is not None: raise ValueError((block_index))
+		if block_index >= len(io): raise ValueError(lock_index, len(io))
+		if io[block_index] is not None: raise ValueError(block_index)
 		if block_index == len(io) - 1:
 			del io[block_index]
 			return
@@ -579,7 +594,7 @@ class MPO_system(object):
 		self.check_sanity()
 
 
-	def compute_ABC(self, tol, verbose=0, verbose_prepend='\t'):
+	def compute_ABC(self, tol, text_job,verbose=0, verbose_prepend='\t'):
 		"""	Take the 'seq' key of each block and make the A,B,C matrices.
 				Require each block to have 'seq' key, and adds the following keys:
 					'A'
@@ -588,13 +603,26 @@ class MPO_system(object):
 					'N'
 					'norm_err'
 			"""
+		#######################
+		##### ALL THE SAME UP TO HERE, ERROR OCCURS HERE!!
+		###################
+	
 		for block_index,block in enumerate(self.io):
+			
 			if block is None: continue
 			seq = block['seq']
 			if 'conj' in block and block['conj'][0] < block_index:
 				##	Use the previous computation
+			
+				
+			
 				bc_id, in_map, out_map = block['conj']
+				
 				blockc = self.io[bc_id]
+
+			
+
+				
 				block['N'] = blockc['N']
 				block['A'] = np.conj(blockc['A'])
 				block['B'] = np.conj(blockc['B'])[:, in_map]
@@ -605,49 +633,83 @@ class MPO_system(object):
 				#block['norm_err'] = np.linalg.norm(seq_diff.reshape(-1))
 				block['num_above_tol'] = blockc['num_above_tol']
 
+				
+				
+				
+
 			else:
+
+				
 				seq_norm = np.linalg.norm(seq.reshape(-1))
+				
 				if verbose > 0:
-					print (verbose_prepend + "slycot processing {}/{}: shape={} norm={}tol".format( block_index, len(self.io), seq.shape, int(seq_norm/tol) ))
+					print(verbose_prepend, "slycot processing {}/{}: shape={} norm={}tol".format( block_index, len(self.io), seq.shape, int(seq_norm/tol) ))
 				if seq_norm < tol:
+
+
 					block['N'] = 0
 					block['A'] = np.zeros([0,0], dtype=seq.dtype)
 					block['B'] = np.zeros([0,len(block['in'])], dtype=seq.dtype)
 					block['C'] = np.zeros([len(block['out']),0], dtype=seq.dtype)
 					seq_comp = np.zeros_like(seq)
+					
 				else:
 					t0 = time()
+					
+					
 					if 'ignore_r0' in block:
+						
+					
 						sys = SS_fromV(seq, ignore_r0 = block['ignore_r0'])
 					else:
-						sys = SS_fromV(seq, cutoff = 1e-14)
-
-
-					if verbose > 0: print ('v({0:.1f}s)'.format(time() - t0))
+						
+						#seems to do the same thing
+						sys = SS_fromV(seq)
+						
+						
+						
+						
+					
+				
+					if verbose > 0: print( 'v({0:.1f}s)'.format(time() - t0))
 					t0 = time()
 					if len(sys.A) > 1:
-						sys_comp, hsv = SS_compress(sys, tol = tol)
-						##sys_comp = SS_eig_canon(sys_comp)
+
+						# this is where stuff goes south
+						#######################
+						##### ALL THE SAME UP TO HERE, ERROR OCCURS HERE!!
+						###################
+						
+						sys_comp, hsv = SS_compress(sys,text_job, tol = tol)
+						#sys_comp = SS_eig_canon(sys_comp)
+						
+
+
+
+
 					else:
 						sys_comp = sys
-					if verbose > 0: print('c({0:.1f}s)'.format(time() - t0))
+					if verbose > 0: print( 'c({0:.1f}s)'.format(time() - t0))
 					block['A'] = sys_comp.A.copy(order = 'C')
 					block['B'] = sys_comp.B.copy(order = 'C')
 					block['C'] = sys_comp.C.copy(order = 'C')
 					block['N'] = len(block['A'])
 					seq_comp = SS_output(sys_comp, seq.shape[2])
+				
 			
 				seq_diff = seq_comp - seq
 				if seq_diff.shape[2] > 0 and 'ignore_r0' in block: seq_diff[:, :, 0] *= (1 - block['ignore_r0'])
 				block['norm_err'] = np.linalg.norm(seq_diff.reshape(-1))
+			
 				block['num_above_tol'] = np.count_nonzero(np.abs(seq) >= tol)
 				#print '  ', block['in'], block['out'], block['N']
-				if verbose > 0: print ('.')		# terminate line
-
+				if verbose > 0: print('.')		# terminate line
+		
+		
+		
 		self.info['ABC_tol'] = tol
 		self.info['total_norm_err'] = np.linalg.norm([ b['norm_err'] for b in self.io ])
-
-
+	
 	def compute_norm(self):
 		n2 = 0.
 		for block in self.io:
@@ -694,6 +756,11 @@ class MPO_system(object):
 				io items have optional keys: 'StrOp', 'name'
 			Also need self.node_header
 			"""
+	
+		
+		
+		
+		
 		L = len(MPOgraph)
 		Din = self.Din
 		Dout = self.Dout
@@ -787,8 +854,7 @@ class MPO_system(object):
 ################################################################################
 ## Slycot Stuff
 
-
-def SS_fromV(V, shiftby_1 = True, ignore_r0 = None, cutoff = 1e-16):
+def SS_fromV(V, shiftby_1 = True, ignore_r0 = None):
 	"""
 		Input: V[a][b][r], stored either as list of list of rank-1 np.arrays, as single rank-3 np.array, or as a single rank-1 np.array (in which case a=b=0 is implicit).
 		ignore_r0 is either array or list of lists - corresponding r=0 responses can be safely ignored.
@@ -814,7 +880,7 @@ def SS_fromV(V, shiftby_1 = True, ignore_r0 = None, cutoff = 1e-16):
 		A, B, C, D can be obtained via sys.A, etc...
 
 		If shiftby_1 = True, shifts the signal later by 1,
-			s1_new[r] = s1[r-1],
+			s1_new[r] = s1[r-1],			
 		padding with a zero.  This way D is irrelevant, and the first measurement is term CB.
 		"""
 
@@ -825,8 +891,6 @@ def SS_fromV(V, shiftby_1 = True, ignore_r0 = None, cutoff = 1e-16):
 	if ignore_r0 is not None:
 		#if V.shape[0] == 1 or V.shape[1] == 1:
 		#	print "Sorry Roger - not proceeding omptimally. Should do shifting strategy in this case"
-		print ("This code PROBABLY works, but MPZ couldn't find test case! Now that you have, contact Mike")
-		raise NotImplemented
 		V = [[ vvv for vvv in r ] for r in V ]
 		ignore_r0 = np.array(ignore_r0)
 		for r in range(num_r):
@@ -836,49 +900,33 @@ def SS_fromV(V, shiftby_1 = True, ignore_r0 = None, cutoff = 1e-16):
 						V[r][c]=None
 					else:
 						V[r][c][0]=V[r][c][1]
-
-	l = np.zeros((num_r, num_c), dtype = np.int64)
-	v = np.empty((num_r, num_c), dtype = object)
-	for r in range(num_r):
-		for c in range(num_c):
-			if V[r][c] is None:
-				V[r][c] = np.array([0.])
+	N = []	# numerator
+	D = []	# denominator
+	for r in V:
+		n = []
+		d = []
+		for c in r:
+			if c is not None:
+				if shiftby_1:
+					c = np.pad(c, (1, 0), mode='constant')			
+				n.append(np.pad(c, (0, 1), mode='constant'))
+				den = np.zeros(len(c)+1)
+				den[0] = 1
+				d.append( den )
 			else:
-				v[r][c] = V[r][c]
-			if shiftby_1:
-				v[r][c] = np.pad(v[r][c], (1, 0), mode='constant')
-			keep = np.nonzero(np.abs(v[r][c]) > cutoff)[0]
-			if len(keep) == 0:
-				keep = np.array([0], dtype = np.int64)
-			v[r][c] = v[r][c][:keep[-1]+1]
-			l[r,c] = len(v[r][c])
+				n.append([0])
+				d.append([1])
+		N.append(n)
+		D.append(d)
 
-	l = np.max(l, axis = 1)-1
-	l[l<0] = 0
-	N = np.sum(l)
-	A = np.zeros((N, N))
-	B = np.zeros((N, num_c))
-	C = np.zeros((num_r, N))
-	D = np.zeros((num_r, num_c))
-	at = 0
-	for r in range(num_r):
-		C[r, at] = 1.
-		for c in range(num_c):
-			D[r, c] = v[r][c][0]
-			if len(V[r][c]) > 1:
-				B[at:at+len(v[r][c]) - 1, c] = v[r][c][1:]
+	N_cons=[[np.array([0.0000000e+00, 0.0000000e+00, 8.2904933e-03, 5.5183974e-03, 2.0615939e-03, 5.1402164e-04, 9.0427779e-05, 1.1513971e-05, 1.0760271e-06, 7.4443144e-08, 3.8344318e-09, 1.4763302e-10, 4.2612510e-12, 0.0000000e+00])]]
 	
-		for j in range(l[r] - 1):
-			A[at+j, at+j+1] = 1.
-		at = at + l[r]
-
-	sys = control.ss(A, B, C, D, 1)
 	
-	output = SS_output(sys, np.max(l)+1)
-	for r in range(len(V)):
-		for c in range(len(V[r])):
-			assert np.linalg.norm(V[r][c] - output[r, c, :len(V[r][c])]) < 1e-15
-	return control.ss(A, B, C, D, 1)
+	#control.tf(N, D, 1.) OUTPUTS THE SAME THING IN OLD AND NEW CODE
+	#AND control.tf2ss(control.tf(N, D, 1.)) DOESN't
+	
+	#quit()
+	return control.tf2ss(control.tf(N, D, 1.))
 
 def SS_fromV_tff2ss(V, shiftby_1 = True, ignore_r0 = None):
 	"""
@@ -950,6 +998,7 @@ def SS_fromV_tff2ss(V, shiftby_1 = True, ignore_r0 = None):
 	return control.tf2ss(control.tf(N, D, 1.))
 	
 
+
 def ABC_output(r_max, A, B, C, D=None, dtype=float):
 	"""Output of sys, p x q x r_max"""
 	V = np.zeros((C.shape[0],B.shape[1],r_max), dtype=dtype)
@@ -984,7 +1033,6 @@ def SS_plot(sys, r_max):
 	plt.ylim([np.min(V), np.max(V)])
 	plt.legend(leg)
 	plt.show()
-
 
 def SS_canon(sys, full_output=False):
 	""" Brings a SS to modal canonical form: A is real and block diagonal, ideally with blocks of size < 2x2. However, if it would be very poorly condition to do so (due to Jordan blocks), returns larger blocks.
@@ -1077,7 +1125,7 @@ def SS_eig_canon(sys):
 
 	return control.StateSpace(A, B, C, sys.D, 1.)
 
-def SS_compress(sys, N_max=None, tol = 0., equil='S', job = 'B'):
+def SS_compress(sys,text_job, N_max=None, tol = 0., equil='S', job = 'B'):
 	""" Compression of state machine. Returns SS of no more than N_max nodes (N_max is ignored if None - effectively set to current size of sys).
 	
 		If tol = 0., attempts an exact reduction.
@@ -1092,7 +1140,30 @@ def SS_compress(sys, N_max=None, tol = 0., equil='S', job = 'B'):
 	p = np.size(sys.C,0)		
 	
 	if tol >= 0.:
+		#print('RUNANARA')
+		#print(dico)
+		#print(job)
+	
+		#print(equil)
+		#print(n, m, p)
+		#print(sys.A)
+		#print(sys.B)
+		#print(sys.C)
+		#print(N_max)
+		#print(tol)
+
+		#############################
+		###### DOM: comment, alll the way up to here eveything is the same. BASICALLY THE POINT IS
+		#THAT ERROR OCCURS IN THIS FUNCTION: OUTPUT IS DIFFERENT FOR TWO SAME INPUTS!!
+		###########################
+		##########################
 		Nr, Ar, Br, Cr, hsv_ret = slycot.ab09ad(dico,job,equil, n, m, p, sys.A,sys.B,sys.C, nr=N_max, tol=tol)
+		#print('ininin'*30)
+		#print(hsv_ret)
+	
+			
+		
+		
 		return control.StateSpace(Ar, Br, Cr, sys.D, 1.), hsv_ret
 	
 	#First must find hsv so we know how to scale tol. Not sure there is another way to do this!	
@@ -1108,12 +1179,13 @@ def SS_compress(sys, N_max=None, tol = 0., equil='S', job = 'B'):
 	tol = -tol*hsv_ret[0]
 
 	#Now try to realize system just based on 'tol'
-	Nr, Ar, Br, Cr, hsv = slycot.ab09ad(dico,job,equil, n, m, p, Ar,Br,Cr, nr=None, tol = tol)
+	Nr, Ar, Br, Cr, hsv = slycot.ab09ad('D',job,equil, n, m, p, Ar,Br,Cr, nr=None, tol = tol)
 	if Nr <= N_max:
 		return control.StateSpace(Ar, Br, Cr, sys.D, 1.), hsv_ret
 
 	#Used too many nodes! Or didn't care about tol. Resort to the N_max
-	Nr, Ar, Br, Cr, hsv = slycot.ab09ad(dico,job,equil, n, m, p, Ar,Br,Cr, nr=N_max, tol=0.)
+	Nr, Ar, Br, Cr, hsv = slycot.ab09ad('D',job,equil, n, m, p, Ar,Br,Cr, nr=N_max, tol=0.)
+
 	return control.StateSpace(Ar, Br, Cr, sys.D, 1.), hsv_ret
 
 

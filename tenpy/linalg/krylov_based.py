@@ -116,6 +116,12 @@ class KrylovBased:
     def __init__(self, H, psi0, options):
        
         self.H = H
+        #print('LP GOVNO')
+        #print(H.LP)
+        #print(H.RP)
+        #print()
+        #quit()
+       
         self.psi0 = psi0.copy()
         self._psi0_norm = None
         self.options = options = asConfig(options, self.__class__.__name__)

@@ -34,3 +34,6 @@ coverage.*
 *.pkl
 NEW_COMMITS/0_test.py
 
+*.pkl
+__pycache__/
+*.pyc

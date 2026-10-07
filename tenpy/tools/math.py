@@ -134,9 +134,13 @@ def speigs(A, k, *args, **kwargs):
         array of min(`k`, A.shape[0]) eigenvectors, ``v[:, i]`` is the `i`-th eigenvector.
         Only returned if ``kwargs['return_eigenvectors'] == True``.
     """
+    #print(A.__dict__)
+   
     d = A.shape[0]
     if A.shape != (d, d):
         raise ValueError("A.shape not a square matrix: " + str(A.shape))
+    
+ 
     if k < d - 1:
         return scipy.sparse.linalg.eigs(A, k, *args, **kwargs)
     else:

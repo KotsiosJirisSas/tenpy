@@ -412,11 +412,22 @@ class FlatLinearOperator(ScipyLinearOperator):
             raise ValueError("`labels_split` must contain all the legs of `v0_guess`")
         pipe = v0_combined.legs[0]
         pipe_label = v0_combined.get_leg_labels()[0]
+
+     
+       
         res = cls(npc_matvec, pipe, dtype, v0_combined.qtotal, pipe_label, compact_flat)
+        
+        
+       
+        
         res._labels_split = labels_split
         res._npc_matvec_multileg = npc_matvec
         res.npc_matvec = res._npc_matvec_wrapper  # activate the wrapper
         guess_flat = res.npc_to_flat(v0_combined)
+        #print(res.__dict__)
+        #print(res.leg)
+        # print('in this crapper')
+        #quit()
         return res, guess_flat
 
     @property
@@ -466,13 +477,42 @@ class FlatLinearOperator(ScipyLinearOperator):
             i.e., the result of applying `npc_matvec` to an npc Array generated from `vec`.
         """
         vec = np.asarray(vec)
+        #print('whatafaka'*30)
+        #print(vec.ndim)
+        
         if vec.ndim != 1:
+
+          
             vec = np.squeeze(vec, axis=1)  # need a vector, not a Nx1 matrix
+            #print(vec.shape)
+
             assert vec.ndim == 1
+
+        #print(len(vec))
+        #print(vec.shape)
+        #quit()
+
+        #print(vec.shape)
+
+        
         npc_vec = self.flat_to_npc(vec)  # convert to npc Array
+        #quit()
+
+        ##################################
+        ####### possible error is that this converions before hand is wrong
+        ###########################
         npc_vec = self.npc_matvec(npc_vec)  # the expensive part, wrapped matvec function
+        """
+        print(npc_vec)
+        print('UNTIL THE END OF THIS BSBSBS'*30)
+        print(npc_vec)
+        print(npc_vec.shape)
+        
+        """
         self.matvec_count += 1
         vec = self.npc_to_flat(npc_vec)  # convert back to numpy Array
+
+        #quit()
         return vec
 
     def flat_to_npc(self, vec):
@@ -492,7 +532,10 @@ class FlatLinearOperator(ScipyLinearOperator):
         npc_vec : :class:`~tenpy.linalg.np_conserved.Array`
             Same as `vec`, but converted into a npc array.
         """
+     
         if self._charge_sector is not None:
+
+           
             res = npc.zeros([self.leg], vec.dtype, self._charge_sector, labels=[self.vec_label])
             if self.compact_flat:
                 vec = np.ascontiguousarray(vec)  # should be contiguous already, but make sure
@@ -531,14 +574,45 @@ class FlatLinearOperator(ScipyLinearOperator):
         vec : 1D ndarray
             Same entries as `npc_vec`, but converted into a flat Numpy array.
         """
+
+       
         if self._charge_sector is not None:
+            #############
+            ## the array typically assumes that compact flat is just true
+            # but check and if it isn't change it
+            ###########
+            ######TODO: IF SOMETHING FAILS IT MIGHT BE THIS THING HERE
+            
+            ####
+            ###SO  I HAD TO SHIFT ENVIRONMENT LEGS SEPARATELY
+            #BASICALLY MPO LEGS WERE FINE, BUT MPS NEEDED SHIFTING
+            #####
+            
+            #print('testara'*4)
+            #print(npc_vec)
+            #print(npc_vec.shape)
+            #print(len(npc_vec._data))
+            #print('SO I ACHIEVE THIS CRAP'*50)
+            #quit()
+
+            #print(npc_vec)
+            #print(npc_vec.shape)
             assert npc_vec.rank == 1
             if np.any(npc_vec.qtotal != self._charge_sector):
                 raise ValueError("npc_vec.qtotal and charge sector don't match!")
+            
+            
             if self.compact_flat:
+                #print('compact attack'*100)
+                #quit()
+                
                 assert len(npc_vec._data) == 1
+                
+                # right before: assert np.all(npc_vec._qdata == self._compact_qdata)
+                #print("expected qdata:", self._compact_qdata, "got qdata:", npc_vec._qdata,"qtotal:", npc_vec.qtotal, "charge_sector:", self._charge_sector,"leg.qconj:", self.leg.qconj)
                 assert np.all(npc_vec._qdata == self._compact_qdata)
                 return npc_vec._data[0]
+            
             if isinstance(npc_vec.legs[0], npc.LegPipe):
                 npc_vec = npc_vec.copy(deep=False)
                 npc_vec.legs[0] = npc_vec.legs[0].to_LegCharge()
@@ -596,12 +670,17 @@ class FlatLinearOperator(ScipyLinearOperator):
             i.e., the result of applying `npc_matvec` to an npc Array generated from `vec`.
             Has the same leg structure as `vec`.
         """
+
+        
         legs_initially_combined = (vec.rank == 1)
         if legs_initially_combined:
             vec = vec.split_legs(0)
         vec.itranspose(self._labels_split)  # ensure correct leg/label structure
         vec = self._npc_matvec_multileg(vec)  # apply matvec acting on multi-leg Array
         vec.itranspose(self._labels_split)
+
+       
+         
         if legs_initially_combined:
             vec = vec.combine_legs(self._labels_split, pipes=self.leg)
         return vec
@@ -662,6 +741,10 @@ class FlatLinearOperator(ScipyLinearOperator):
             v0 = self.npc_to_flat(v0_npc)
         if v0 is not None:
             kwargs['v0'] = v0
+        #print('CHARGE SECTOR IMPORTANT!!!!!!!!!')
+        #print(self.charge_sector)
+        #quit()
+      
         # for given charge sector
         for k in range(num_ev, max_num_ev + 1):
             if k > num_ev:
@@ -669,19 +752,30 @@ class FlatLinearOperator(ScipyLinearOperator):
             try:
                 if hermitian:
                     eta, A = speigsh(self, k=k, which=which, **kwargs)
+                    
                 else:
+                    #print('IN')
+                    #print(k)
+                    #print(which)
+                   
                     eta, A = speigs(self, k=k, which=which, **kwargs)
+                  
+                    
+                
                 break
             except scipy.sparse.linalg.ArpackNoConvergence:
                 if k == max_num_ev:
                     raise
             kwargs['tol'] = max(max_tol, kwargs.get('tol', 0))
+
+     
         cutoff = max(cutoff, 10*kwargs.get('tol', 1.e-16))
         from_ndarray_args = dict(legcharges=[self.leg],
                                  cutoff=cutoff,
                                  labels=[self.vec_label],
                                  raise_wrong_sector=True)
         A = np.real_if_close(A)
+      
         if self._charge_sector is not None:
             vecs = [self.flat_to_npc(A[:, j]) for j in range(A.shape[1])]
         else:

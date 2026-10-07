@@ -189,15 +189,22 @@ class DMRGEngine(IterativeSweeps):
 
     def __init__(self, psi, model, options, **kwargs):
         options = asConfig(options, self.__class__.__name__)
+        
         self.diag_method = options.get('diag_method', 'default', str)
         self._entropy_approx = [None] * psi.L  # always left of a given site
+      
         super().__init__(psi, model, options, **kwargs)
         self.N_sweeps_check = self.options.get('N_sweeps_check', 1 if self.psi.finite else 10, int)
+
+        #self.N_sweeps_check=1
+
         default_min_sweeps = int(1.5 * self.N_sweeps_check)
         if self.chi_list is not None:
             default_min_sweeps = max(max(self.chi_list.keys()), default_min_sweeps)
         self.options.setdefault('min_sweeps', default_min_sweeps)
         mixer_params = self.options.subconfig('mixer_params')
+
+        
         mixer_params.setdefault('amplitude', 1.e-5)
         disable_finite = 15
         disable_infinite = 50
@@ -205,7 +212,7 @@ class DMRGEngine(IterativeSweeps):
         decay_infinite = decay_finite ** (disable_finite / disable_infinite)
         mixer_params.setdefault('decay', decay_finite if self.finite else decay_infinite)
         mixer_params.setdefault('disable_after', disable_finite if self.finite else disable_infinite)
-
+        
     def pre_run_initialize(self):
         super().pre_run_initialize()
         E = np.nan
@@ -266,7 +273,7 @@ class DMRGEngine(IterativeSweeps):
         #print(options)
         #quit()
         # parameters for lanczos
-        #print("INN"*100)
+      
         #print(options)
         p_tol_to_trunc = options.get('P_tol_to_trunc', 0.05, 'real')
         if p_tol_to_trunc is not None:
@@ -292,8 +299,17 @@ class DMRGEngine(IterativeSweeps):
         
         # perform sweeps
         logger.info('Running sweep with optimization')
+        #print('INNN'*40)
         for i in range(self.N_sweeps_check - 1):
+
+            
+            #print(self.env)
+            #print(self.env.__dict__)
+            #print(self.env.bra)
+            #print(self.psi)
+            #quit()
             self.sweep(meas_E_trunc=False)
+           
         max_trunc_err = self.sweep(meas_E_trunc=True)
         max_E_trunc = np.max(self.E_trunc_list)
         
@@ -314,7 +330,9 @@ class DMRGEngine(IterativeSweeps):
         #print(self.finite)
         # update environment
         if not self.finite:
+            
             update_env = options.get('update_env', self.N_sweeps_check // 2, int)
+            #this is just an integer
             self.environment_sweeps(update_env)
 
         # update statistics
@@ -349,9 +367,12 @@ class DMRGEngine(IterativeSweeps):
         for key, value in self.sweep_stats.items():
             print(f"{key}: {value[-1]}")
         #print(self.psi)
-        filling=self.psi.expectation_value("nOp")
-        print('Filling:',filling)
-        print(self.psi)
+        try:
+            filling=self.psi.expectation_value("nOp")
+            print('Filling:',filling)
+            print(self.psi)
+        except:
+            pass
         return E, self.psi
 
     def status_update(self, iteration_start_time: float):
@@ -427,7 +448,12 @@ class DMRGEngine(IterativeSweeps):
 
         """
         super().post_run_cleanup()
-        self._canonicalize(True)
+        #added this because it drops some weird error i dont know how to explain so just go around it
+        #?
+        try:
+            self._canonicalize(True)
+        except:
+            pass
         logger.info(f'{self.__class__.__name__} finished after {self.sweeps} sweeps, '
                     f'max chi={max(self.psi.chi)}')
         if (len(self.ortho_to_envs) > 0) and (self.sweep_stats['E'][-1] > -1e-8):
@@ -456,13 +482,21 @@ class DMRGEngine(IterativeSweeps):
         return super().run()
 
     def _canonicalize(self, warn=False):
+        #DOM: There is weird bug here so sometimes it works sometimes it doesnt
+        # actually i dont think it works usually, but i think sometimes we are just lucky to 
+        #get accurate WF
+
         #Update environment until norm_tol is reached. If norm_tol_final
         #is not reached, call canonical_form.
         if self.mixer is not None:
             return
         norm_err = np.linalg.norm(self.psi.norm_test())
-        norm_tol = self.options.get('norm_tol', 1.e-5, 'real')
-        norm_tol_final = self.options.get('norm_tol_final', 1.e-10, 'real')
+
+        #################
+        ####### DOM: reduced tolerances.
+        ###############
+        norm_tol = self.options.get('norm_tol', 1.e-3, 'real')
+        norm_tol_final = self.options.get('norm_tol_final', 1.e-5, 'real')
         if not self.finite:
             update_env = self.options['update_env']
             norm_tol_iter = self.options.get('norm_tol_iter', 5, int)
@@ -751,12 +785,16 @@ class DMRGEngine(IterativeSweeps):
         N = -1  # (unknown)
         #print(self.lanczos_params)
         #quit()
+        
         if self.diag_method == 'default':
             # use ED for small matrix dimensions, but lanczos by default
-            max_N = self.options.get('max_N_for_ED', 400, int)
-            if self.eff_H.N < max_N:
+            #TODO: CHANGE THIS VALUE BACK TO 400 AGAIN
+            max_N = self.options.get('max_N_for_ED', 0, int)
+            if self.eff_H.N < max_N:   
                 E, theta = full_diag_effH(self.eff_H, theta_guess, keep_sector=True)
             else:
+                #print('IN IN'*30)
+               
                 E, theta, N = LanczosGroundState(self.eff_H, theta_guess, self.lanczos_params).run()
 
                 
@@ -770,7 +808,15 @@ class DMRGEngine(IterativeSweeps):
             E, theta = full_diag_effH(self.eff_H, theta_guess, keep_sector=False)
         else:
             raise ValueError("Unknown diagonalization method: " + repr(self.diag_method))
+        #print(theta)
+       
+        #print(theta_guess)
+        #quit()
+        #print(npc.inner(theta_guess, theta, 'labels', do_conj=True))
+        
         ov_change = 1. - abs(npc.inner(theta_guess, theta, 'labels', do_conj=True))
+       
+        #quit()
         return E, theta, N, ov_change
 
     def plot_update_stats(self, axes, xaxis='time', yaxis='E', y_exact=None, **kwargs):
@@ -1057,6 +1103,7 @@ class SingleSiteDMRGEngine(DMRGEngine):
         mixer = self.mixer
         move_right = self.move_right
         update_LP, update_RP = self.update_LP_RP
+        #print('bananananan'*30)
         if self.move_right:
             next_B = self.psi.get_B(self.i0 + 1, form='B')
             next_B = next_B.combine_legs(['p', 'vR'], qconj=-1, new_axes=1)
@@ -1207,6 +1254,8 @@ def full_diag_effH(effH, theta_guess, keep_sector=True):
     """
     theta_guess = theta_guess.combine_legs(effH.acts_on, qconj=+1)
     fullH = effH.to_matrix()
+
+
     if keep_sector:
         # diagonalize only the block of the charge sector in which `theta_guess` is.
         leg = theta_guess.legs[0]

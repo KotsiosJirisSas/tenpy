@@ -1,0 +1,501 @@
+/usr/bin/python3
+3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]
+££££££££££££££££££££££££££££££££££££££££
+input parameters
+/mnt/users/dperkovic/DMRG_modified/data_load/Previous_project/nu=1_3_haldane/each_Haldane_nu=1_3_Lx=16.0
+['empty', 'full', 'empty']
+££££££££££££££££££££££££££££££££££££££££
+Import graph ....................
+MPO graph and model parameters imported from a file ....................
+nlayer: 1
+Change the old tenpy MPO graph to new tenpy MPO graph ....................
+finished ....................
+root configuration:
+[[0]
+ [1]
+ [0]]
+total length of the unit cell
+3
+Initialize states  ....................
+4
+Ordering states ....................
+inininininininininininininininininininininininininininininin
+Initialize states  ....................
+Initialize states  ....................
+Finished ....................
+Test sanity....................
+Test passed!....................
+Building MPO....................
+Built....................
+test this
+creating initial wavefunction
+resuming calculation
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+================================================================================
+TESTING resume_data
+continuous run: 0 -> 50
+resumed run:    0 -> 20 then new engine -> 50
+================================================================================
+
+================================================================================
+RUN A: UNINTERRUPTED
+================================================================================
+INFO    : TwoSiteDMRGEngine: subconfig 'trunc_params'=Config(<2 options>, 'trunc_params')
+INFO    : TwoSiteDMRGEngine: reading 'chi_list'={0: 100, 5: 142, 10: 183, 15: 225, 20: 267, 25: 308, 30: 350}
+INFO    : start environment_sweep
+INFO    : trunc_params: reading 'chi_max'=350
+INFO    : trunc_params: reading 'svd_min'=1e-07
+INFO    : TwoSiteDMRGEngine: reading 'mixer'=True
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : TwoSiteDMRGEngine: reading 'max_sweeps'=50
+INFO    : Running sweep with optimization
+INFO    : Setting chi_max=100
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : Setting chi_max=142
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 10
+N_updates: 96
+E: 1.0248311376378123e-07
+Delta_E: nan
+S: 1.8846940888979862
+Delta_S: 0.18846940888979863
+max_S: 1.8853134137855865
+time: 44.168941497802734
+max_trunc_err: 8.566205669850078e-07
+max_E_trunc: 8.82585016737103e-08
+max_chi: 142
+norm_err: 4.264719895788936e-05
+Filling: [0.3332681 0.3333375 0.3333189]
+MPS, L=3, bc='infinite'.
+chi: [142, 142, 61]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 10
+energy=0.0000001024831138, max S=1.8853134137855865, age=99, norm_err=4.3e-05
+Current memory usage 125.1MB, wall time: 44.1s
+Delta E = nan, Delta S = 1.8847e-01 (per sweep)
+max trunc_err = 8.5662e-07, max E_trunc = 8.8259e-08
+chi: [142, 142, 61]
+================================================================================
+INFO    : Running sweep with optimization
+INFO    : Setting chi_max=183
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : Setting chi_max=225
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 20
+N_updates: 186
+E: 2.5714430806900168e-08
+Delta_E: -7.676868295688107e-09
+S: 1.8848046868356294
+Delta_S: 1.105979376432309e-05
+max_S: 1.8854064191524764
+time: 66.24875664710999
+max_trunc_err: 1.3495297301504676e-07
+max_E_trunc: 8.068510026770781e-09
+max_chi: 225
+norm_err: 1.1090025891852961e-07
+Filling: [0.3333284 0.333343  0.3333285]
+MPS, L=3, bc='infinite'.
+chi: [225, 225, 78]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 20
+energy=0.0000000257144308, max S=1.8854064191524764, age=189, norm_err=1.1e-07
+Current memory usage 132.1MB, wall time: 22.1s
+Delta E = -7.6769e-09, Delta S = 1.1060e-05 (per sweep)
+max trunc_err = 1.3495e-07, max E_trunc = 8.0685e-09
+chi: [225, 225, 78]
+================================================================================
+INFO    : Running sweep with optimization
+INFO    : Setting chi_max=267
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : Setting chi_max=308
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 30
+N_updates: 276
+E: 0.0002637134070653154
+Delta_E: 2.6368769263450848e-05
+S: 1.8883283425419422
+Delta_S: 0.0003523655706312745
+max_S: 1.8933691266853887
+time: 95.25765562057495
+max_trunc_err: 2.575039074919171e-08
+max_E_trunc: 1.5487042204220813e-09
+max_chi: 308
+norm_err: 0.002061283046521374
+Filling: [0.3332815 0.3343235 0.3328389]
+MPS, L=3, bc='infinite'.
+chi: [308, 308, 97]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 30
+energy=0.0002637134070653, max S=1.8933691266853887, age=279, norm_err=2.1e-03
+Current memory usage 141.3MB, wall time: 29.0s
+Delta E = 2.6369e-05, Delta S = 3.5237e-04 (per sweep)
+max trunc_err = 2.5750e-08, max E_trunc = 1.5487e-09
+chi: [308, 308, 97]
+================================================================================
+INFO    : Running sweep with optimization
+INFO    : Setting chi_max=350
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 40
+N_updates: 366
+E: 1.039081815960389e-08
+Delta_E: -2.6370301624715574e-05
+S: 1.8846730966521303
+Delta_S: -0.0003655245889811809
+max_S: 1.8852049962635102
+time: 129.44478297233582
+max_trunc_err: 5.205757468872076e-09
+max_E_trunc: 3.500805756395664e-10
+max_chi: 350
+norm_err: 5.426134784996947e-09
+Filling: [0.3333284 0.3333432 0.3333284]
+MPS, L=3, bc='infinite'.
+chi: [350, 350, 108]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 40
+energy=0.0000000103908182, max S=1.8852049962635102, age=369, norm_err=5.4e-09
+Current memory usage 147.6MB, wall time: 34.2s
+Delta E = -2.6370e-05, Delta S = -3.6552e-04 (per sweep)
+max trunc_err = 5.2058e-09, max E_trunc = 3.5008e-10
+chi: [350, 350, 108]
+================================================================================
+INFO    : TwoSiteDMRGEngine: reading 'max_E_err'=0.0
+INFO    : TwoSiteDMRGEngine: reading 'max_S_err'=0.0
+INFO    : Running sweep with optimization
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 50
+N_updates: 456
+E: 8.419403627983138e-09
+Delta_E: -1.9714145316207522e-10
+S: 1.8845997582104272
+Delta_S: -7.333844170309689e-06
+max_S: 1.885095136584375
+time: 164.01184844970703
+max_trunc_err: 7.88236744003928e-10
+max_E_trunc: 6.415523667868683e-11
+max_chi: 350
+norm_err: 1.0182685515694902e-09
+Filling: [0.3333284 0.3333432 0.3333284]
+MPS, L=3, bc='infinite'.
+chi: [350, 350, 124]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 50
+energy=0.0000000084194036, max S=1.8850951365843751, age=459, norm_err=1.0e-09
+Current memory usage 148.0MB, wall time: 34.6s
+Delta E = -1.9714e-10, Delta S = -7.3338e-06 (per sweep)
+max trunc_err = 7.8824e-10, max E_trunc = 6.4155e-11
+chi: [350, 350, 124]
+================================================================================
+INFO    : Running sweep with optimization
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 60
+N_updates: 546
+E: 8.34233397177068e-09
+Delta_E: -7.706965621245843e-12
+S: 1.8845895069053817
+Delta_S: -1.0251305045505533e-06
+max_S: 1.8850797502278118
+time: 198.7456831932068
+max_trunc_err: 1.2453486927926917e-10
+max_E_trunc: 1.144179195833317e-11
+max_chi: 350
+norm_err: 8.593861382333267e-10
+Filling: [0.3333284 0.3333432 0.3333284]
+MPS, L=3, bc='infinite'.
+chi: [350, 350, 140]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 60
+energy=0.0000000083423340, max S=1.8850797502278118, age=549, norm_err=8.6e-10
+Current memory usage 148.5MB, wall time: 34.7s
+Delta E = -7.7070e-12, Delta S = -1.0251e-06 (per sweep)
+max trunc_err = 1.2453e-10, max E_trunc = 1.1442e-11
+chi: [350, 350, 140]
+================================================================================
+INFO    : TwoSiteDMRGEngine: Maximum number of sweeps reached
+INFO    : TwoSiteDMRGEngine finished after 60 sweeps, max chi=184
+RUN A final energy: 8.34233397177068e-09
+RUN A engine.sweeps: 60
+RUN A chi: [184, 174, 139]
+RUN A entropy: [1.883609  1.8850773 1.8850773]
+
+================================================================================
+RUN B1: BEFORE INTERRUPTION
+================================================================================
+INFO    : TwoSiteDMRGEngine: subconfig 'trunc_params'=Config(<5 options>, 'trunc_params')
+INFO    : TwoSiteDMRGEngine: reading 'chi_list'={0: 100, 5: 142, 10: 183, 15: 225, 20: 267, 25: 308, 30: 350}
+INFO    : start environment_sweep
+INFO    : trunc_params: reading 'chi_max'=350
+INFO    : trunc_params: reading 'chi_min'=None
+INFO    : trunc_params: reading 'degeneracy_tol'=None
+INFO    : trunc_params: reading 'svd_min'=1e-07
+INFO    : trunc_params: reading 'trunc_cut'=1e-14
+INFO    : TwoSiteDMRGEngine: reading 'mixer'=True
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : TwoSiteDMRGEngine: reading 'max_sweeps'=20
+INFO    : Running sweep with optimization
+INFO    : Setting chi_max=100
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : Setting chi_max=142
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 10
+N_updates: 96
+E: 1.0248311376378123e-07
+Delta_E: nan
+S: 1.8846940888979862
+Delta_S: 0.18846940888979863
+max_S: 1.8853134137855865
+time: 46.997063636779785
+max_trunc_err: 8.566205669850078e-07
+max_E_trunc: 8.82585016737103e-08
+max_chi: 142
+norm_err: 4.264719895788936e-05
+Filling: [0.3332681 0.3333375 0.3333189]
+MPS, L=3, bc='infinite'.
+chi: [142, 142, 61]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 10
+energy=0.0000001024831138, max S=1.8853134137855865, age=99, norm_err=4.3e-05
+Current memory usage 148.5MB, wall time: 46.9s
+Delta E = nan, Delta S = 1.8847e-01 (per sweep)
+max trunc_err = 8.5662e-07, max E_trunc = 8.8259e-08
+chi: [142, 142, 61]
+================================================================================
+INFO    : Running sweep with optimization
+INFO    : Setting chi_max=183
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : Setting chi_max=225
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 20
+N_updates: 186
+E: 2.5714430806900168e-08
+Delta_E: -7.676868295688107e-09
+S: 1.8848046868356294
+Delta_S: 1.105979376432309e-05
+max_S: 1.8854064191524764
+time: 70.05949282646179
+max_trunc_err: 1.3495297301504676e-07
+max_E_trunc: 8.068510026770781e-09
+max_chi: 225
+norm_err: 1.1090025891852961e-07
+Filling: [0.3333284 0.333343  0.3333285]
+MPS, L=3, bc='infinite'.
+chi: [225, 225, 78]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 20
+energy=0.0000000257144308, max S=1.8854064191524764, age=189, norm_err=1.1e-07
+Current memory usage 148.5MB, wall time: 23.1s
+Delta E = -7.6769e-09, Delta S = 1.1060e-05 (per sweep)
+max trunc_err = 1.3495e-07, max E_trunc = 8.0685e-09
+chi: [225, 225, 78]
+================================================================================
+INFO    : Running sweep with optimization
+INFO    : Setting chi_max=267
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : Setting chi_max=308
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 30
+N_updates: 276
+E: 0.0002637134070653154
+Delta_E: 2.6368769263450848e-05
+S: 1.8883283425419422
+Delta_S: 0.0003523655706312745
+max_S: 1.8933691266853887
+time: 99.45194888114929
+max_trunc_err: 2.575039074919171e-08
+max_E_trunc: 1.5487042204220813e-09
+max_chi: 308
+norm_err: 0.002061283046521374
+Filling: [0.3332815 0.3343235 0.3328389]
+MPS, L=3, bc='infinite'.
+chi: [308, 308, 97]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 30
+energy=0.0002637134070653, max S=1.8933691266853887, age=279, norm_err=2.1e-03
+Current memory usage 151.7MB, wall time: 29.4s
+Delta E = 2.6369e-05, Delta S = 3.5237e-04 (per sweep)
+max trunc_err = 2.5750e-08, max E_trunc = 1.5487e-09
+chi: [308, 308, 97]
+================================================================================
+INFO    : TwoSiteDMRGEngine: reading 'max_E_err'=0.0
+INFO    : TwoSiteDMRGEngine: reading 'max_S_err'=0.0
+INFO    : TwoSiteDMRGEngine: Maximum number of sweeps reached
+INFO    : TwoSiteDMRGEngine finished after 30 sweeps, max chi=139
+RUN B1 energy: 0.0002637134070653154
+RUN B1 engine.sweeps: 30
+RUN B1 chi: [139, 125, 97]
+resume_data keys: dict_keys(['psi', 'sequential_simulations', 'init_env_data', 'sweeps'])
+resume_data sweep counter: 30
+
+================================================================================
+RUN B2: NEW ENGINE + resume_data
+================================================================================
+INFO    : TwoSiteDMRGEngine: subconfig 'trunc_params'=Config(<5 options>, 'trunc_params')
+INFO    : TwoSiteDMRGEngine: reading 'chi_list'={0: 100, 5: 142, 10: 183, 15: 225, 20: 267, 25: 308, 30: 350}
+WARNING : /mnt/users/dperkovic/DMRG_modified/tenpy/tenpy/algorithms/mps_common.py:258: UserWarning: Re-using environment with `chi_list` set! Do you want this?
+  warnings.warn("Re-using environment with `chi_list` set! Do you want this?")
+
+INFO    : trunc_params: setting 'chi_max'=308
+INFO    : Setting chi_max=308
+INFO    : start environment_sweep
+INFO    : trunc_params: reading 'chi_max'=308
+INFO    : trunc_params: reading 'chi_min'=None
+INFO    : trunc_params: reading 'degeneracy_tol'=None
+INFO    : trunc_params: reading 'svd_min'=1e-07
+INFO    : trunc_params: reading 'trunc_cut'=1e-14
+new engine starts with sweeps = 30
+INFO    : TwoSiteDMRGEngine: reading 'mixer'=True
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : TwoSiteDMRGEngine: reading 'max_sweeps'=50
+INFO    : Running sweep with optimization
+INFO    : Setting chi_max=350
+INFO    : activate DensityMatrixMixer with initial amplitude 1e-05
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 40
+N_updates: 96
+E: 8.940499396370427e-09
+Delta_E: nan
+S: 1.884699183022523
+Delta_S: 0.13446882005285837
+max_S: 1.8852257115672506
+time: 105.39222431182861
+max_trunc_err: 5.490269981548421e-09
+max_E_trunc: 3.136398918357486e-10
+max_chi: 350
+norm_err: 6.902304035594402e-06
+Filling: [0.3333346 0.3333407 0.3333349]
+MPS, L=3, bc='infinite'.
+chi: [350, 350, 114]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 40
+energy=0.0000000089404994, max S=1.8852257115672506, age=375, norm_err=6.9e-06
+Current memory usage 168.1MB, wall time: 105.1s
+Delta E = nan, Delta S = 1.3447e-01 (per sweep)
+max trunc_err = 5.4903e-09, max E_trunc = 3.1364e-10
+chi: [350, 350, 114]
+================================================================================
+INFO    : TwoSiteDMRGEngine: reading 'max_E_err'=0.0
+INFO    : TwoSiteDMRGEngine: reading 'max_S_err'=0.0
+INFO    : Running sweep with optimization
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 50
+N_updates: 186
+E: 8.418796382247962e-09
+Delta_E: -5.2170301412246543e-11
+S: 1.8845997049839058
+Delta_S: -9.947803861720673e-06
+max_S: 1.885095081871013
+time: 141.98436498641968
+max_trunc_err: 7.880391175339239e-10
+max_E_trunc: 6.417899545141381e-11
+max_chi: 350
+norm_err: 1.6031030835076518e-09
+Filling: [0.3333284 0.3333432 0.3333284]
+MPS, L=3, bc='infinite'.
+chi: [350, 350, 124]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 50
+energy=0.0000000084187964, max S=1.8850950818710130, age=465, norm_err=1.6e-09
+Current memory usage 168.1MB, wall time: 36.6s
+Delta E = -5.2170e-11, Delta S = -9.9478e-06 (per sweep)
+max trunc_err = 7.8804e-10, max E_trunc = 6.4179e-11
+chi: [350, 350, 124]
+================================================================================
+INFO    : Running sweep with optimization
+INFO    : start environment_sweep
+statistics of a run
+########################################
+sweep: 60
+N_updates: 276
+E: 8.342339374856067e-09
+Delta_E: -7.645700739189466e-12
+S: 1.8845895070154253
+Delta_S: -1.019796848056309e-06
+max_S: 1.8850797503715215
+time: 177.76973819732666
+max_trunc_err: 1.2457383579503732e-10
+max_E_trunc: 1.1462830684649816e-11
+max_chi: 350
+norm_err: 8.603402494585071e-10
+Filling: [0.3333284 0.3333432 0.3333284]
+MPS, L=3, bc='infinite'.
+chi: [350, 350, 140]
+sites: FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333) FermionSite(('each', 'K'), 0.333333)
+forms: (0.0, 1.0) (1.0, 0.0) (0.0, 1.0)
+INFO    : checkpoint after sweep 60
+energy=0.0000000083423394, max S=1.8850797503715215, age=555, norm_err=8.6e-10
+Current memory usage 168.1MB, wall time: 35.8s
+Delta E = -7.6457e-12, Delta S = -1.0198e-06 (per sweep)
+max trunc_err = 1.2457e-10, max E_trunc = 1.1463e-11
+chi: [350, 350, 140]
+================================================================================
+INFO    : TwoSiteDMRGEngine: Maximum number of sweeps reached
+INFO    : TwoSiteDMRGEngine finished after 60 sweeps, max chi=184
+
+================================================================================
+FINAL COMPARISON
+================================================================================
+continuous energy : 8.34233397177068e-09
+resumed energy    : 8.342339374856067e-09
+energy difference : 5.403085387060549e-15
+abs energy diff   : 5.403085387060549e-15
+
+continuous sweeps : 60
+resumed sweeps    : 60
+
+continuous chi: [184, 174, 139]
+resumed chi   : [184, 174, 139]
+chi identical : True
+
+continuous entropy:
+[1.883609  1.8850773 1.8850773]
+resumed entropy:
+[1.883609  1.8850773 1.8850773]
+entropy difference:
+[-5.9991123e-11  1.4308843e-10  2.4518965e-10]
+max abs entropy difference: 2.4518964636399687e-10
+
+Schmidt-value shapes identical: True
+max abs Schmidt-value difference: 6.797988758550197e-07
+
+================================================================================
+RESULT: resumed and uninterrupted runs are not identical at the tested tolerance.
+================================================================================

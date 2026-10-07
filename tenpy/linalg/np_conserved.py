@@ -101,6 +101,11 @@ from ..tools.math import qr_li
 from ..tools.string import vert_join, is_non_string_iterable
 from ..tools.optimization import optimize, OptimizationFlag, use_cython
 
+
+import sys
+sys.path.append('/mnt/users/dperkovic/DMRG_modified/tenpy/tenpy/networks') 
+from shift_charges import translate_by_appropriate_amount
+
 __all__ = [
     'QCUTOFF', 'ChargeInfo', 'LegCharge', 'LegPipe', 'Array', 'zeros', 'ones', 'eye_like', 'diag',
     'concatenate', 'grid_concat', 'grid_outer', 'detect_grid_outer_legcharge', 'detect_qtotal',
@@ -186,6 +191,14 @@ class Array:
         self._data = []
         self._qdata = np.empty((0, self.rank), dtype=np.intp, order='C')
         self._qdata_sorted = True
+        #tells us whether this matrix is subject to translation properties or not
+        ci=legcharges[0].chinfo  
+        if 'K' in ci.names:
+            self.translate=True
+            
+        else:
+            self.translate=False
+
         self.test_sanity()
 
     def test_sanity(self):
@@ -1496,6 +1509,9 @@ class Array:
         """
         # bring arguments into a standard form
         combine_legs = list(combine_legs)  # convert iterable to list
+        #print('we do not entr'*300)
+      
+    
         # check: is combine_legs `iterable(iterable(int|str))` or `iterable(int|str)` ?
         if not is_non_string_iterable(combine_legs[0]):
             # the first entry is (int|str) -> only a single new pipe
@@ -1504,9 +1520,13 @@ class Array:
                 new_axes = to_iterable(new_axes)
             if pipes is not None:
                 pipes = to_iterable(pipes)
+       
         pipes = self._combine_legs_make_pipes(combine_legs, pipes, qconj)  # out-sourced
+       
         # good for index tricks: convert combine_legs into arrays
         combine_legs = [np.asarray(self.get_leg_indices(cl), dtype=np.intp) for cl in combine_legs]
+        
+        
         all_combine_legs = np.concatenate(combine_legs)
         if len(set(all_combine_legs)) != len(all_combine_legs):
             raise ValueError("got a leg multiple times: " + str(combine_legs))
@@ -2001,6 +2021,9 @@ class Array:
 
     def scale_axis(self, s, axis=-1):
         """Same as :meth:`iscale_axis`, but return a (deep) copy."""
+
+        #print(axis)
+        #print(s)
         res = self.copy(deep=False)
         res._qdata = res._qdata.copy()
         res.iscale_axis(s, axis)
@@ -2233,6 +2256,7 @@ class Array:
         Moreover, if `self` and `other` have the same labels in different order,
         other gets **transposed** before the action.
         """
+    
         if not isinstance(other, Array) or not np.isscalar(prefactor):
             raise ValueError("wrong argument types: {0!r}, {1!r}".format(
                 type(prefactor), type(other)))
@@ -2276,6 +2300,24 @@ class Array:
 
     def __isub__(self, other):
         """``self -= other``."""
+
+        
+       
+        vec1=self.legs[1]
+        vec2=other.legs[1]
+        ################################# 
+        #translate if necessary
+        ################################# 
+        
+        if self.translate:
+          
+            vec2=translate_by_appropriate_amount( [vec2],vec1,[vec2.bunched])
+            other.legs[1]=vec2[0]
+          
+
+
+        
+       
         if isinstance(other, Array):
             return self.iadd_prefactor_other(-1., other)
         return NotImplemented
@@ -2660,22 +2702,56 @@ class Array:
             raise ValueError("wrong len of `qconj`")
 
         pipes = list(pipes)
+
+       
+        #quit()
         # make pipes as necessary
         for i, pipe in enumerate(pipes):
+
+         
+            
             if pipe is None:
+           
                 qconj_i = qconj[i]
                 if qconj_i is None:
                     qconj_i = self.get_leg(combine_legs[i][0]).qconj
+
+                   
                 pipes[i] = self.make_pipe(axes=combine_legs[i], qconj=qconj_i)
             else:
-                # test for compatibility
+
+            
                 legs = [self.get_leg(a) for a in combine_legs[i]]
+                
+               
+                
                 if pipe.nlegs != len(legs):
                     raise ValueError("pipe has wrong number of legs")
                 if legs[0].qconj != pipe.legs[0].qconj:
                     pipes[i] = pipe = pipe.conj()  # need opposite qind
+
+               
+             
                 for self_leg, pipe_leg in zip(legs, pipe.legs):
+                   
+                   
+                    #########
+                    #translate the leg if needed
+                    ########
+                 
+                    if self.translate:
+                      
+                       
+                        #translated the leg for the sanity chekc
+                        pipe_leg=translate_by_appropriate_amount([pipe_leg],self_leg,bunch=[pipe_leg.bunched])
+                        pipe_leg=pipe_leg[0]
+                       
+
+                       
+                       
                     self_leg.test_equal(pipe_leg)
+               
+                
         return pipes
 
     def _combine_legs_new_axes(self, combine_legs, new_axes):
@@ -3113,6 +3189,8 @@ def grid_outer(grid, grid_legs, qtotal=None, grid_labels=None):
     idx, entry = entries[0]  # first non-trivial entry
     chinfo = entry.chinfo
     dtype = np.result_type(*[e.dtype for _, e in entries])
+  
+   
     legs = list(grid_legs) + entry.legs
     labels = entry._labels[:]
     if grid_labels is None:
@@ -3124,12 +3202,21 @@ def grid_outer(grid, grid_legs, qtotal=None, grid_labels=None):
         qtotal = chinfo.make_valid(np.sum(grid_charges + [entry.qtotal], axis=0))
     else:
         qtotal = chinfo.make_valid(qtotal)
+    
+    
     res = Array(legs, dtype, qtotal, labels)
-    # main work: iterate over all non-trivial entries to fill `res`.
+   
+ 
+
+    #DOM: untouched by me, no reason to add anything here!
+    
     for idx, entry in entries:
+            
         res[idx] = entry  # insert the values with Array.__setitem__ partial slicing.
         if labels is not None and entry._labels != labels:
             labels = None
+
+        
     res.test_sanity()
     return res
 
@@ -3446,6 +3533,16 @@ def inner(a, b, axes='labels', do_conj=False):
             raise ValueError("different ChargeInfo")
         for i, (lega, legb) in enumerate(zip(a.legs, b.legs)):
             try:
+
+                ###################################################
+                #translate if needed. basically checks if first and last matrix are compatible
+                #up to a translation by  a unit cell
+                ##################################################
+                if a.translate:
+                  
+                    lega=translate_by_appropriate_amount([lega],legb,[lega.bunched])
+                    lega=lega[0]
+
                 if do_conj:
                     lega.test_equal(legb)
                 else:
@@ -4386,6 +4483,8 @@ def _split_legs_worker(self, split_axes, cutoff):
 def _nontrivial_grid_entries(grid):
     """Return a list [(idx, entry)] of non-``None`` entries in an array_like grid."""
     grid = np.asarray(grid, dtype=object)
+
+    
     entries = [(idx, entry) for idx, entry in np.ndenumerate(grid) if entry is not None]
     if len(entries) == 0:
         raise ValueError("No non-trivial entries in grid")

@@ -1,0 +1,1 @@
+python3 multilayer_segment_final.py 0 /mnt/users/dperkovic/DMRG_modified/data_load/nu=2_3_antidot_project/0LL_xi=4_Lx=15.0_Gaussian_Coulomb govno 60 20 0 0

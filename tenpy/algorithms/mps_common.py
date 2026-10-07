@@ -37,7 +37,12 @@ import copy
 import itertools
 import logging
 
+####
+# NO NEED TO DO TRANSLATION HERE!! so no imports here
+#this code is unchanged
+####
 logger = logging.getLogger(__name__)
+
 
 __all__ = [
     'Sweep',
@@ -142,13 +147,22 @@ class Sweep(Algorithm):
         self.finite = self.psi.finite
         self.lanczos_params = options.subconfig('lanczos_params')
         self.mixer = None  # set to an actual mixer (if at all) in :meth:`mixer_activate``
-
+       
         self.env = None
         self.ortho_to_envs = []
+        
+        ######
+        
+        #leg=init_RP.get_leg('vL') 
+        #leg=translate_by_appropriate_amount([leg], vR_ket.conj(),bunch=[leg.bunched])
+        #init_RP.legs[init_RP.get_leg_index('vL')] = leg[0]
+        #quit()
         self.init_env(model, resume_data=self.resume_data, orthogonal_to=orthogonal_to)
+        
         self.i0 = 0
         self.move_right = True
         self.update_LP_RP = (True, False)
+       
 
     @property
     def _all_envs(self):
@@ -242,17 +256,20 @@ class Sweep(Algorithm):
         if not self.psi.finite and init_env_data and \
                 self.options.get('chi_list', None) is not None:
             warnings.warn("Re-using environment with `chi_list` set! Do you want this?")
-
+        
         # actually initialize the environment
         self._init_mpo_env(H, init_env_data)
         self._init_ortho_to_envs(orthogonal_to, resume_data)
 
         self.reset_stats(resume_data)
-
+        #print(self.finite)
         # initial sweeps of the environment (without mixer)
         if not self.finite:
+            #print('HERE'*10)
             start_env = self.options.get('start_env', 1, int)
+            #print(start_env)
             self.environment_sweeps(start_env)
+            
 
     def _init_mpo_env(self, H, init_env_data):
         if self.env is None:
@@ -334,7 +351,13 @@ class Sweep(Algorithm):
         """
         if N_sweeps <= 0:
             return
+        
         logger.info("start environment_sweep")
+       
+        #
+        #############
+        ## sweeep the envinonrmnet
+        ###########
         for k in range(N_sweeps):
             self.sweep(optimize=False)
 
@@ -381,6 +404,14 @@ class Sweep(Algorithm):
             self.i0 = i0
             self.move_right = move_right
             self.update_LP_RP = update_LP_RP
+
+            #print('x'*30)
+            #print(i0)
+            #print(move_right)
+            #print('x'*30)
+
+
+            
             self._cache_optimize()
             logger.debug("in sweep: i0 =%d", i0)
             # --------- the main work --------------
@@ -393,13 +424,9 @@ class Sweep(Algorithm):
             #optimize=False
             
             update_data = self.update_local(theta, optimize=optimize)
-          
             self.update_env(**update_data)
-            #print(update_data)
-            #quit()
             self.post_update_local(**update_data)
             self.free_no_longer_needed_envs()
-
         if optimize:  # count optimization sweeps
             self.sweeps += 1
             # update mixer
@@ -502,13 +529,23 @@ class Sweep(Algorithm):
         """
         self.make_eff_H()  # self.eff_H represents tensors LP, W0, RP
         # make theta
+      
         theta = self.psi.get_theta(self.i0, n=self.n_optimize, cutoff=self.S_inv_cutoff)
         theta = self.eff_H.combine_theta(theta)
         return theta
 
     def make_eff_H(self):
         """Create new instance of `self.EffectiveH` at `self.i0` and set it to `self.eff_H`."""
+        
+        #print(self.env)
+        #print(self.i0)
+        #print(self.combine)
+        #print(self.move_right)
+        
         self.eff_H = self.EffectiveH(self.env, self.i0, self.combine, self.move_right)
+
+        #print('where is this crap effectiveH')
+        #quit()
         # note: this order of wrapping is most effective.
         if hasattr(self.env, 'H') and self.env.H.explicit_plus_hc:
             self.eff_H = SumNpcLinearOperator(self.eff_H, self.eff_H.adjoint())
@@ -519,6 +556,10 @@ class Sweep(Algorithm):
         assert len(self.ortho_to_envs) > 0
         ortho_vecs = []
         i0 = self.i0
+        #print('xxxxx'*30)
+        ########## NEED TO SEE IF THIS NUMBER DOES TOO GO ABOVE 2 TO 3
+        #print(self.io)
+        #print('xxxxx'*30)
         for o_env in self.ortho_to_envs:
             # environments are of form <psi|ortho>
             theta = o_env.ket.get_theta(i0, n=self.eff_H.length)
@@ -575,7 +616,13 @@ class Sweep(Algorithm):
             env.del_RP(i_L)
         # possibly recalculated updated center bonds
         update_LP, update_RP = self.update_LP_RP
+
         if update_LP:
+            ###############
+            ############# enters here
+            #print('UPDATE ENV HERE')
+            #print(self.eff_H.__dict__)
+         
             self.eff_H.update_LP(self.env, i_R, update_data['U'])  # possibly optimized
             for env in self.ortho_to_envs:
                 env.get_LP(i_R, store=True)
@@ -795,7 +842,9 @@ class IterativeSweeps(Sweep):
                 break
             if not is_first_sweep:
                 self.checkpoint.emit(self)
+           
             result = self.run_iteration()
+          
             self.status_update(iteration_start_time=iteration_start_time)
             is_first_sweep = False
         self.post_run_cleanup()
@@ -993,6 +1042,7 @@ class EffectiveH(NpcLinearOperator):
             Only used if trying to optimize.
         """
         # non-optimized case
+      
         env.get_LP(i, store=True)
 
     def update_RP(self, env, i, VH=None):
@@ -1159,6 +1209,7 @@ class OneSiteH(EffectiveH):
             Wave function with labels ``'(vL.p0)', 'vR'``
         """
         if self.combine:
+        
             if self.move_right:
                 theta = theta.combine_legs(['vL', 'p0'], pipes=self.pipeL)
             else:
@@ -1199,6 +1250,7 @@ class OneSiteH(EffectiveH):
         return adj
 
     def update_LP(self, env, i, U=None):
+       
         if self.combine and self.move_right:
             assert i == self.i0 + 1  # TODO: hit this in single-site?!?
             LP = npc.tensordot(self.LHeff, U, axes=['(vR.p0*)', '(vL.p)'])
@@ -1273,12 +1325,24 @@ class TwoSiteH(EffectiveH):
     acts_on = ['vL', 'p0', 'p1', 'vR']
 
     def __init__(self, env, i0, combine=False, move_right=True):
+
+       
         self.i0 = i0
         self.LP = env.get_LP(i0)
         self.RP = env.get_RP(i0 + 1)
+
+        #print(self.RP)
+        #print(self.LP)
+        #print('this is the shitty')
+       
+       
+
+        #automatically reads this even if i0>L-1
         self.W0 = env.H.get_W(i0).replace_labels(['p', 'p*'], ['p0', 'p0*'])
         # 'wL', 'wR', 'p0', 'p0*'
         self.W1 = env.H.get_W(i0 + 1).replace_labels(['p', 'p*'], ['p1', 'p1*'])
+      
+     
         # 'wL', 'wR', 'p1', 'p1*'
         self.dtype = env.H.dtype
         self.combine = combine
@@ -1366,6 +1430,15 @@ class TwoSiteH(EffectiveH):
             contr = npc.tensordot(self.LP, self.W0, axes=['wR', 'wL'])
             contr = npc.tensordot(contr, self.W1, axes=['wR', 'wL'])
             contr = npc.tensordot(contr, self.RP, axes=['wR', 'wL'])
+            """
+            legs_new=[]
+            for leg in contr.legs:
+                _,lega=leg.sort(bunch=True)
+                legs_new.append(lega)
+            print(contr)
+            contr.legs=legs_new
+            print(contr)
+            """
             contr = contr.combine_legs([['vR*', 'p0', 'p1', 'vL*'], ['vR', 'p0*', 'p1*', 'vL']],
                                        qconj=[+1, -1])
         return contr
@@ -1388,17 +1461,35 @@ class TwoSiteH(EffectiveH):
         return adj
 
     def update_LP(self, env, i, U=None):
+
+        ######################################
+        #########this updates lhs. PROBLEM IS, THIS DOES NOT ACTUALLY UPDATE IT
+        #IT SEEMS
+        ###################
+        
         if self.combine:
             assert i == self.i0 + 1
+            #NOT SURE WHY WE NEVER ACCESS THIS PART, BUT APPRARENTLY WE DONT
+            #EVEN IN CONSTANT N case
+            #print(U)
+            #print(self.LHeff)
+            #quit()
             LP = npc.tensordot(self.LHeff, U, axes=['(vR.p0*)', '(vL.p)'])
             LP = npc.tensordot(U.conj(), LP, axes=['(vL*.p*)', '(vR*.p0)'])
+            
             env.set_LP(i, LP, age=env.get_LP_age(i - 1) + 1)
         else:
+            #print(env)
+            #print()
             env.get_LP(i, store=True)
 
     def update_RP(self, env, i, VH=None):
+        
         if self.combine:
             assert i == self.i0
+            # just does not seem to get activated
+           
+           
             RP = npc.tensordot(VH, self.RHeff, axes=['(p.vR)', '(p1*.vL)'])
             RP = npc.tensordot(RP, VH.conj(), axes=['(p1.vL*)', '(p*.vR*)'])
             env.set_RP(i, RP, age=env.get_RP_age(i + 1) + 1)
