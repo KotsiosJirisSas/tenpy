@@ -169,9 +169,10 @@ model_par={ #for finite replace by periodic here
 model_par['layers']=layers
 
 model_par['pref']=pref
-
+mu=0.0
+mus=[mu]
 #model_par['species']=species
-#model_par['mu']=-np.array(mus)
+model_par['mu']=-np.array(mus)
 
 print(model_par)
 
@@ -179,7 +180,7 @@ print(model_par)
 
 path='/mnt/users/dperkovic/DMRG_modified/data_load/nu=2_3_antidot_project/'
 if d<10:
-    name='0LL'+'_d='+str(d)+"_Lx="+str(Lx)+'_coulumb_double_gated'
+    name='0LL'+'_d='+str(d)+"_Lx="+str(Lx)+'_coulumb_double_gated_mu='+str(mu)
 
 elif z!=0:    
    

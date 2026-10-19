@@ -1,0 +1,103 @@
+--- /tmp/claude-0/-home-claude/6c8d5768-b8cf-56e6-906d-202797e759de/scratchpad/check/check/create_env.py	2026-10-17 14:16:01.000000000 +0100
++++ check_mod/create_env.py	2026-10-17 14:24:13.246172041 +0100
+@@ -19,7 +19,7 @@
+ from QHE_run_from_graph import make_iMPO
+ 
+ 
+-def calculate_environment(full_name_load,  site, side, type_calculation='excitation'):
++def calculate_environment(full_name_load,  site, side, type_calculation='excitation', return_bulk=False):
+     """
+     Environment of the infinite MPS, taken directly from the iMPS and its MPO.
+ 
+@@ -30,7 +30,11 @@
+                     is taken from the second state, data['mps_2']
+     side:           'left'  -> contraction strictly left of `site`  (labels 'vR*','wR','vR')
+                     'right' -> contraction strictly right of `site` (labels 'vL*','wL','vL')
+-    returns:        the environment tensor
++    return_bulk:    if True, also return (eps, cell):
++                    eps  = energy per site of the iMPS, computed with the SAME infinite MPO
++                           that builds the environment (so it cancels the environment offset exactly)
++                    cell = psi.L, the unit cell of the iMPS
++    returns:        the environment tensor  (or  env, eps, cell  if return_bulk)
+     """
+     with open(full_name_load,'rb') as f:
+         data=pickle.load(f,encoding='latin1')
+@@ -58,4 +62,9 @@
+         raise ValueError
+     print('environment Array:')
+     print(env)
++    if return_bulk:
++        # for an infinite MPS TeNPy returns the energy PER SITE
++        eps = float(np.real(M_inf.H_MPO.expectation_value(psi)))
++        print('bulk energy per site eps =', eps, '| iMPS unit cell =', psi.L)
++        return env, eps, psi.L
+     return env
+\ No newline at end of file
+--- /tmp/claude-0/-home-claude/6c8d5768-b8cf-56e6-906d-202797e759de/scratchpad/check/check/multilayer_segment_final_exc.py	2026-10-17 14:15:59.000000000 +0100
++++ check_mod/multilayer_segment_final_exc.py	2026-10-17 14:24:25.046172743 +0100
+@@ -447,7 +447,22 @@
+     print('£'*50)
+     print('creating right environment')
+     
+-    right_env=calculate_environment(file_path, site=right_site,side='right',type_calculation=params['type_calculation'] )
++    right_env, eps_R, cell_R = calculate_environment(file_path, site=right_site, side='right',
++                                                     type_calculation=params['type_calculation'], return_bulk=True)
++
++    ##########################################################################
++    # ENVIRONMENT OFFSET BOOKKEEPING
++    # get_RP(right_site) is built from the fixed point stored at the END of the iMPS unit cell,
++    # so it already contains the energy of the s sites between right_site and that boundary:
++    #     l_R = length of the right piece,  s = (-l_R) mod cell
++    # The reported DMRG energy therefore counts L + s sites. s = (interface_position + n_right) mod cell
++    # (for L a multiple of cell), which is exactly what sets the anyon sector, so s differs between
++    # sectors and gives an offset s*eps. We remove it below with eps from the same iMPS + MPO.
++    ##########################################################################
++    l_R = L - (interface_position + QHsys.n_right)
++    s_env = (-l_R) % cell_R
++    print('right piece length l_R =', l_R, '| extra sites absorbed by RP: s =', s_env,
++          '| eps_R =', eps_R)
+ 
+ 
+     
+@@ -555,7 +570,27 @@
+     #print("MPS qtotal:", M.qtotal)
+     #print("MPO qtotal:", psi_halfinf.qtotal)
+     E0, psi=eng_halfinf.run()
+-    
++
++    ##########################################################################
++    # OFFSET-FREE ENERGY: energy above the uniform bulk.
++    # Differences of E_corr between runs (different charge / anyon sectors, same model and leads)
++    # are physical; the leftover constant from the two leads is the same in every run.
++    #   excitation:        bulk liquid fills the whole segment  -> subtract eps*(L + s)
++    #   vacuum_interface:  bulk liquid only in the right piece   -> subtract eps*(l_R + s)
++    #                      (the vacuum has zero energy per site; the potential is ~0 deep in the RHS)
++    #   interface:         two different bulks, not defined here -> E_corr = None, use eps_R, s yourself
++    ##########################################################################
++    if params['type_calculation'] == 'excitation':
++        n_bulk = L + s_env
++        E_corr = E0 - eps_R * n_bulk
++    elif params['type_calculation'] == 'vacuum_interface':
++        n_bulk = l_R + s_env
++        E_corr = E0 - eps_R * n_bulk
++    else:
++        n_bulk = None
++        E_corr = None
++    print('E0 =', E0, '| bulk sites subtracted =', n_bulk, '| E_corr =', E_corr)
++
+     
+ 
+ 
+@@ -574,7 +609,11 @@
+ 
+ 
+     
+-    data = { "dmrg_params":dmrg_params,"energy":E0, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec,'potential':potential_values,"sweep_stats":eng_halfinf.sweep_stats }
++    data = { "dmrg_params":dmrg_params,"energy":E0, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec,'potential':potential_values,"sweep_stats":eng_halfinf.sweep_stats,
++             # offset bookkeeping (see ENVIRONMENT OFFSET BOOKKEEPING above)
++             "energy_corrected":E_corr, "eps_per_site":eps_R, "s_env":s_env, "l_R":l_R,
++             "n_bulk_subtracted":n_bulk, "imps_unit_cell":cell_R,
++             "interface_position":interface_position, "n_right":QHsys.n_right, "L":L }
+ 
+ 
+    

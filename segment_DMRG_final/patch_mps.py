@@ -88,24 +88,97 @@ def connect_sectors(F, end_mask, phys_q):
     return bonds
 
 
+def cap_bonds(bonds, phys_q, max_bond, rng=None):
+    """
+    Limits the number of charge sectors (= bond dimension of the random window) to about `max_bond`.
+    `bonds` is the output of connect_sectors: every sector on it can be reached from the left piece and leads to a
+    matched sector on the right. The kept sectors are the union of random paths through the added sites. The paths
+    are drawn BACKWARDS, starting at every matched sector on the last bond (the same number of paths for each), so
+    ALL matched sectors stay connected to the left piece and none of them is dropped: the RHS is then not projected
+    on a smaller set of sectors (dropping some of them changes the legs of the RHS and the right environment no
+    longer fits). bonds[0] and bonds[-1] are not changed, the inner bonds have at most max(max_bond, #matched) sectors.
+    returns (bonds, None)   (the second entry is kept for compatibility: no matched sector is ever dropped)
+    """
+    num = len(phys_q)
+    if max_bond is None or max_bond <= 0 or num < 2 or max(len(b) for b in bonds[1:-1]) <= max_bond:
+        return bonds, None
+    rng = np.random.default_rng() if rng is None else rng
+    index = [{tuple(r): i for i, r in enumerate(b)} for b in bonds]
+    kept = [set() for _ in bonds]
+    n_end = len(bonds[num])
+    per_end = max(1, max_bond // n_end)
+    for e in range(n_end):
+        for _ in range(per_end):
+            i = e
+            for s in range(num - 1, -1, -1):          # step back from bond s+1 to bond s
+                q = bonds[s + 1][i]
+                prev = [index[s][tuple(q - qp)] for qp in phys_q[s] if tuple(q - qp) in index[s]]
+                i = prev[rng.integers(len(prev))]
+                kept[s].add(i)
+    new = [bonds[0]]
+    for s in range(1, num):
+        new.append(bonds[s][np.array(sorted(kept[s]), dtype=int)])
+    new.append(bonds[num])
+    return new, None
+
+
+def _pairs(bonds, phys_q, s):
+    """for every sector r of bonds[s+1]: the list of (l, p) with bonds[s][l] + phys_q[s][p] == bonds[s+1][r]"""
+    where = defaultdict(list)
+    for l, row in enumerate(map(tuple, bonds[s])):
+        where[row].append(l)
+    out = []
+    for r, qr in enumerate(bonds[s + 1]):
+        out.append([(l, p) for p, q in enumerate(phys_q[s]) for l in where.get(tuple(qr - q), ())])
+    return out
+
+
 def sector_tensors(bonds, phys_q):
     """
     Random B tensors (p, vL, vR) of the added sites, non-zero only where charge is conserved:
-    bonds[s][l] + phys_q[s][p] == bonds[s+1][r]
+    bonds[s][l] + phys_q[s][p] == bonds[s+1][r]       (not canonical, used when the left piece is not a single sector)
     """
     Bs = []
     for s, qp in enumerate(phys_q):
-        qL, qR = bonds[s], bonds[s + 1]
-        where = defaultdict(list)
-        for l, row in enumerate(map(tuple, qL)):
-            where[row].append(l)
-        B = np.zeros((len(qp), len(qL), len(qR)))
-        for r, qr in enumerate(qR):
-            for p, q in enumerate(qp):
-                for l in where.get(tuple(qr - q), ()):
-                    B[p, l, r] = np.random.random()
+        B = np.zeros((len(qp), len(bonds[s]), len(bonds[s + 1])))
+        for r, pairs in enumerate(_pairs(bonds, phys_q, s)):
+            for l, p in pairs:
+                B[p, l, r] = np.random.random()
         Bs.append(B)
     return Bs
+
+
+def canonical_sector_tensors(bonds, phys_q, w_end):
+    """
+    Random charge-conserving tensors that form an exactly CANONICAL state (norm 1, no random mismatch at the junction).
+    Needs a single sector on bonds[0] (vacuum on the left). Every charge sector is one state, so the Schmidt weights are
+    diagonal and can be chosen from the right: the weight w_r of sector r on bond s+1 is split at random among its
+    predecessors (l, p),   B[p,l,r]^2 * rho_l = w_r * pi(l, p | r)    with   rho_l = sum_{p,r} w_r pi(l, p | r).
+    Then   sum_{p,r} B[p,l,r]^2 = 1  (right-canonical)  and  sum_{p,l} rho_l B[p,l,r]^2 = w_r  (Schmidt weights),
+    in particular the last bond carries exactly w_end = S^2 of the left bond of the RHS.
+    returns Bs, Ss   (Ss = Schmidt values of the inner bonds 1 .. num-1)
+    """
+    assert len(bonds[0]) == 1
+    num = len(phys_q)
+    w = np.asarray(w_end, float)
+    w = w / w.sum()
+    Bs = [None] * num
+    Ss = [None] * (num - 1)
+    for s in range(num - 1, -1, -1):
+        pairs = _pairs(bonds, phys_q, s)
+        B2 = np.zeros((len(phys_q[s]), len(bonds[s]), len(bonds[s + 1])))
+        for r, pr in enumerate(pairs):
+            pi = np.random.random(len(pr))
+            pi = pi / pi.sum()
+            for (l, p), x in zip(pr, pi):
+                B2[p, l, r] = w[r] * x
+        rho = B2.sum(axis=(0, 2))                                  # weights of the bond s
+        B2 = B2 / np.maximum(rho, 1e-300)[None, :, None]
+        Bs[s] = np.sqrt(B2)
+        if s > 0:
+            Ss[s - 1] = np.sqrt(rho) / np.linalg.norm(np.sqrt(rho))
+        w = rho
+    return Bs, Ss
 
 
 def random_S(n):
@@ -147,12 +220,16 @@ def project_left_leg(psi, keep):
 #####################################
 #### the patching                  ##
 #####################################
-def patch_mps(psi_L, psi_R, sites, num_added, shift=None):
+MAX_BOND = 4000  # default cap on the number of charge sectors of the random window (0 or None: no cap)
+
+
+def patch_mps(psi_L, psi_R, sites, num_added, shift=None, max_bond=MAX_BOND):
     """
     psi_L:      segment MPS on sites[:half]
     psi_R:      segment MPS on sites[half+num_added:]
     sites:      all sites of the system
     num_added:  number of sites added in between (0 is a special case)
+    max_bond:   cap on the number of charge sectors on the bonds of the added sites (see cap_bonds)
     shift:      charge shift of the RHS (K, n_1, ..., n_nlayer). If None it is determined from the
                 largest Schmidt values of the two pieces. For num_added>0 the Schmidt values of the
                 LHS side are random, so pass the shift explicitly in that case.
@@ -196,12 +273,30 @@ def patch_mps(psi_L, psi_R, sites, num_added, shift=None):
         B_mid = []
     else:
         bonds = connect_sectors(F, mask, phys_q)
-        B_mid = sector_tensors(bonds, phys_q)
-        S_left = S_L[:half + 1] + [random_S(len(b)) for b in bonds[1:-1]]
-
+        bonds, sel = cap_bonds(bonds, phys_q, max_bond)
+        if sel is not None:
+            # drop the matched sectors that no path reached, on the window AND on the RHS
+            mask_idx = np.flatnonzero(mask)[sel]
+            mask = np.zeros(len(q_end), dtype=bool)
+            mask[mask_idx] = True
+            keep_R = keep_R[sel]
+            print('capped window: matched sectors kept', len(sel))
+        print('window bond dimension (charge sectors): max', max(len(b) for b in bonds), '| cap', max_bond)
     # RHS: shift the charges, keep the matched sectors
     psi_R = shift_left_leg(psi_R, sites[half + num:], -shift)
     psi_R = project_left_leg(psi_R, keep_R)
+
+    if num > 0:
+        if len(bonds[0]) == 1:
+            w_end = np.asarray(psi_R.get_SL(0)) ** 2                 # weights of the left bond of the (projected) RHS
+            if len(w_end) != len(bonds[-1]):
+                raise ValueError('the left leg of the RHS has %d sectors, the window ends on %d' % (len(w_end), len(bonds[-1])))
+            B_mid, S_mid = canonical_sector_tensors(bonds, phys_q, w_end)
+            print('window: canonical initial state (norm 1, Schmidt weights consistent with the RHS)')
+        else:
+            B_mid = sector_tensors(bonds, phys_q)
+            S_mid = [random_S(len(b)) for b in bonds[1:-1]]
+        S_left = S_L[:half + 1] + S_mid
 
     # merge: S_left holds the Schmidt values of bonds 0..half+num-1, psi_R._S the rest
     psi = MPS.from_Bflat(sites, B_L + B_mid + to_flat(psi_R), SVs=S_left + list(psi_R._S),

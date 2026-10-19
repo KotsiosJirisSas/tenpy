@@ -2,6 +2,7 @@
 import numpy as np
 import scipy
 import os
+import re
 import sys
 print(sys.executable)
 print(sys.path)
@@ -33,21 +34,13 @@ import sys
 import os
 
 import numpy as np
-from tenpy.linalg import np_conserved as npc
-from tenpy.models import multilayer_qh_DP_final as mod
-import itertools
-from tenpy.networks.mps import MPS
-from tenpy.models.model import MPOModel
-from tenpy.models.lattice import Chain
-from tenpy.algorithms import dmrg
-from tenpy.networks.mps import MPS
+
 
 from tenpy.algorithms import dmrg
-from tenpy.networks.mpo import MPO
+
 
 from tenpy.networks.site import QH_MultilayerFermionSite_final
-from tenpy.networks.mpo import MPOGraph
-from tenpy.networks.mpo import MPO
+
 
 import QH_G2MPO
 import QH_Graph_final
@@ -269,7 +262,78 @@ def V_potential(x, x0, w, U0):
     return (1 - np.tanh((x - x0)/w)) * U0/2
 
 
-def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=0, shift=0, V_of_site=lambda i: 0*i):
+def V_orbital_from_real_potential(i, x0, w, U0, L_y):
+    """
+    Orbital-space potential V(i) = <psi_i| V |psi_i> for lowest-Landau-level orbitals
+    on a cylinder of circumference L_y (lengths in ell_B), for the real-space potential
+
+        V(x) = (1 - tanh((x - x0*2pi/L_y) / (w*2pi/L_y))) * U0 / 2 .
+
+    Orbital i is centred at X_i = 2 pi i / L_y with |psi_i(x)|^2 = exp(-(x - X_i)^2)/sqrt(pi)
+    (y integrated out), so
+
+        V(i) = int dx V(x) exp(-(x - X_i)^2) / sqrt(pi),
+
+    i.e. V(x) convolved with a Gaussian of variance 1/2 (rms width ell_B/sqrt(2)).
+    x0 and w are in units of orbital index: without the convolution one would have
+    V(i) = (1 - tanh((i - x0)/w)) * U0/2.  For w = 0 the result is U0/2 * erfc(2pi (i-x0)/L_y).
+
+    The convolution is done exactly in Fourier space (F.T. of tanh step x Gaussian):
+        V(i) = U0/2 - (U0/pi) int_0^inf dq sin(q d) exp(-q^2/4) a / sinh(a q),
+        d = 2pi (i - x0)/L_y,   a = pi * w * 2pi/L_y / 2 .
+    The integrand is smooth and Gaussian-decaying, so a midpoint rule is exponentially
+    accurate (~1e-15) and costs the same for any w, including w -> 0.
+
+    Parameters
+    ----------
+    i : int or array of int   orbital index (pass i // nlayer yourself if you fold layers)
+    x0, w : step centre and width in orbital-index units (w >= 0)
+    U0 : potential scale
+    L_y : cylinder circumference in ell_B
+
+    Returns an array of the same shape as i (0-d array for scalar i).
+    """
+    i = np.asarray(i, dtype=float)
+    k = 2 * np.pi / L_y
+    d = k * (i - x0)                  # orbital centre minus step centre, in ell_B
+    wx = k * w                        # step width in ell_B
+    a = 0.5 * np.pi * wx
+
+    # beyond this distance the result is U0 or 0 to < 1e-15: set directly, don't integrate
+    cap = 18.0 * wx + 10.0
+    out = np.where(d > cap, 0.0, U0)          # saturated value; active entries overwritten below
+    flat = d.ravel()
+    active = np.flatnonzero(np.abs(flat) <= cap)
+    if active.size == 0:
+        return out
+
+    da = flat[active]
+
+    # q grid: midpoint rule. Aliasing images sit at 2pi/h +- d in real space and must land
+    # where the (smoothed) step is already saturated: >= 18 wx (tanh tail) + 14 (Gaussian)
+    h = 2 * np.pi / (np.abs(da).max() + 18.0 * wx + 14.0)
+    Q = 14.0                          # exp(-Q^2/4) ~ 5e-22
+    q = (np.arange(int(np.ceil(Q / h))) + 0.5) * h
+
+    if a == 0:
+        s = 1.0 / q                                          # a/sinh(aq) -> 1/q
+    else:
+        s = 2 * a * np.exp(-a * q) / (-np.expm1(-2 * a * q))  # = a/sinh(aq), overflow-safe
+    wq = np.exp(-q**2 / 4) * s * h
+
+    # chunk over orbitals so the (chunk x n_q) work array stays ~ 2e7 doubles (~160 MB max)
+    step = max(1, int(2e7 // q.size))
+    res = np.empty(da.size)
+    for j in range(0, da.size, step):
+        res[j:j + step] = np.sin(da[j:j + step, None] * q) @ wq
+    out.flat[active] = U0 / 2 - (U0 / np.pi) * res
+    return out
+
+
+
+
+
+def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=0, shift=0, V_of_site=lambda i: 0*i,chi=1000):
     """
     Perform a DMRG calculation for the *excited state* of a quantum Hall system by 
     stitching together two semi-infinite MPS wavefunctions (left and right environments)
@@ -359,14 +423,13 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
     
     #iDMRGdata_loc = '/mnt/extraspace/kotssvasiliou/QH_DMRG/data_Lx20.0_chi_2_psi_Pf_a_xi_1.77/'
     file_path=name_load+'.pkl'
-    WF_path='/mnt/users/dperkovic/DMRG_modified/infinite_DMRG_data/nu=2_3_antidot_project/0LL_xi=4_Lx=15.0_Gaussian_Coulomb_pstate=[1,0,1]_chi=3000_MPS_data_new_tenpy.pkl'
- 
+   
     #model_par,mps,graph=load_mps_and_graph(file_path)
     with open(name_load+'.pkl','rb') as f:
         data=pickle.load(f)
     model_par=data['model_par']
     graph=data['graph']
-
+   
   
    
 
@@ -385,7 +448,9 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
     
     #graph=graph*L
     # wrapper: graph_with_potential passes the site index i, the potential depends on the orbital x = i // N_layer
- 
+    #shape of the potential
+    potential_values=V_of_site(np.arange(L))
+    #print(potential_values)
   
     graph = graph_with_potential(graph, L, V_of_site, mode='add', keys=('R','F'), op_name='nOp')
     L=len(graph)
@@ -432,24 +497,46 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
     params['sys length'] = L
     params['interface_position'] = interface_position
     params['sites added'] = added_sites#sides added in the middle
-    params['model data file'] = WF_path
+    params['model data file'] = name_load+'.pkl'
     params['model_params'] = model_par
     params['type_calculation'] = "vacuum_interface"
-    
-    
+    if int(added_sites/2)<interface_position and shift[0]>0 and np.all(shift[1:] % 3 == 0):
+        params['window_left'] = 'half'
+
+  
+    #params['window_product'] = added_sites > 90
+    params['window_product'] = False
     QHsys = QH_system(params=params)
     QHsys.shift_import=shift
    
    
 
-    right_site = L - 1 - ( interface_position + added_sites)
+    right_site = L - 1 - (interface_position + QHsys.n_right)
+    T = (interface_position + QHsys.n_right)//N_layer
 
     #if we do not load environments,
     #we create them
     print('£'*50)
     print('creating right environment')
     
-    right_env=calculate_environment(file_path,WF_path, site=right_site,side='right',type_calculation=params['type_calculation'] )
+    right_env, eps_R, cell_R = calculate_environment(file_path, site=right_site, side='right',
+                                                     type_calculation=params['type_calculation'], return_bulk=True)
+
+    ##########################################################################
+    # ENVIRONMENT OFFSET BOOKKEEPING
+    # get_RP(right_site) is built from the fixed point stored at the END of the iMPS unit cell,
+    # so it already contains the energy of the s sites between right_site and that boundary:
+    #     l_R = length of the right piece,  s = (-l_R) mod cell
+    # The reported DMRG energy therefore counts L + s sites. In vacuum_interface mode s depends on
+    # where the right piece starts, (interface_position + n_right - L) mod cell, so runs with different
+    # added_sites (mod cell) carry different offsets s*eps. We remove it below.
+    ##########################################################################
+    l_R = L - (interface_position + QHsys.n_right)
+    s_env = (-l_R) % cell_R
+    offset = eps_R * s_env
+    print('right piece length l_R =', l_R, '| extra sites absorbed by RP: s =', s_env,
+          '| eps_R =', eps_R)
+    print('OFFSET = eps*s =', offset)
 
 
     
@@ -464,7 +551,7 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
     if params['type_calculation'] == "vacuum_interface":
         left_environment = vacuum_left_environment_from_mpo(M.H_MPO)
     else:
-        left_environment = calculate_environment(file_path,WF_path, site=0,side='left',type_calculation=params['type_calculation'] )
+        left_environment = calculate_environment(file_path, site=0,side='left',type_calculation=params['type_calculation'] )
 
     print('Done, created left environment')
     print('£'*50)
@@ -487,7 +574,9 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
     print('number of electrons:', np.sum(filling))
     
     sanity_check_filling(psi_total, model_par, L,  interface_position, added_sites, shift, params['type_calculation'])
-    
+    print('filling prior to the entrance')
+    print(filling)
+  
     #print(params['avg_filling'])
     #K=np.sum(np.arange(len(total_filling))*(total_filling- params['avg_filling']))
     #diff=np.sum((total_filling- params['avg_filling']))
@@ -507,12 +596,6 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
 
 
     
-    leg_MPS=psi_total._B[-1].get_leg('vR').to_qflat()[0]
-
-    leg_env=right_env.get_leg('vL').to_qflat()[0]
-    shift_final=leg_MPS-leg_env
-    print('Shifting the right environment by',shift_final)
-
     #if np.sum(shift_final)!=0:
     #    print("the right environment has an issue?")
     #    quit()
@@ -520,7 +603,7 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
     
   
    
-    T = ( interface_position+added_sites)//N_layer
+    #T = ( interface_position+added_sites)//N_layer
     right_env = translate_and_rebind(right_env, psi_total._B[-1].get_leg('vR'), M.H_MPO._W[-1].get_leg('wR'), T, N_layer, name='RP')
     if params['type_calculation'] != "vacuum_interface":
         # if not vacuum shift charges if needed
@@ -546,11 +629,11 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
         'max_E_err': 1.e-8,
         'max_S_err': 1.e-6,
         'trunc_params': {
-            'chi_max': 2500,
-            'svd_min': 1.e-6,
+            'chi_max': chi,
+            'svd_min': 1.e-8,
         },
        
-        'max_sweeps': 50,
+        'max_sweeps': 30,
         'mixer_params':mixer}
     
     eng_halfinf = dmrg.TwoSiteDMRGEngine(psi_total, M, dmrg_params,resume_data={'init_env_data': init_env_data_halfinf})
@@ -561,16 +644,24 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
     #print("MPS qtotal:", M.qtotal)
     #print("MPO qtotal:", psi_halfinf.qtotal)
     E0, psi=eng_halfinf.run()
-    
-    
 
+    ##########################################################################
+    # REMOVE THE ENVIRONMENT OFFSET
+    # The right environment contains s extra bulk sites (see ENVIRONMENT OFFSET BOOKKEEPING above),
+    # so the raw DMRG energy E0 is too high by  offset = eps * s.
+    #   energy           = E0 - offset   (offset subtracted)
+    #   energy_no_offset = E0            (raw DMRG energy)
+    #   offset           = eps * s
+    ##########################################################################
+    E_offset = E0 - offset
+    print('energy_no_offset (raw E0) =', E0, '| offset = eps*s =', offset, '| energy = E0 - offset =', E_offset)
 
     #calculate and store data
     filling=psi.expectation_value("nOp")
     print('Filling:',filling)
 
 
-    E_spec=psi.entanglement_spectrum(by_charge=True)
+    E_spec=psi.entanglement_spectrum(by_charge=True)[::5]
     #print('entanglement spectrum:',E_spec)
 
 
@@ -580,8 +671,8 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
 
 
     
-
-    data = { "dmrg_params":dmrg_params,"energy":E0, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec }
+    data = { "dmrg_params":dmrg_params,"energy":E_offset, "model_par":model_par,'density':filling,'entanglement_entropy': EE, 'entanglement_spectrum':E_spec,'potential':potential_values,"sweep_stats":eng_halfinf.sweep_stats,
+             "energy_no_offset":E0, "offset":offset }
 
 
    
@@ -590,6 +681,10 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
     with open(name_save+".pkl", "wb") as f:
         pickle.dump(data, f)
     
+
+
+
+
 
 
 
@@ -605,7 +700,7 @@ def run_excitation_dmrg(name_load, name_save, L, interface_position,added_sites=
 # sector, and therefore the total number of particles, is set by interface_position and the charge shift below.
 added_sites=int(sys.argv[1])
 
-# Graph file without '.pkl' (contains 'graph' and 'model_par'). The wavefunction file is set inside run_excitation_dmrg.
+# Graph+MPS file without '.pkl' (contains 'graph' and 'model_par', 'mps'). 
 name_load=str(sys.argv[2])
 
 # Output file name without '.pkl'
@@ -621,14 +716,18 @@ L=int(sys.argv[4])
 # but the charge sector stays the same.
 interface_position=int(sys.argv[5])
 
+chi=int(sys.argv[6])
+U0=float(sys.argv[7])
+
+x0=float(sys.argv[8])
 ### applied shift at the interface
 # One integer per charge component: (K, N) for cons_C='total' or (K, n_1, ..., n_nlayer) for 'each'.
 # This is what sets the charge sector of the whole run, together with interface_position:
 #   - the N entries are in units of q = root_config.size per particle (a site has charge q*n - p),
 #   - the sign: a NEGATIVE N entry ADDS particles, a positive one removes them (checked for N = -3, q = 3: +1 particle).
-shift_length=len(sys.argv)-6
+shift_length=len(sys.argv)-9
 shift=[]
-for i in range(6,shift_length+6):
+for i in range(9,shift_length+9):
     shift.append(int(sys.argv[i]))
 shift=np.array(shift)
 
@@ -642,48 +741,54 @@ shift[0] +=  interface_position * np.sum(shift[1:])
 
 #############################################################
 #in orbital units. to convert to real space multiply by 2pi/L_y
-x0=20
-w=2
-U0=1
+"""
+if 'SHIFTED_BY_1.5_' in name_save:
+    x0=interface_position+1.5
+elif 'SHIFTED_BY_3' in name_save:
+    x0=interface_position+3
+else:
+    x0=interface_position
+"""
+
+w=15
+#print(x0)
 #NOTE: hardcoded N_layer here, in anything else N_layer is not hardcoded.
 N_layer=1#len(model_par['layers'])
-V_of_site = lambda i: V_potential(i//N_layer, x0, w, U0)
+#V_of_site = lambda i: V_potential(i//N_layer, x0, w, U0)
+
+m = re.search(r'Lx=(\d+(?:\.\d+)?)', os.path.basename(name_load))
+if m is None:
+    raise ValueError("no 'Lx=' found in name_load: " + name_load)
+L_y = float(m.group(1))
+V_of_site = lambda i: V_orbital_from_real_potential(i//N_layer, x0, w, U0,L_y)
 ############################################################
 
 
 
-print(shift)
-#quit()
+
+
 print('£'*100)
-print('INITIAL PARAMETERS ')
-print('shift',shift)
-print('L',L)
-print('added sites',added_sites)
-print('name load',name_load)
-print('name save',name_save)
+print('INITIAL PARAMETERS')
+print('potential calcualated in real space and converted to V(n)')
+print('added_sites        :', added_sites)
+print('name_load          :', name_load)
+print('name_save          :', name_save)
+print('L                  :', L)
+print('interface_position :', interface_position)
+print('chi                :', chi)
+print('U0                 :', U0)
+print('x0 (potential)     :', x0)
+print('w  (potential)     :', w)
+print('interface position:',interface_position)
+print('N_layer (hardcoded):', N_layer)
+print('shift (K, N...)    :', shift, '  <- K already includes interface_position*sum(N)')
 print('£'*100)
-
-
-#name_load='Data(1_3,1_3)'
-#name_load='Data(2_3,0)'
-
-#output files saved in iDMRG_location/name_save
-
-
-
-
-
 print("#"*100)
 print("Start the calculation")
-print('added_sites',added_sites)
-print('name load',name_load)
-print('name_save',name_save)
-print('charge added',shift)
 print("#"*100)
-print(L, interface_position)
 
-#print('varying potential=True')
-run_excitation_dmrg(name_load,name_save,L, interface_position,added_sites,shift,V_of_site)
+
+run_excitation_dmrg(name_load,name_save,L, interface_position,added_sites,shift,V_of_site,chi)
 
 ##################
 ###################

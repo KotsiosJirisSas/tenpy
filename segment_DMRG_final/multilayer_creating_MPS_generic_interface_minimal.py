@@ -75,12 +75,15 @@ np.set_printoptions(linewidth=np.inf, precision=7, threshold=np.inf, suppress=Fa
 #patching of LHS and RHS (+ added sites in between)
 from patch_mps import patch_mps
 #vacuum on the LHS (+ pad), used for type_calculation='vacuum_interface'
-from vacuum_interface import vacuum_lhs, vacuum_lhs_window
+from vacuum_interface import vacuum_lhs, vacuum_lhs_window, vacuum_lhs_product_window
 
 print('='*100)
 print('succesfull import of all modules')
 print('='*100)
 ####
+def background_filling(L, N, nu=2/3):
+    return np.clip(N - nu * (L - 1 - np.arange(L)), 0, nu)
+
 
 
 class QH_system():
@@ -135,6 +138,31 @@ class QH_system():
         #self.model_par['boundary_conditions']= ('infinite', self.system_length)
         self.sides_added = params['sites added']
         self.shift_import=[]
+
+        # Window around the interface (vacuum_interface with sites added > 0): 'sites added' is the TOTAL number of window
+        # sites. n_left of them lie to the left of interface_position (they replace the last sites of the vacuum), n_right
+        # to the right. The RHS starts at interface_position + n_right, which has to be a multiple of the unit cell.
+        #   params['window_left'] = 0 (default): the whole window is to the right (old behaviour)
+        #   params['window_left'] = 'half':      half-half (n_right = ceil(added/2) rounded up to the unit cell)
+        #   params['window_left'] = integer:     that many sites to the left
+        self.n_left = 0
+        self.n_right = self.sides_added
+        #   params['window_product'] = True: the window is a product state (bond dimension 1) instead of random tensors,
+        #   needed for large K (see vacuum_lhs_product_window)
+        self.window_product = bool(params.get('window_product', False))
+        wl = params.get('window_left', 0)
+        if self.type_calculation=='vacuum_interface' and self.sides_added>0 and wl!=0:
+            if wl=='half':
+                self.n_right = min(self.sides_added, self.unit_cell*int(np.ceil(self.sides_added/(2.*self.unit_cell))))
+                self.n_left = self.sides_added - self.n_right
+            else:
+                self.n_left = int(wl)
+                self.n_right = self.sides_added - self.n_left
+            if self.n_left<0 or self.n_left>self.interface_position or self.n_right<0:
+                raise ValueError('window_left = '+str(wl)+' does not fit: sites added '+str(self.sides_added)+', interface_position '+str(self.interface_position))
+            if (self.interface_position+self.n_right)%self.unit_cell!=0:
+                raise ValueError('interface_position + n_right = '+str(self.interface_position+self.n_right)+' must be a multiple of the unit cell '+str(self.unit_cell))
+        print('window: sites added',self.sides_added,'= left',self.n_left,'+ right',self.n_right,'; RHS starts at site',self.interface_position+self.n_right)
         
         self.load_mps()
         time1 = time.time()
@@ -170,7 +198,7 @@ class QH_system():
             print('='*100)
             print("GETTING RIGHT WAVEFUNCTION")
             print('='*100)
-        self.load_data(side='right',MPSshift=self.sides_added)
+        self.load_data(side='right',MPSshift=self.n_right)
         time4 = time.time()
         if self.verbose>0:
             print('='*100)
@@ -229,13 +257,20 @@ class QH_system():
                 # no window: the right end of the vacuum is padded with 1010... so that the target can be reached
                 self.psi_halfinf_L, self.psi_halfinf_R, shift, self.pad = vacuum_lhs(self.sites, self.interface_position, self.nlayer,
                                                         self.psi_halfinf_R, self.shift_import, max_pad, max_offset)
+            elif self.window_product:
+                # window as a product state: everything left of psi_R is one product state, patched like the pad (0 added sites)
+                self.psi_halfinf_L, self.psi_halfinf_R, shift, self.pad = vacuum_lhs_product_window(self.sites, self.interface_position,
+                                                        self.psi_halfinf_R, self.shift_import, self.n_left, self.n_right)
             else:
                 # window of added sites between the empty vacuum and the right piece, the window absorbs the charge
-                self.psi_halfinf_L, shift = vacuum_lhs_window(self.sites, self.interface_position, self.shift_import)
+                self.psi_halfinf_L, shift = vacuum_lhs_window(self.sites, self.interface_position, self.shift_import, n_left=self.n_left)
         else:
             #shift imported (e.g. excitations) or None, then it is determined from the Schmidt values
             shift = self.shift_import if len(self.shift_import)>0 else None
-        psi, shift = patch_mps(self.psi_halfinf_L, self.psi_halfinf_R, self.sites, self.sides_added, shift)
+        n_patch = self.sides_added
+        if self.type_calculation=='vacuum_interface' and self.window_product and self.sides_added>0:
+            n_patch = 0          # the window is already part of psi_L
+        psi, shift = patch_mps(self.psi_halfinf_L, self.psi_halfinf_R, self.sites, n_patch, shift)
         self.shift_final = shift
         print('shift',shift)
         print('charge on the right end of the segment',psi._B[-1].get_leg('vR').to_qflat()[0])
@@ -250,8 +285,8 @@ class QH_system():
             self.avg_filling=np.sum(filling)/len(filling)
         
       
-        
-        K=np.sum(np.arange(len(filling))//self.nlayer*(filling-self.avg_filling/self.nlayer))
+        back=background_filling(len(filling), np.sum(filling), nu=2/3)
+        K=np.sum(np.arange(len(filling))//self.nlayer*(filling))-np.sum(np.arange(len(filling))//self.nlayer*back)
         print("K sector:",K)
        
         """

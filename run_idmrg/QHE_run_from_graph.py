@@ -27,6 +27,7 @@ print(sys.executable)
 print(sys.version)
 
 
+from copy import deepcopy
 
 import tenpy.tools
 
@@ -221,7 +222,8 @@ def create_data_to_save(psi,engine,  E0,dmrg_params,model_par):
 
     
 
-    Length=[]
+    Length=[psi.correlation_length()]
+    """
     sectors=psi.correlation_length_charge_sectors()
     for sec in sectors:
         print(sec)
@@ -232,7 +234,7 @@ def create_data_to_save(psi,engine,  E0,dmrg_params,model_par):
         except:
             print('cannot calculate')
             pass
-
+    """
 
 
 
@@ -345,6 +347,7 @@ if __name__ == "__main__":
         data=pickle.load(f)
     model_par=data['model_par']
     G=data['graph']
+    graph_copy=deepcopy(data['graph'])
     print("MPO graph and model parameters imported from a file",".."*10)
 
 
@@ -462,7 +465,7 @@ if __name__ == "__main__":
 
     store_MPS=True
     if store_MPS: 
-        data = {"mps":psi, "dmrg_params":dmrg_params ,"model_par":model_par}
+        data = {"mps":psi, "dmrg_params":dmrg_params ,"model_par":model_par,"graph":graph_copy}
         with open(name_save+"_MPS_data_new_tenpy.pkl", 'wb') as f:
             pickle.dump(data, f)
     

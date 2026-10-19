@@ -1,0 +1,82 @@
+--- Markov_original.py	2026-10-19 17:10:28.084898264 +0100
++++ Markov.py	2026-10-19 17:10:28.110779352 +0100
+@@ -1,3 +1,4 @@
++import os
+ import numpy as np
+ import scipy as sp
+ from time import time
+@@ -854,7 +855,74 @@
+ ################################################################################
+ ## Slycot Stuff
+ 
++##	----------------------------------------------------------------------------------------------
++##	Choice of the realisation used by compute_ABC.
++##
++##	control.tf2ss(control.tf(...)) (the legacy SS_fromV below) returns an INEXACT realisation of long sequences:
++##	with control 0.10.1 / slycot 0.6.0 it misses the input by 5e-5 at length 83 and by 47 at length 98 BEFORE any
++##	truncation, and the balanced truncation afterwards then works on a wrong system.  A sequence of finite length has
++##	an exact realisation, a shift register, which gives errors ~1e-8 for the same blocks.
++##	(found with dissect_compression.py, Oct 2026)
++##
++##	USE_EXACT_SS_FROMV selects the realisation.  Default: False  = legacy behaviour, graphs are unchanged.
++##	Switch on with   Markov.USE_EXACT_SS_FROMV = True   in a script, or with the environment variable
++##	TENPY_MARKOV_EXACT_SS=1.   Existing pickled graphs / iMPS are not affected, only graphs built afterwards.
++USE_EXACT_SS_FROMV = bool(int(os.environ.get('TENPY_MARKOV_EXACT_SS', '0')))
++
++
+ def SS_fromV(V, shiftby_1 = True, ignore_r0 = None):
++	"""Realisation of the sequences V (see SS_fromV_tf2ss_legacy for the contract); chooses between the legacy tf2ss
++		route and the exact shift register according to USE_EXACT_SS_FROMV."""
++	if USE_EXACT_SS_FROMV:
++		return SS_fromV_exact(V, shiftby_1 = shiftby_1, ignore_r0 = ignore_r0)
++	return SS_fromV_tf2ss_legacy(V, shiftby_1 = shiftby_1, ignore_r0 = ignore_r0)
++
++
++def SS_fromV_exact(V, shiftby_1 = True, ignore_r0 = None):
++	"""
++		Exact realisation of V[a][b][r] (rank-3 np.array shaped (p, q, l), or rank-1 for a = b = 0).
++		Same contract as SS_fromV_tf2ss_legacy:  D = 0  and  C A^r B = V[:, :, r]  (r = 0 ... l-1),
++		returned as a control.StateSpace (discrete, dt = 1).
++
++		Shift register of order l*q:   A = block shift,   B = (1, 0, ..., 0)^T,   C = (V_0, V_1, ..., V_{l-1}).
++		No polynomial / transfer-function arithmetic is involved, so the sequence is reproduced to machine precision.
++
++		ignore_r0 as in the legacy code:  where flagged, V_0 := V_1 (written into V in place, like the legacy code),
++		or the sequence is taken as 0 if it has length 1.
++	"""
++	if not shiftby_1:
++		raise NotImplementedError('only shiftby_1 = True is used by compute_ABC')
++	V = np.asarray(V)
++	if V.ndim == 1:
++		V = np.reshape(V, (1, 1, -1))
++	p, q, l = V.shape
++	zero = np.zeros((p, q), dtype=bool)
++	if ignore_r0 is not None:
++		ign = np.array(ignore_r0, dtype=bool)
++		for a in range(p):
++			for b in range(q):
++				if ign[a][b]:
++					if l == 1:
++						zero[a, b] = True
++					else:
++						V[a, b, 0] = V[a, b, 1]
++	n = l * q
++	A = np.zeros((n, n), dtype=V.dtype)
++	for k in range(1, l):
++		A[k*q:(k+1)*q, (k-1)*q:k*q] = np.eye(q)
++	B = np.zeros((n, q), dtype=V.dtype)
++	B[:q, :] = np.eye(q)
++	C = np.hstack([ V[:, :, k] for k in range(l) ])
++	if zero.any():
++		C = C.copy()
++		for a in range(p):
++			for b in range(q):
++				if zero[a, b]:
++					C[a, b::q] = 0
++	return control.StateSpace(A, B, C, np.zeros((p, q), dtype=V.dtype), 1.)
++
++
++def SS_fromV_tf2ss_legacy(V, shiftby_1 = True, ignore_r0 = None):
+ 	"""
+ 		Input: V[a][b][r], stored either as list of list of rank-1 np.arrays, as single rank-3 np.array, or as a single rank-1 np.array (in which case a=b=0 is implicit).
+ 		ignore_r0 is either array or list of lists - corresponding r=0 responses can be safely ignored.

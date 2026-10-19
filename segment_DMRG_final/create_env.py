@@ -19,7 +19,7 @@ tenpy.tools.misc.setup_logging(to_stdout="INFO")
 from QHE_run_from_graph import make_iMPO
 
 
-def calculate_environment(full_name_load, WF_path, site, side, type_calculation='excitation'):
+def calculate_environment(full_name_load,  site, side, type_calculation='excitation', return_bulk=False):
     """
     Environment of the infinite MPS, taken directly from the iMPS and its MPO.
 
@@ -30,13 +30,15 @@ def calculate_environment(full_name_load, WF_path, site, side, type_calculation=
                     is taken from the second state, data['mps_2']
     side:           'left'  -> contraction strictly left of `site`  (labels 'vR*','wR','vR')
                     'right' -> contraction strictly right of `site` (labels 'vL*','wL','vL')
-    returns:        the environment tensor
+    return_bulk:    if True, also return (eps, cell):
+                    eps  = energy per site of the iMPS, computed with the SAME infinite MPO
+                           that builds the environment (so it cancels the environment offset exactly)
+                    cell = psi.L, the unit cell of the iMPS
+    returns:        the environment tensor  (or  env, eps, cell  if return_bulk)
     """
     with open(full_name_load,'rb') as f:
         data=pickle.load(f,encoding='latin1')
     graph=data['graph']
-    with open(WF_path,'rb') as f:
-        data=pickle.load(f)
     #for an interface the right hand side is the second state
     if type_calculation=='interface' and side=='right':
         psi=data['mps_2']
@@ -60,4 +62,9 @@ def calculate_environment(full_name_load, WF_path, site, side, type_calculation=
         raise ValueError
     print('environment Array:')
     print(env)
+    if return_bulk:
+        # for an infinite MPS TeNPy returns the energy PER SITE
+        eps = float(np.real(M_inf.H_MPO.expectation_value(psi)))
+        print('bulk energy per site eps =', eps, '| iMPS unit cell =', psi.L)
+        return env, eps, psi.L
     return env

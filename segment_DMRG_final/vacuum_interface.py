@@ -301,9 +301,9 @@ def vacuum_left_environment_from_mpo(H_MPO):
     return set_left_environment_to_vacuum(W, W.get_leg('wL'), leg_mps)
 
 
-def vacuum_lhs_window(sites, half, target):
+def vacuum_lhs_window(sites, half, target, n_left=0):
     """
-    Vacuum LHS for a run with added sites (a window between the vacuum and psi_R): no pad, the window absorbs the charge.
+    Vacuum LHS for a run with added sites (a window around the interface): no pad, the window absorbs the charge.
 
     The vacuum is a product state of empty sites. The sites of the window carry random charge-conserving tensors
     (patch_mps), so they can hold more or fewer particles than the neutral number: a window of m sites with j filled
@@ -311,10 +311,111 @@ def vacuum_lhs_window(sites, half, target):
     charge  target + (charge of the window).
     The merge shift is  target - Q_vac , as for the pad (the total charge is  Q_vac - target).
 
-    returns psi_L and the shift to pass to patch_mps (with num_added = number of window sites)
+    n_left: number of window sites to the LEFT of the interface `half`. They replace the last n_left sites of the
+    vacuum (sites half-n_left ... half-1), so the vacuum product state lives on sites[:half-n_left] only.
+    Q_vac is still the charge of the `half` empty sites, so for a fixed half and target the total charge sector is
+    the same for every window (n_left = 0 is the old behaviour: the whole window is to the right of the interface).
+
+    returns psi_L (on sites[:half-n_left]) and the shift to pass to patch_mps (with num_added = TOTAL number of
+    window sites, left + right)
     """
-    psi_L = product_state(sites[:half], [])
-    Q_left = psi_L._B[-1].get_leg('vR').to_qflat()[0]            # = Q_vac, nothing is filled
-    shift = np.asarray(target) - Q_left
-    print('vacuum with a window of added sites, no pad. Q_vac =', Q_left.tolist(), ', merge shift = target - Q_vac =', shift.tolist())
+    if n_left < 0 or n_left > half:
+        raise ValueError('n_left = ' + str(n_left) + ' must be between 0 and the interface position ' + str(half))
+    Q_vac = np.sum([s.leg.to_qflat()[0] for s in sites[:half]], axis=0)     # charge of `half` empty sites
+    psi_L = product_state(sites[:half - n_left], [])
+    shift = np.asarray(target) - Q_vac
+    print('vacuum with a window of added sites, no pad. Q_vac =', Q_vac.tolist(), ', merge shift = target - Q_vac =', shift.tolist())
+    print('window sites to the left of the interface:', n_left, ', vacuum on sites 0 ..', half - n_left - 1)
     return psi_L, shift
+
+
+#####################################
+#### product-state window          ##
+#####################################
+def window_configuration(x_first, m, j, S):
+    """
+    j distinct sites among x_first, ..., x_first+m-1 whose positions add up to S (None if there is no such choice).
+    The empty sites are spread over the particles as evenly as possible (c_i = number of empty sites to the left of
+    particle i grows linearly with i), so the result is a dense-to-dilute strip and not one solid block.
+    """
+    E = m - j
+    if j < 0 or j > m:
+        return None
+    if j == 0:
+        return [] if S == 0 else None
+    D = S - (j * x_first + j * (j - 1) // 2)       # = sum_i c_i
+    if D < 0 or D > j * E:
+        return None
+    if j == 1:
+        c = np.array([D])
+    else:
+        a = min(E / (j - 1.), 2. * D / (j * (j - 1.)), 2. * (j * E - D) / (j * (j - 1.)))
+        b = D / float(j) - a * (j - 1) / 2.
+        c = np.clip(np.rint(b + a * np.arange(j)).astype(int), 0, E)
+        diff = D - int(c.sum())
+        while diff > 0:                              # raise the last entry that has room (stays non-decreasing)
+            i = int(np.max(np.where(c < E)[0]))
+            c[i] += 1
+            diff -= 1
+        while diff < 0:                              # lower the first non-zero entry (stays non-decreasing)
+            i = int(np.min(np.where(c > 0)[0]))
+            c[i] -= 1
+            diff += 1
+    pos = [int(x_first + i + c[i]) for i in range(j)]
+    assert len(set(pos)) == j and sum(pos) == S and pos[0] >= x_first and pos[-1] < x_first + m
+    return pos
+
+
+def vacuum_lhs_product_window(sites, half, psi_R, target, n_left, n_right):
+    """
+    Window around the interface as a PRODUCT STATE (bond dimension 1), for large K where the random window of
+    vacuum_lhs_window becomes too expensive (its dense tensors grow like m^3 in the number of window sites m).
+
+    Window = sites half-n_left ... half+n_right-1 (n_left sites replace the end of the vacuum), psi_R starts at
+    half+n_right. Everything to the left of psi_R is one product state: empty except for the filled window sites.
+    The charge sector of the run is the same as in vacuum_lhs_window for the same half and target:
+    total charge Q_vac(half) - target. Among the RHS sectors s that some filling of the window can reach
+    (s = target + charge of the window, see vacuum_lhs_window) the one with the largest Schmidt weight is used.
+
+    returns psi_L (on sites[:half+n_right]), psi_R (projected on the chosen sector), the shift for patch_mps
+    (call patch_mps with num_added = 0), and a dict with the filled sites
+    """
+    start = half + n_right
+    m = n_left + n_right
+    x_first = half - n_left
+    sites_L = sites[:start]
+    qphys = [s.leg.to_qflat() for s in sites_L]
+    dq = np.array([q[1] - q[0] for q in qphys])
+    if dq.shape[1] != 2 or len(set(dq[:, 1].tolist())) != 1:
+        raise ValueError('the product-state window is implemented for one layer with charges (K, N)')
+    dN = int(dq[0, 1])
+    # the sites of the window to the right of the interface count with their absolute charge
+    Q_empty_R = np.sum([q[0] for q in qphys[half:]], axis=0)
+    target_eff = np.asarray(target) + Q_empty_R
+
+    q_R = psi_R._B[0].get_leg('vL').to_qflat()
+    S_R0 = np.asarray(psi_R._S[0])
+    best = None
+    for jr, row in enumerate(q_R):
+        Qex = row - target_eff                      # charge the filled window sites have to add to the empty ones
+        if Qex[1] % dN or Qex[0] % dN:
+            continue
+        cfg = window_configuration(x_first, m, int(Qex[1] // dN), int(Qex[0] // dN))
+        if cfg is None:
+            continue
+        if best is None or S_R0[jr] > best[0]:
+            best = (S_R0[jr], jr, cfg)
+    if best is None:
+        raise ValueError('no filling of the window (' + str(m) + ' sites from ' + str(x_first) + ') reaches the target charge '
+                         + str(np.asarray(target).tolist()) + ', use more added sites. Sectors on the RHS left leg: '
+                         + str(np.unique(q_R, axis=0)[:30].tolist()))
+    _, j, filled = best
+    print('product-state window: sites', x_first, '...', start - 1, ', filled', len(filled), 'sites:', filled)
+    print('RHS sector', q_R[j].tolist(), ', Schmidt weight', float(S_R0[j]))
+
+    psi_L = product_state(sites_L, filled)
+    Q_left = psi_L._B[-1].get_leg('vR').to_qflat()[0]
+    shift = q_R[j] - Q_left
+    print('vacuum + product-state window, Q_left =', Q_left.tolist(), ', merge shift =', shift.tolist())
+    psi_R = project_left_leg(psi_R, [j])
+    return psi_L, psi_R, shift, dict(filled=filled, j=j)
